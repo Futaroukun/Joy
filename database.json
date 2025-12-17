@@ -1,0 +1,100 @@
+{
+  "users": {
+    "6283854551575@s.whatsapp.net": {
+      "name": "M. Rafli Setiawan",
+      "age": -1,
+      "level": 0,
+      "exp": 0,
+      "limit": 10,
+      "afk": false,
+      "afkReason": "",
+      "register": false,
+      "premium": false,
+      "banned": false,
+      "afkTime": -1,
+      "regTime": -1,
+      "premiumDate": -1,
+      "bannedDate": -1
+    },
+    "": {
+      "name": "M",
+      "age": -1,
+      "level": 0,
+      "exp": 0,
+      "limit": 10,
+      "afk": false,
+      "afkReason": "",
+      "register": false,
+      "premium": false,
+      "banned": false,
+      "afkTime": -1,
+      "regTime": -1,
+      "premiumDate": -1,
+      "bannedDate": -1
+    },
+    "210650966061175@lid": {
+      "name": "M. Rafli Setiawan",
+      "age": -1,
+      "level": 0,
+      "exp": 0,
+      "limit": 10,
+      "afk": false,
+      "afkReason": "",
+      "register": false,
+      "premium": false,
+      "banned": false,
+      "afkTime": -1,
+      "regTime": -1,
+      "premiumDate": -1,
+      "bannedDate": -1
+    },
+    "194583644364878@lid": {
+      "name": "M",
+      "age": -1,
+      "level": 0,
+      "exp": 0,
+      "limit": 10,
+      "afk": false,
+      "afkReason": "",
+      "register": false,
+      "premium": false,
+      "banned": false,
+      "afkTime": -1,
+      "regTime": -1,
+      "premiumDate": -1,
+      "bannedDate": -1
+    }
+  },
+  "chats": {
+    "120363278432732866@g.us": {
+      "antispam": false,
+      "antilink": false,
+      "antivirtex": false,
+      "mute": false,
+      "detect": true,
+      "sambutan": true,
+      "sewa": false,
+      "sWelcome": "",
+      "sBye": "",
+      "sPromote": "",
+      "sDemote": "",
+      "sewaDate": -1
+    }
+  },
+  "settings": {
+    "6285722157719@s.whatsapp.net": {
+      "chatMode": "",
+      "antispam": true,
+      "autoread": true,
+      "autobackup": true,
+      "backupDate": -1
+    },
+    "274062534299882@lid": {
+      "chatMode": "",
+      "antispam": true,
+      "autoread": true,
+      "autobackup": true,
+      "backupDate": -1
+    }
+  }
+}
