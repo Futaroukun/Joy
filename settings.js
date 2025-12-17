@@ -29,8 +29,8 @@ global.stage = {
 }
 
 // ===== LINK ====
-global.lgh = "https://github.com/Ridhx/XRDHZ-MD"; // Github
-global.lwa = "https://wa.me/6285751561624"; // Whatsapp
+global.lgh = "https://github.com/Futaroukun"; // Github
+global.lwa = "https://wa.me/6283854551575"; // Whatsapp
 global.lig = ""; // Instagram
 global.lgc = ""; // Group Chat Whatsapp
 global.lch = ""; // Channels Whatsapp 
