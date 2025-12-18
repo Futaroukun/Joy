@@ -76,9 +76,29 @@ async function chat(messages = [], fileBuffer = null, systemPrompt = "") {
         if (r.status !== 200) throw new Error("No result found");
         
         if (r.data.candidates && r.data.candidates[0].content) {
-            return r.data.candidates[0].content.parts.map(p => p.text).join("");
+            const parts = r.data.candidates[0].content.parts;
+            let textResponse = "";
+            let imageBuffer = null;
+            
+            for (const part of parts) {
+                if (part.text) {
+                    textResponse += part.text;
+                } else if (part.inlineData && part.inlineData.data) {
+                    imageBuffer = Buffer.from(part.inlineData.data, "base64");
+                }
+            }
+            
+            // Kembalikan objek agar bisa diolah oleh plugin
+            return {
+                text: textResponse || "AI tidak memberikan respon teks.",
+                image: imageBuffer
+            };
+            
         } else {
-            return "AI tidak memberikan respon teks.";
+            return {
+                text: "AI tidak memberikan respon.",
+                image: null
+            };
         }
     } catch (e) {
         console.error("Gemini Error:", e.response ? e.response.data : e.message);
