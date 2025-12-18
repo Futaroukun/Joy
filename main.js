@@ -22,6 +22,7 @@ import { createRequire } from "module";
 import { Low, JSONFile } from "lowdb";
 import { makeWASocket, protoType } from "./function/simple.js";
 import { requestPairing, connectionUpdate } from "./function/connection.js";
+import { startAutoClearSessions } from "./function/auto-clear-sessions.js";
 
 const { Browsers, useMultiFileAuthState, fetchLatestWaWebVersion, makeCacheableSignalKeyStore } = await import("baileys");
 
@@ -40,7 +41,7 @@ const { state, saveCreds } = await useMultiFileAuthState("./sessions");
 const { version, isLatest } = await fetchLatestWaWebVersion();
 
 const connectionOptions = {
-    version: version, // OPSIONAL
+    version: version,
     printQRInTerminal: false,
     logger: pino({ level: "silent" }),
     browser: Browsers.ubuntu("Chrome"),
@@ -49,6 +50,15 @@ const connectionOptions = {
         keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" }).child({ level: "store" }))
     },
     generateHighQualityLinkPreview: true,
+    getMessage: async (key) => {
+        // Fix untuk message handler yang lebih baik
+        if (conn.chats) {
+            const jid = key.remoteJid;
+            const msg = conn.chats[jid]?.messages?.[key.id];
+            return msg?.message || null;
+        }
+        return null;
+    },
     patchMessageBeforeSending: message => {
         const requiresPatch = !!(message.buttonsMessage || message.templateMessage || message.listMessage);
         if (requiresPatch) {
@@ -68,7 +78,11 @@ const connectionOptions = {
     },
     defaultQueryTimeoutMs: undefined,
     syncFullHistory: false,
-    markOnlineOnConnect: true
+    markOnlineOnConnect: true,
+    // Tambahan untuk fix respon
+    keepAliveIntervalMs: 30000,
+    connectTimeoutMs: 60000,
+    qrTimeout: 60000
 };
 
 global.opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse());
@@ -110,6 +124,7 @@ const tmpFolder = join(process.cwd(), "tmp");
 if (!existsSync(tmpFolder)) {
     mkdirSync(tmpFolder, { recursive: true });
 }
+
 // Auto Clear TMP Folder
 if (existsSync(tmpFolder)) {
     setInterval(() => {
@@ -132,6 +147,9 @@ if (existsSync(tmpFolder)) {
         }
     }, 30 * 1000);
 }
+
+// ===== AUTO CLEAR SESSIONS SETIAP 3 JAM =====
+startAutoClearSessions(3); // 3 jam sekali
 
 // Start kode pairing Jika belum ada session
 async function StartPairing() {
@@ -183,6 +201,7 @@ global.reloadHandler = async function reloadHandler(restartConnection) {
 
     if (!isHandlerInit) {
         conn.ev.off("message.upsert", conn.handler);
+        conn.ev.off("messages.upsert", conn.handler);
         conn.ev.off("group-participants.update", conn.participantsUpdate);
         conn.ev.off("groups.update", conn.groupsUpdate);
         conn.ev.off("message.delete", conn.onDelete);
@@ -204,6 +223,7 @@ global.reloadHandler = async function reloadHandler(restartConnection) {
     conn.connectionUpdate = async update => await connectionUpdate(update, conn);
     conn.credsUpdate = saveCreds.bind(global.conn);
 
+    // Fix: Gunakan 'messages.upsert' bukan 'message.upsert'
     conn.ev.on("messages.upsert", conn.handler);
     conn.ev.on("group-participants.update", conn.participantsUpdate);
     conn.ev.on("groups.update", conn.groupsUpdate);
@@ -271,3 +291,10 @@ Object.freeze(global.reloadPlugins);
 await watch(pluginFolder, global.reloadPlugins);
 await global.reloadHandler();
 await StartPairing();
+
+// Keep alive connection
+setInterval(() => {
+    if (conn?.ws?.readyState === ws.OPEN) {
+        conn.sendPresenceUpdate('available').catch(console.error);
+    }
+}, 60000); // Setiap 1 menit

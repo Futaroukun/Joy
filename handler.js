@@ -18,33 +18,53 @@ const printMessages = (await import("./function/print.js")).default;
 export async function handler(chatUpdate) {
     if (!chatUpdate) return;
 
-    this.pushMessage(chatUpdate.messages).catch(console.error);
+    // Fix: Pastikan messages ada dan valid
+    if (!chatUpdate.messages || !Array.isArray(chatUpdate.messages)) return;
+    
+    // Push messages ke chats
+    try {
+        await this.pushMessage(chatUpdate.messages);
+    } catch (e) {
+        console.error('Error pushing messages:', e);
+    }
+
     let m = chatUpdate.messages[chatUpdate.messages.length - 1];
     if (!m) return;
 
     try {
         m = (await smsg(this, m)) || m;
         if (m.sender.endsWith("@broadcast") || m.sender.endsWith("@newsletter")) return;
+        
+        // Handle mentions
         if (m?.msg?.contextInfo?.mentionedJid?.length) {
             if (!conn.storeMentions) conn.storeMentions = {};
             const jidMentions = [...new Set(m.msg.contextInfo.mentionedJid.map(jid => conn.getLid(jid)))];
             conn.storeMentions[m.id] = jidMentions;
         }
         
+        // Fetch LID jika belum ada
         if (conn.storeLid && Object.keys(conn.storeLid).length == 0) {
-          const data = await conn.groupFetchAllParticipating();
-          for (let group of Object.values(data)) {
-             if (!group) continue;
-             for (let p of group.participants) {
-               if (!p || !p.id || !p.phoneNumber) continue;
-               conn.storeLid[p.phoneNumber] = p.id;
-             }
-          }
-          console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.green.bold("FETCHING LID SUKSES!")}`);
+            try {
+                const data = await conn.groupFetchAllParticipating();
+                for (let group of Object.values(data)) {
+                    if (!group) continue;
+                    for (let p of group.participants) {
+                        if (!p || !p.id || !p.phoneNumber) continue;
+                        conn.storeLid[p.phoneNumber] = p.id;
+                    }
+                }
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.green.bold("FETCHING LID SUKSES!")}`);
+            } catch (e) {
+                console.error('Error fetching LID:', e);
+            }
         }
         
+        // Skip pesan dari bot sendiri yang bukan command
         if (m.isBaileys) return;
+        
         const decodedBotLid = jidNormalizedUser(conn?.user?.lid);
+        
+        // Load database
         try {
             if (global.db.data == null) await global.loadDatabase();
             let user = global.db.data.users[m.sender];
@@ -134,13 +154,16 @@ export async function handler(chatUpdate) {
                     backupDate: -1
                 };
         } catch (error) {
-            console.log(error);
+            console.log('Database error:', error);
         }
 
         if (typeof m.text !== "string") m.text = "";
-        const decodedOwnLid = await Promise.all(global.owner.map(o => conn.getLidPN(`${o.replace(/[^0-9]/g, "")}@s.whatsapp.net`)));
+        
+        // Get owner list
+        const decodedOwnLid = await Promise.all(
+            global.owner.map(o => conn.getLidPN(`${o.replace(/[^0-9]/g, "")}@s.whatsapp.net`))
+        );
         const isROwner = ([...decodedOwnLid] || decodedBotLid).includes(m.sender);
-
         const isOwner = isROwner || m.fromMe || false;
 
         let usedPrefix;
@@ -186,31 +209,36 @@ export async function handler(chatUpdate) {
             ).find(p => p[1]);
 
             if (typeof plugin.before === "function") {
-                if (
-                    await plugin.before.call(this, m, {
-                        match,
-                        conn: this,
-                        participants,
-                        groupMetadata,
-                        user,
-                        bot,
-                        isROwner,
-                        isOwner,
-                        isRAdmin,
-                        isAdmin,
-                        isBotAdmin,
-                        isPremium,
-                        isBannned,
-                        isMuted,
-                        isRegister,
-                        isSewa,
-                        chatUpdate,
-                        __dirname: ___dirname,
-                        __filename
-                    })
-                )
-                    continue;
+                try {
+                    if (
+                        await plugin.before.call(this, m, {
+                            match,
+                            conn: this,
+                            participants,
+                            groupMetadata,
+                            user,
+                            bot,
+                            isROwner,
+                            isOwner,
+                            isRAdmin,
+                            isAdmin,
+                            isBotAdmin,
+                            isPremium,
+                            isBannned,
+                            isMuted,
+                            isRegister,
+                            isSewa,
+                            chatUpdate,
+                            __dirname: ___dirname,
+                            __filename
+                        })
+                    )
+                        continue;
+                } catch (e) {
+                    console.error('Plugin before error:', e);
+                }
             }
+            
             if (typeof plugin !== "function") continue;
             if ((usedPrefix = (match[0] || "")[0])) {
                 let noPrefix = m.text.replace(usedPrefix, "");
@@ -312,7 +340,7 @@ export async function handler(chatUpdate) {
                 try {
                     await plugin.call(this, m, extra);
                 } catch (e) {
-                    console.log(e);
+                    console.log('Plugin execution error:', e);
                     const text = format(e);
                     if (e.name) {
                         const own = decodedOwnLid[0];
@@ -331,7 +359,7 @@ export async function handler(chatUpdate) {
                         try {
                             await plugin.after.call(this, m, extra);
                         } catch (error) {
-                            console.log(error);
+                            console.log('Plugin after error:', error);
                         }
                     }
                 }
@@ -339,13 +367,22 @@ export async function handler(chatUpdate) {
             }
         }
     } catch (error) {
-        console.log(error);
+        console.log('Handler error:', error);
     } finally {
-        if (global.autoRead) await conn.readMessages([m.key]);
+        // Auto read messages
+        if (global.autoRead) {
+            try {
+                await conn.readMessages([m.key]);
+            } catch (e) {
+                console.error('Error reading messages:', e);
+            }
+        }
+        
+        // Print messages
         try {
             await printMessages(m, this);
         } catch (e) {
-            console.log(e);
+            console.log('Print error:', e);
         }
     }
 }
@@ -386,7 +423,6 @@ export async function participantsUpdate({ id, participants, action }) {
                                 : chat.sBye || conn.sBye || "Selamat Tinggal @user"
                         ).replace("@user", "@" + lid.split("@")[0]);
 
-                        // Opsional diatur sesuai keinginan
                         try {
                             await this.sendMessage(
                                 id,
@@ -443,7 +479,7 @@ export async function participantsUpdate({ id, participants, action }) {
                 break;
         }
     } catch (e) {
-        console.error(e);
+        console.error('Participants update error:', e);
     }
 }
 
@@ -479,7 +515,7 @@ export async function groupsUpdate(groupsUpdate) {
             if (groupUpdate.icon) conn.reply(id, "*Ikon group telah diganti*");
         }
     } catch (e) {
-        console.error(e);
+        console.error('Groups update error:', e);
     }
 }
 
@@ -492,7 +528,7 @@ export async function catchDeleted(message) {
         if (!message) return;
         // console.log(message);
     } catch (error) {
-        console.error(error);
+        console.error('Catch deleted error:', error);
     }
 }
 
