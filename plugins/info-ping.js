@@ -34,9 +34,12 @@ function calculateCoreUsage(cpus) {
 }
 
 var handler = async (m, { conn }) => {
-  let old = performance.now()
-  let neww = performance.now()
-  let ping = Math.round(neww - old)
+  // PENGUKURAN PING YANG TELAH DIPERBAIKI
+  const old = performance.now()
+  await conn.sendPresenceUpdate('available') // Melakukan round-trip ke server WA
+  const neww = performance.now()
+  const ping = Math.round(neww - old)
+
   const used = process.memoryUsage()
   const cpus = _cpus()
   const totalMemory = totalmem()
