@@ -1,6 +1,14 @@
 import fs from 'fs'
 import path from 'path'
 
+const formatSize = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(Math.abs(bytes)) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 let handler = async (m, { text, usedPrefix, command }) => {
     // Validasi 1: Cek apakah ada nama plugin
     if (!text || text.trim() === '') {
@@ -127,9 +135,9 @@ let handler = async (m, { text, usedPrefix, command }) => {
                 '*Nama Plugin:* ' + pluginName + '.js\n' +
                 '*Lokasi:* ' + pluginPath + '\n\n' +
                 '*Perubahan:*\n' +
-                '- Ukuran Lama: *' + oldSize + '* karakter\n' +
-                '- Ukuran Baru: *' + pluginCode.length + '* karakter\n' +
-                '- Selisih: *' + (pluginCode.length - oldSize) + '* karakter\n\n' +
+                '- Ukuran Lama: *' + formatSize(oldSize) + '*\n' +
+                '- Ukuran Baru: *' + formatSize(pluginCode.length) + '*\n' +
+                '- Selisih: *' + formatSize(pluginCode.length - oldSize) + '*\n\n' +
                 '*Status: Plugin berhasil diperbarui*\n\n' +
                 '*Langkah selanjutnya:*\n' +
                 '1. Plugin akan *otomatis* ter-reload\n' +
@@ -145,7 +153,7 @@ let handler = async (m, { text, usedPrefix, command }) => {
                 '*PLUGIN BERHASIL DISIMPAN*\n\n' +
                 '*Nama Plugin:* ' + pluginName + '.js\n' +
                 '*Lokasi:* ' + pluginPath + '\n' +
-                '*Ukuran:* ' + pluginCode.length + ' karakter\n\n' +
+                '*Ukuran:* ' + formatSize(pluginCode.length) + ' karakter\n\n' +
                 '*Status: Plugin baru berhasil dibuat*\n\n' +
                 '*Langkah selanjutnya:*\n' +
                 '1. Plugin akan otomatis ter-load saat *bot restart*\n' +
