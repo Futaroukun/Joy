@@ -153,7 +153,7 @@ let handler = async (m, { text, usedPrefix, command }) => {
                 '*PLUGIN BERHASIL DISIMPAN*\n\n' +
                 '*Nama Plugin:* ' + pluginName + '.js\n' +
                 '*Lokasi:* ' + pluginPath + '\n' +
-                '*Ukuran:* ' + formatSize(pluginCode.length) + ' karakter\n\n' +
+                '*Ukuran:* ' + formatSize(pluginCode.length) + '*\n\n' +
                 '*Status: Plugin baru berhasil dibuat*\n\n' +
                 '*Langkah selanjutnya:*\n' +
                 '1. Plugin akan otomatis ter-load saat *bot restart*\n' +
