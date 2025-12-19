@@ -156,8 +156,8 @@ if (existsSync(tmpFolder)) {
     }, 30 * 1000);
 }
 
-// ===== AUTO CLEAR SESSIONS SETIAP 3 JAM =====
-startAutoClearSessions(3);
+// ===== AUTO CLEAR SESSIONS SETIAP 4 JAM =====
+startAutoClearSessions(4);
 
 // Start kode pairing Jika belum ada session
 async function StartPairing() {

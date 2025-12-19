@@ -121,7 +121,7 @@ Mohon tunggu sekitar *10-30 detik*...`,
     }
 }
 
-handler.help = ['editimg <prompt>']
+handler.help = ['editimg *prompt*']
 handler.tags = ['ai']
 handler.command = /^(img2img|editimg|ubahgambar)$/i
 handler.limit = false

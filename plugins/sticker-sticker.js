@@ -114,7 +114,7 @@ let handler = async (m, { conn, command, usedPrefix }) => {
     }
 };
 
-handler.help = ["s", "stiker", "sticker"];
+handler.help = ["stiker"];
 handler.command = /^(s|stiker|sticker)$/i;
 handler.tags = ["sticker"];
 handler.limit = false;

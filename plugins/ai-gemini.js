@@ -213,7 +213,7 @@ ${content}`)
     return fileList.join('\n')
 }
 
-handler.help = ['ai', 'gemini']
+handler.help = ['ai']
 handler.tags = ['ai']
 handler.command = /^(ai|gemini)$/i
 

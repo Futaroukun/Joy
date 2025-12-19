@@ -90,7 +90,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                     `*Statistik:* \n` +
                     `- View: ${data.play_count}\n` +
                     `- Like: ${data.digg_count}\n\n` +
-                    `*Status: Berhasil diunduh melalui TikWM*\n\n`;
+                    `*Status: Berhasil diunduh melalui TikWM*\n`;
                 
                 await conn.sendMessage(m.chat, { video: { url: videoUrl }, caption }, { quoted: m });
             }
@@ -117,7 +117,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                 const videoUrl = dataBackup.mp4_hd || dataBackup.mp4;
                 let caption = `*TIKTOK DOWNLOADER (BACKUP)*\n\n` +
                     `*Judul:* ${dataBackup.title}\n\n` +
-                    `*Status: Berhasil diunduh melalui Savetik*\n\n`;
+                    `*Status: Berhasil diunduh melalui Savetik*\n`;
                 
                 await conn.sendMessage(m.chat, { video: { url: videoUrl }, caption }, { quoted: m });
             }
