@@ -129,7 +129,22 @@
       "bannedDate": -1
     }
   },
-  "chats": {},
+  "chats": {
+    "120363278432732866@g.us": {
+      "antispam": false,
+      "antilink": false,
+      "antivirtex": false,
+      "mute": false,
+      "detect": true,
+      "sambutan": true,
+      "sewa": false,
+      "sWelcome": "",
+      "sBye": "",
+      "sPromote": "",
+      "sDemote": "",
+      "sewaDate": -1
+    }
+  },
   "settings": {
     "274062534299882@lid": {
       "chatMode": "",
