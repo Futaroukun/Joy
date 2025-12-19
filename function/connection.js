@@ -1,7 +1,4 @@
-/* XRDHZ-MD
-  Script ini tidak untuk diperjual-belikan atau gratis.
-  Script masih dalam tahap pengembangan mungkin akan ada bug, error dan lain sebagainya.
-*/
+/* XRDHZ-MD - FIXED CONNECTION HANDLER */
 
 import readline from "readline";
 import chalk from "chalk";
@@ -9,7 +6,6 @@ import { DisconnectReason } from "baileys";
 import { headerLog } from "../function/console.js";
 import { unlinkSync, readdirSync, existsSync } from "fs";
 import { join } from "path";
-import { clearSessionFiles } from './auto-clear-sessions.js';
 
 /**
  * Fungsi untuk membuat pairing kode.
@@ -59,7 +55,45 @@ export async function requestPairing(conn) {
 }
 
 /**
- * Fungsi untuk update koneksi dengan auth error handling
+ * Clear semua session files kecuali creds.json
+ */
+function clearCorruptedSessions() {
+    const sessionsPath = './sessions';
+    if (!existsSync(sessionsPath)) {
+        console.log(`${chalk.white.bold(" [SESSION-CLEANER]")} ${chalk.yellow("Folder sessions tidak ditemukan")}`);
+        return;
+    }
+
+    try {
+        const files = readdirSync(sessionsPath);
+        let deletedCount = 0;
+        
+        for (const file of files) {
+            // Skip creds.json dan file .backup
+            if (file === 'creds.json' || file.endsWith('.backup')) {
+                continue;
+            }
+            
+            const filePath = join(sessionsPath, file);
+            
+            try {
+                unlinkSync(filePath);
+                deletedCount++;
+            } catch (error) {
+                console.log(`${chalk.white.bold(" [SESSION-CLEANER]")} ${chalk.red.bold(`Gagal menghapus ${file}`)}`);
+            }
+        }
+        
+        if (deletedCount > 0) {
+            console.log(`${chalk.white.bold(" [SESSION-CLEANER]")} ${chalk.green.bold(`✅ Berhasil membersihkan ${deletedCount} file sessions usang.`)}`);
+        }
+    } catch (error) {
+        console.log(`${chalk.white.bold(" [SESSION-CLEANER]")} ${chalk.red.bold(`Error: ${error.message}`)}`);
+    }
+}
+
+/**
+ * Fungsi untuk update koneksi dengan FIXED ERROR HANDLING
  * @param {*} update
  * @param {ReturnType<typeof makeWASocket>} conn
  */
@@ -80,44 +114,19 @@ export async function connectionUpdate(update, conn) {
 
         if (connection === "close") {
             const statusCode = lastDisconnect?.error?.output?.statusCode;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
             const errorMessage = lastDisconnect?.error?.message || '';
             
-            console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold(`GAGAL TERHUBUNG ❌`)}`);
+            console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold(`KONEKSI TERPUTUS`)}`);
             console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold(`Status Code: ${statusCode}`)}`);
-            console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold(`Error: ${errorMessage}`)}`);
-
-            // Handle AUTH ERRORS (428, 401, 403, dll)
-            const authErrorCodes = [428, 401, 403, 515];
-            const isAuthError = 
-                authErrorCodes.includes(statusCode) || 
-                errorMessage.includes('auth') || 
-                errorMessage.includes('authenticate') ||
-                errorMessage.includes('Unsupported state');
-
-            if (isAuthError) {
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("⚠️  AUTH ERROR DETECTED!")}`);
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Cleaning corrupted sessions...")}`);
-                
-                // Clear sessions kecuali creds.json
-                clearSessionFiles();
-                
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Attempting to reconnect with fresh session...")}`);
-                
-                // Delay sebelum reconnect
-                await new Promise(resolve => setTimeout(resolve, 3000));
-                
-                // Reload dengan connection restart
-                await global.reloadHandler(true);
-                
-                return false;
-            }
-
-            // Handle LOGGED OUT
+            
+            // === HANDLE SPECIFIC ERROR CODES ===
+            
+            // LOGGED OUT - Hapus semua sessions
             if (statusCode === DisconnectReason.loggedOut) {
                 console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("❌ BOT LOGGED OUT!")}`);
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Clearing all sessions...")}`);
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Menghapus semua sessions...")}`);
                 
-                // Clear semua termasuk creds.json karena logged out
                 const sessionsPath = './sessions';
                 if (existsSync(sessionsPath)) {
                     const files = readdirSync(sessionsPath);
@@ -128,13 +137,83 @@ export async function connectionUpdate(update, conn) {
                     }
                 }
                 
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("Please restart and re-pair the bot")}`);
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("Silakan restart bot dan re-pair")}`);
                 process.exit(1);
             }
+            
+            // AUTH ERRORS (428, 401, 403, 515, 503, dll)
+            const authErrorCodes = [428, 401, 403, 515, 503, 500];
+            const isAuthError = 
+                authErrorCodes.includes(statusCode) || 
+                errorMessage.toLowerCase().includes('auth') || 
+                errorMessage.toLowerCase().includes('stream error') ||
+                errorMessage.toLowerCase().includes('connection') ||
+                errorMessage.toLowerCase().includes('terminated');
 
-            // Handle NORMAL DISCONNECT (reconnect)
-            console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold(`MENGHUBUNGKAN KEMBALI 🌐`)}`);
-            await global.reloadHandler(true);
+            if (isAuthError) {
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("⚠️  AUTH/STREAM ERROR DETECTED!")}`);
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Membersihkan corrupted sessions...")}`);
+                
+                // Clear corrupted sessions (kecuali creds.json)
+                clearCorruptedSessions();
+                
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Reconnecting dengan fresh session...")}`);
+                
+                // Delay sebelum reconnect
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                // Reload handler dengan restart connection
+                await global.reloadHandler(true);
+                
+                return false;
+            }
+
+            // BAD SESSION - Restart dengan clean
+            if (statusCode === DisconnectReason.badSession) {
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("⚠️  BAD SESSION!")}`);
+                clearCorruptedSessions();
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                await global.reloadHandler(true);
+                return false;
+            }
+
+            // CONNECTION CLOSED - Normal reconnect
+            if (statusCode === DisconnectReason.connectionClosed) {
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("CONNECTION CLOSED - Reconnecting...")}`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                await global.reloadHandler(true);
+                return false;
+            }
+
+            // CONNECTION LOST - Reconnect
+            if (statusCode === DisconnectReason.connectionLost) {
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("CONNECTION LOST - Reconnecting...")}`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                await global.reloadHandler(true);
+                return false;
+            }
+
+            // RESTART REQUIRED
+            if (statusCode === DisconnectReason.restartRequired) {
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("RESTART REQUIRED - Restarting...")}`);
+                await global.reloadHandler(true);
+                return false;
+            }
+
+            // TIMED OUT
+            if (statusCode === DisconnectReason.timedOut) {
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("TIMED OUT - Reconnecting...")}`);
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                await global.reloadHandler(true);
+                return false;
+            }
+
+            // DEFAULT - Reconnect jika shouldReconnect = true
+            if (shouldReconnect) {
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold(`RECONNECTING... (Code: ${statusCode})`)}`);
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                await global.reloadHandler(true);
+            }
         }
 
         if (receivedPendingNotifications) {
@@ -147,9 +226,9 @@ export async function connectionUpdate(update, conn) {
         
         // Jika error saat handle connection, coba clean & reconnect
         console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("Unexpected error, attempting recovery...")}`);
-        clearSessionFiles();
+        clearCorruptedSessions();
         
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
         await global.reloadHandler(true);
         
         return false;

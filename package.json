@@ -1,5 +1,5 @@
 {
-    "name": "xrdhz-md",
+    "name": "Joy",
     "version": "1.0.8",
     "description": "Simple Free Whatsapp Bot Script Tipe ESM.",
     "main": "main.js",
@@ -18,14 +18,14 @@
         "esm",
         "baileys"
     ],
-    "author": "Ridhx",
+    "author": "Rafli",
     "license": "GPLv3",
     "type": "module",
     "dependencies": {
         "@hapi/boom": "^10.0.1",
         "awesome-phonenumber": "^7.5.0",
         "axios": "^1.12.2",
-        "baileys": "^7.0.0-rc.9",
+        "baileys": "^7.0.0-rc.5",
         "cfonts": "^3.3.1",
         "chalk": "^5.6.2",
         "child_process": "^1.0.2",

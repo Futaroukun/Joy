@@ -1,7 +1,4 @@
-/* XRDHZ-MD
-  Script ini tidak untuk diperjual-belikan atau gratis.
-  Script masih dalam tahap pengembangan mungkin akan ada bug, error dan lain sebagainya.
-*/
+/* XRDHZ-MD - FIXED MAIN.JS */
 
 import "./settings.js";
 import path, { join } from "path";
@@ -24,9 +21,9 @@ import { makeWASocket, protoType } from "./function/simple.js";
 import { requestPairing, connectionUpdate } from "./function/connection.js";
 import { startAutoClearSessions } from "./function/auto-clear-sessions.js";
 
-const { Browsers, useMultiFileAuthState, fetchLatestWaWebVersion, makeCacheableSignalKeyStore } = await import("baileys");
+const { Browsers, useMultiFileAuthState, fetchLatestWaWebVersion, makeCacheableSignalKeyStore, DisconnectReason } = await import("baileys");
 
-protoType(); // Aktifkan protoType :D
+protoType();
 global.__filename = function filename(pathURL = import.meta.url, rmPrefix = platform !== "win32") {
     return rmPrefix ? (/file:\/\/\//.test(pathURL) ? fileURLToPath(pathURL) : pathURL) : pathToFileURL(pathURL).toString();
 };
@@ -40,6 +37,7 @@ const __dirname = global.__dirname(import.meta.url);
 const { state, saveCreds } = await useMultiFileAuthState("./sessions");
 const { version, isLatest } = await fetchLatestWaWebVersion();
 
+// === FIXED CONNECTION OPTIONS ===
 const connectionOptions = {
     version: version,
     printQRInTerminal: false,
@@ -51,7 +49,6 @@ const connectionOptions = {
     },
     generateHighQualityLinkPreview: true,
     getMessage: async (key) => {
-        // Fix untuk message handler yang lebih baik
         if (conn.chats) {
             const jid = key.remoteJid;
             const msg = conn.chats[jid]?.messages?.[key.id];
@@ -76,13 +73,24 @@ const connectionOptions = {
         }
         return message;
     },
-    defaultQueryTimeoutMs: undefined,
+    // === FIX CONNECTION SETTINGS ===
+    defaultQueryTimeoutMs: 60000, // 60 detik (dinaikkan dari undefined)
+    connectTimeoutMs: 60000, // 60 detik
+    keepAliveIntervalMs: 30000, // 30 detik
+    qrTimeout: 60000, // 60 detik
+    emitOwnEvents: false,
+    fireInitQueries: true,
     syncFullHistory: false,
     markOnlineOnConnect: true,
-    // Tambahan untuk fix respon
-    keepAliveIntervalMs: 30000,
-    connectTimeoutMs: 60000,
-    qrTimeout: 60000
+    retryRequestDelayMs: 5000, // Delay 5 detik sebelum retry
+    maxMsgRetryCount: 5, // Max retry 5x
+    msgRetryCounterMap: {}, // Track retry counter
+    
+    // === HANDLE DISCONNECT LEBIH BAIK ===
+    shouldIgnoreJid: (jid) => {
+        // Ignore broadcast messages
+        return jid === 'status@broadcast';
+    }
 };
 
 global.opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse());
@@ -149,7 +157,7 @@ if (existsSync(tmpFolder)) {
 }
 
 // ===== AUTO CLEAR SESSIONS SETIAP 3 JAM =====
-startAutoClearSessions(3); // 3 jam sekali
+startAutoClearSessions(3);
 
 // Start kode pairing Jika belum ada session
 async function StartPairing() {
@@ -195,12 +203,13 @@ global.reloadHandler = async function reloadHandler(restartConnection) {
             console.error(error);
         }
         conn.ev.removeAllListeners();
+        
+        // === BUAT KONEKSI BARU DENGAN OPTIONS YANG SAMA ===
         global.conn = makeWASocket(connectionOptions, { chats: lastChats });
         isHandlerInit = true;
     }
 
     if (!isHandlerInit) {
-        conn.ev.off("message.upsert", conn.handler);
         conn.ev.off("messages.upsert", conn.handler);
         conn.ev.off("group-participants.update", conn.participantsUpdate);
         conn.ev.off("groups.update", conn.groupsUpdate);
@@ -223,7 +232,6 @@ global.reloadHandler = async function reloadHandler(restartConnection) {
     conn.connectionUpdate = async update => await connectionUpdate(update, conn);
     conn.credsUpdate = saveCreds.bind(global.conn);
 
-    // Fix: Gunakan 'messages.upsert' bukan 'message.upsert'
     conn.ev.on("messages.upsert", conn.handler);
     conn.ev.on("group-participants.update", conn.participantsUpdate);
     conn.ev.on("groups.update", conn.groupsUpdate);
@@ -292,9 +300,32 @@ await watch(pluginFolder, global.reloadPlugins);
 await global.reloadHandler();
 await StartPairing();
 
-// Keep alive connection
-setInterval(() => {
-    if (conn?.ws?.readyState === ws.OPEN) {
-        conn.sendPresenceUpdate('available').catch(console.error);
-    }
-}, 60000); // Setiap 1 menit
+// === IMPROVED KEEP ALIVE ===
+let keepAliveInterval;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+
+function startKeepAlive() {
+    if (keepAliveInterval) clearInterval(keepAliveInterval);
+    
+    keepAliveInterval = setInterval(async () => {
+        if (conn?.ws?.readyState === ws.OPEN) {
+            try {
+                await conn.sendPresenceUpdate('available');
+                reconnectAttempts = 0; // Reset counter jika berhasil
+            } catch (error) {
+                console.error('Keep-alive error:', error);
+                
+                // Jika gagal beberapa kali, restart connection
+                reconnectAttempts++;
+                if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                    console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("Keep-alive failed multiple times, restarting...")}`);
+                    reconnectAttempts = 0;
+                    await global.reloadHandler(true);
+                }
+            }
+        }
+    }, 60000); // Setiap 1 menit
+}
+
+startKeepAlive();
