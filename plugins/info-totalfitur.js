@@ -11,15 +11,16 @@ let handler = async (m, { conn, args, command }) => {
             .filter(plugin => plugin.help && plugin.tags && !plugin.disabled)
             .length;
 
-        const message = `📊 *Total Fitur Bot*\n\n` +
-                       `┌ ◦ *Total Fitur*: ${totalFeatures}\n` +
-                       `└ ◦ *Total Perintah*: ${features.length}`;
+        const message = `*STATISTIK FITUR BOT*\n\n` +
+                       `*Total Plugin:* ${totalFeatures}\n` +
+                       `*Total Perintah:* ${features.length}\n\n` +
+                       `*Status:* Aktif dan siap digunakan`;
 
         await m.reply(message);
         
     } catch (error) {
         console.error('Error in totalfitur command:', error);
-        await m.reply('❌ Terjadi kesalahan saat menghitung total fitur.');
+        await m.reply('*TERJADI KESALAHAN SISTEM*\n\nGagal menghitung total fitur saat ini.');
     }
 }
 
