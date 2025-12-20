@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://i.ibb.co.com/23ZjypRm/IMG-20251209-135456.jpg" alt="Joy Bot Logo" width="400"/>
+  <img src="https://i.ibb.co.com/23ZjypRm/IMG-20251209-135456.jpg" alt="Joy Bot Logo" width="600"/>
 </p>
 
 <h1 align="center">Joy Bot</h1>
@@ -14,22 +14,20 @@ Joy adalah bot WhatsApp modern yang powerful dan memory leak-proof. Bot ini dibu
 
 ---
 
-## 🔖 Features
+## Features
 
-- ☑️ Pairing Code
-- ☑️ Serializer system
-- ☑️ Fully types for Serializer
-- ☑️ Plugin based system
-- ☑️ Interactive message support
-- ☑️ Auto Reconnect
-- ☑️ Database JSON (LowDB)
+- [x] Pairing Code
+- [x] NodeJs ESM Sytem
+- [x] Simpel Menu
+- [x] Auto Reconnect
+- [x] Plugins Sytem
 
-> **📌 Note**  
+> **Note**  
 > Bot ini menggunakan ECMAScript Modules (ESM), bukan CommonJS. Pastikan menggunakan `import/export` bukan `require()`.
 
 ---
 
-## 📦 Installation
+## Installation
 
 Anda perlu mengkloning repositori ini. Pastikan [Node.js v20+](https://nodejs.org) sudah terinstal di komputer Anda.
 
@@ -39,7 +37,7 @@ git clone https://github.com/Futaroukun/Joy
 ```
 
 ### 2. Atur nomor bot Anda:
-Edit file `settings.js` di bagian `global.pairing`. Kemudian ubah nama file menjadi `settings.js`.
+Edit file `settings.js` di bagian `global.info`. Kemudian ubah nomor owner dan bot.
 
 ```javascript
 global.owner = ["6283854551575"]
@@ -72,7 +70,7 @@ Selesai! Bot Anda siap digunakan!
 
 ---
 
-## 🎯 Adding a command
+## Adding a command
 
 Joy Bot adalah skrip berbasis plugin. Semua perintah tersedia dan akan otomatis terdeteksi di folder [plugins](./plugins). Untuk memulai, Anda perlu membuat perintah seperti ini:
 
@@ -92,13 +90,13 @@ export default handler;
 
 ---
 
-## 🔧 Plugin System
+## Plugin System
 
 Joy Bot menggunakan sistem plugin modular. Semua plugin berada di folder [plugins](./plugins) dan akan otomatis terdeteksi. Jika Anda memiliki pertanyaan atau mengalami masalah atau bug, silakan kunjungi halaman [issue](https://github.com/Futaroukun/Joy/issues).
 
 ---
 
-## 📄 License & Contributing
+## License & Contributing
 
 Skrip ini didistribusikan di bawah [MIT license](./LICENSE). Bebas untuk digunakan, dimodifikasi, atau didistribusikan ulang dengan biaya **$0**. Saya akan sangat menghargai jika Anda dapat membantu saya mengembangkannya!
 
