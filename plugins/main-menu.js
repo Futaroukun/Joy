@@ -1,12 +1,33 @@
 import { jidNormalizedUser } from 'baileys';
-import { promises as fs } from 'fs';
+import fs from 'fs'; // Menggunakan fs standar untuk readFileSync
 import { join } from 'path';
 import os from 'os';
 
-// Path thumbnail lokal (TARUH DI ATAS)
+// === BAGIAN LOAD FILE (OPTIMASI KECEPATAN) ===
+// File dibaca sekali saat bot start, bukan setiap ada command.
 const thumbnailPath = join(process.cwd(), 'src', 'thumbnail.jpg');
+const packagePath = join(process.cwd(), 'package.json');
 
-// Kategori Menu
+let thumbBuffer = null;
+let _package = {};
+
+try {
+    // Baca Thumbnail
+    if (fs.existsSync(thumbnailPath)) {
+        thumbBuffer = fs.readFileSync(thumbnailPath);
+    } else {
+        console.error('Thumbnail tidak ditemukan di:', thumbnailPath);
+    }
+
+    // Baca Package.json
+    if (fs.existsSync(packagePath)) {
+        _package = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
+    }
+} catch (e) {
+    console.error('Gagal memuat file eksternal:', e);
+}
+
+// Kategori Menu Manual (Bisa ditambah jika ingin nama custom)
 let tags = {
     'adminry': 'Admin Menu',
     'group': 'Groups Menu',
@@ -60,7 +81,7 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
         const date = d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
         const year = d.toLocaleDateString(locale, { year: 'numeric' });
 
-        let _package = JSON.parse(await fs.readFile(join(__dirname, '../package.json')).catch(() => '{}')) || {};
+        // Info System
         let uptime = clockString(process.uptime() * 1000);
         let platform = os.platform();
         let rtotalreg = Object.values(global.db.data.users).filter(u => u.registered).length;
@@ -88,7 +109,7 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
                 mode = 'Publik'
         }
 
-        // --- PEMBUATAN MENU ---
+        // --- PEMBUATAN MENU & LOGIKA TAG OTOMATIS ---
         let help = Object.values(global.plugins)
             .filter(plugin => plugin.help && !plugin.disable)
             .map(plugin => ({
@@ -102,7 +123,12 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
         for (let plugin of help) {
             if (plugin && plugin.tags) {
                 for (let tag of plugin.tags) {
-                    if (!(tag in tags)) tags[tag] = tag;
+                    if (!(tag in tags)) {
+                        // LOGIKA BARU: Kapitalisasi otomatis + Kata 'Menu'
+                        // cth: 'ai' -> 'Ai Menu'
+                        let capitalize = tag.charAt(0).toUpperCase() + tag.slice(1);
+                        tags[tag] = `${capitalize} Menu`;
+                    }
                 }
             }
         }
@@ -111,7 +137,7 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
         let replace = {
             '%': '%', p: usedPrefix, name, level, role, limit, prems,
             totalexp: exp, date, year, uptime, platform, mode, rtotalreg,
-            me: botname, version: _package.version,
+            me: botname, version: _package.version || '1.0.0',
             cpuModel, totalMem, freeMem, serverArch, serverOS,
             readmore: readMore,
         };
@@ -121,7 +147,7 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
         let { before, header, body, footer, after } = defaultMenu;
 
         if (!menuType) {
-            let tagList = Object.keys(tags).map(tag => `│ • \`${usedPrefix + command} ${tag}\``).join('\n');
+            let tagList = Object.keys(tags).sort().map(tag => `│ • \`${usedPrefix + command} ${tag}\``).join('\n');
             menuText = [
                 before,
                 `Berikut daftar menu yang tersedia:`,
@@ -134,7 +160,7 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
                 `\n\n` + after
             ];
         } else if (menuType === 'all' || tags[menuType]) {
-            let categories = menuType === 'all' ? Object.keys(tags) : [menuType];
+            let categories = menuType === 'all' ? Object.keys(tags).sort() : [menuType];
             menuText.push(before);
 
             for (let tag of categories) {
@@ -164,16 +190,8 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
 
         let textToSend = menuText.join('\n').replace(/%([a-zA-Z0-9]+)/g, (match, key) => replace[key] || match);
 
-        // === BACA THUMBNAIL ===
-        let thumbBuffer;
-        try {
-            thumbBuffer = await fs.readFile(thumbnailPath);
-        } catch {
-            console.error('Thumbnail tidak ditemukan!');
-            thumbBuffer = null;
-        }
-
         // === KIRIM PESAN ===
+        // Tidak perlu await readFile lagi karena thumbBuffer sudah diload di atas
         conn.sendMessage(m.chat, {
             text: textToSend,
             contextInfo: {
@@ -181,7 +199,7 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
                 externalAdReply: {
                     title: global.info.namabot + ` © ` + year,
                     body: `Server Uptime: ${uptime}`,
-                    thumbnail: thumbBuffer,
+                    thumbnail: thumbBuffer, // Langsung pakai buffer global
                     sourceUrl: global.lgc,
                     mediaType: 1,
                     renderLargerThumbnail: true
