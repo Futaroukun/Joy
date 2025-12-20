@@ -2,147 +2,116 @@
   <img src="https://i.ibb.co.com/23ZjypRm/IMG-20251209-135456.jpg" alt="Joy Bot Logo" width="400"/>
 </p>
 
-<h1 align="center">Joy - WhatsApp Bot</h1>
+<h1 align="center">Joy Bot</h1>
 
 <p align="center">
-  Base Script WhatsApp Bot modern yang <b>ringan</b>, <b>cepat</b>, dan <b>mudah dikembangkan</b>.<br>
-  Dibangun dengan <a href="https://github.com/Whiskeysockets/Baileys"><b>Baileys</b></a> dan menggunakan teknologi modern <b>ECMAScript Modules (ESM)</b>.
+  <a href="https://github.com/Futaroukun/Joy"><img src="https://img.shields.io/badge/Node.js-v20+-339933?logo=node.js" alt="Node.js"></a>
+  <a href="https://github.com/Futaroukun/Joy"><img src="https://img.shields.io/badge/Baileys-Latest-25D366?logo=whatsapp" alt="Baileys"></a>
+  <a href="https://github.com/Futaroukun/Joy"><img src="https://img.shields.io/badge/Type-ESM-00d4ff" alt="Type"></a>
 </p>
 
-<div align="center">
-  
-![Node.js](https://img.shields.io/badge/Node.js-v20%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)
-![Baileys](https://img.shields.io/badge/Baileys-Latest-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)
-![Type](https://img.shields.io/badge/Type-ESM-00d4ff?style=for-the-badge)
-![License](https://img.shields.io/badge/License-GPLv3-blue?style=for-the-badge&logo=github)
-  
-</div>
+Joy adalah bot WhatsApp modern yang powerful dan memory leak-proof. Bot ini dibuat khusus untuk **ESM** dan gratis untuk dimodifikasi dan didistribusikan dengan biaya **$0**.
 
 ---
 
-## 📋 Daftar Isi
+## 🔖 Features
 
-1.  [🚀 Fitur Utama](#-fitur-utama)
-2.  [⚙️ Prasyarat](#️-prasyarat)
-3.  [📥 Instalasi](#-instalasi)
-4.  [🔧 Konfigurasi](#-konfigurasi)
-5.  [▶️ Menjalankan Bot](#️-menjalankan-bot)
-6.  [🤝 Kontribusi](#-kontribusi)
-7.  [📝 Lisensi](#-lisensi)
+- ☑️ Pairing Code
+- ☑️ Serializer system
+- ☑️ Fully types for Serializer
+- ☑️ Plugin based system
+- ☑️ Interactive message support
+- ☑️ Case system
 
----
-
-## 🚀 Fitur Utama
-
-Berikut adalah keunggulan utama dari Joy Bot:
-
--   **Modular (Plugin System)**: Struktur kode yang rapi. Mudah menambah atau mengurangi fitur hanya melalui folder `plugins`.
--   **Pairing Code**: Metode login modern tanpa perlu scan QR code, cukup gunakan kode autentikasi 8 digit.
--   **ESM Support**: Ditulis sepenuhnya menggunakan sintaks JavaScript modern (ECMAScript Modules).
--   **Database JSON**: Menggunakan `LowDB` yang ringan untuk penyimpanan data user, grup, dan pengaturan bot.
--   **LID Support**: Sudah mendukung `LID` (Link ID) sebagai pengganti JID untuk kompatibilitas WhatsApp terbaru.
--   **Auto Reconnect**: Bot dirancang untuk terhubung kembali secara otomatis jika koneksi terputus.
+> **📌 Note**  
+> Saya tidak sepenuhnya menggunakan TypeScript untuk beberapa kode karena sangat memakan waktu, jadi saya memutuskan untuk menggunakan aturan TypeScript.
 
 ---
 
-## ⚙️ Prasyarat
+## 📦 Installation
 
-Sebelum memulai, pastikan perangkat lunak berikut sudah terpasang di sistem Anda:
+Anda perlu mengkloning repositori ini. Namun, [Bun](https://bun.sh) harus diinstal di komputer Anda.
 
-| Software | Deskripsi & Link Download |
-| :--- | :--- |
-| **Node.js** | Minimal versi v20 atau lebih tinggi. [Download di sini](https://nodejs.org/en/download/). |
-| **Git** | Untuk meng-kloning repositori. [Download di sini](https://git-scm.com/downloads). |
-| **FFmpeg** | Wajib untuk memproses media (stiker, video, audio). [Download di sini](https://ffmpeg.org/download.html). |
-| **ImageMagick** | Diperlukan untuk manipulasi gambar tertentu. [Download di sini](https://imagemagick.org/script/download.php). |
+### 1. Clone repositori:
+```bash
+git clone https://github.com/Futaroukun/Joy
+```
 
----
+### 2. Atur nomor bot Anda:
+Edit file `settings.js` di bagian `global.pairing`. Kemudian ubah nama file menjadi `settings.js`.
 
-## 📥 Instalasi
+```javascript
+global.owner = ["6283854551575"]
 
-Ikuti langkah-langkah berikut untuk memasang bot di perangkat Anda:
+global.info = {
+    nomorbot: "6285722157719",
+    namabot: "Joy",
+    nomorowner: "6283854551575", 
+    namaowner: "Rafli"
+}
+```
 
-1.  **Clone repositori ini:**
-    ```bash
-    git clone https://github.com/Futaroukun/Joy.git
-    ```
+### 3. Install modules:
+Untuk menginstal modul, Anda dapat langsung menjalankan perintah:
 
-2.  **Masuk ke direktori proyek:**
-    ```bash
-    cd Joy
-    ```
+```bash
+bun install
+# or
+npm install
+```
 
-3.  **Install semua dependensi yang dibutuhkan:**
-    ```bash
-    npm install
-    ```
-    *(Proses ini mungkin memakan waktu beberapa saat tergantung kecepatan internet Anda)*
+### 4. Jalankan bot:
+Jalankan file utama dengan:
 
----
+```bash
+bun index.ts
+# or
+bun run index.ts
+```
 
-## 🔧 Konfigurasi
-
-Sebelum menjalankan bot, sangat penting untuk mengatur konfigurasi dasar di file `settings.js`.
-
-Buka file `settings.js` dengan teks editor favorit Anda (VS Code, Notepad++, dll), lalu sesuaikan bagian berikut:
-
--   **Owner**: Masukkan nomor WhatsApp Anda sebagai pemilik bot. Format nomor harus menggunakan kode negara (contoh: 628...) tanpa tanda `+` atau spasi.
-    ```javascript
-    global.owner = ["6283854551575"]; // Ganti dengan nomor Anda
-    ```
-
--   **Info Bot & Owner**: Ubah detail tampilan bot sesuai keinginan.
-    ```javascript
-    global.info = {
-        namabot: "Joy", // Ganti dengan nama bot
-        namaowner: "Rafli", // Ganti dengan nama Anda
-        // ... sesuaikan info lainnya di file settings.js
-    }
-    ```
+Selesai! Bot Anda siap digunakan!
 
 ---
 
-## ▶️ Menjalankan Bot
+## 🎯 Adding a command
 
-Setelah instalasi dan konfigurasi selesai, Anda siap menjalankan bot.
+Joy Bot adalah skrip berbasis plugin. Semua perintah tersedia dan akan otomatis terdeteksi di folder [plugins](./plugins). Untuk memulai, Anda perlu membuat perintah seperti ini:
 
-1.  **Jalankan perintah start:**
-    ```bash
-    npm start
-    ```
+```javascript
+import type { PluginHandler } from '@yuki/utils';
 
-2.  **Proses Pairing (Pertama Kali):**
-    * Saat pertama kali dijalankan, terminal akan meminta Anda memasukkan **nomor WhatsApp bot** yang akan digunakan. Masukkan nomor (contoh: `628123456789`).
-    * Tunggu sebentar, sebuah **Kode Pairing 8 digit** akan muncul di terminal.
-    * Buka aplikasi WhatsApp di HP Anda.
-    * Pergi ke **Setelan > Perangkat Tertaut > Tautkan perangkat**.
-    * Pilih opsi **"Tautkan dengan nomor telepon"** saja (jangan scan QR).
-    * Masukkan kode 8 digit yang muncul di terminal ke WhatsApp Anda.
+let handler: PluginHandler = {
+  name: "Say Hello World!",
+  call: ["hello"],
+  exec: async (m, Yuki, { args }) => {
+    // You can use Regex for example /*[Hh]ello/.test(m.body)
+    m.reply("Hello World!");
+  }
+};
 
-Setelah berhasil terhubung, bot akan mencetak log "Connected". Bot siap digunakan! Kirim perintah `.menu` di chat pribadi atau grup untuk melihat fitur yang tersedia.
-
----
-
-## 🤝 Kontribusi
-
-Kontribusi Anda sangat kami hargai untuk membuat proyek ini lebih baik! Jika Anda ingin berkontribusi:
-
-1.  **Fork** repositori ini.
-2.  Buat branch fitur baru (`git checkout -b fitur/NamaFiturKeren`).
-3.  Commit perubahan Anda (`git commit -m 'Menambahkan fitur keren X'`).
-4.  Push ke branch tersebut (`git push origin fitur/NamaFiturKeren`).
-5.  Buka **Pull Request** di repositori ini.
+// Export It
+export default handler;
+```
 
 ---
 
-## 📝 Lisensi
+## 🔧 Type plugin
 
-Proyek ini dilisensikan di bawah **Lisensi GPLv3**. Lihat file [`LICENSE`](LICENSE) untuk detail lengkapnya.
+Saya telah membuat plugin lengkap dengan tipe Imagine() yang tersedia di file [types/plugin/type.ts](./types/plugin/type.ts). Jika Anda memiliki pertanyaan atau mengalami masalah atau bug, silakan kunjungi halaman [issue](https://github.com/Futaroukun/Joy/issues).
+
+---
+
+## 📄 License & Contributing
+
+Skrip ini didistribusikan di bawah [MIT license](./LICENSE). Bebas untuk digunakan, dimodifikasi, atau didistribusikan ulang dengan biaya **$0**. Saya akan sangat menghargai jika Anda dapat membantu saya mengembangkannya!
 
 ---
 
 <div align="center">
 
-### 🌟 Jika Anda menyukai proyek ini, jangan lupa berikan Bintang (Star)! 🌟
+**Made with ❤️ by [Rafli](https://github.com/Futaroukun)**
+
+[![GitHub](https://img.shields.io/badge/GitHub-Follow-black?logo=github)](https://github.com/Futaroukun)
+[![WhatsApp](https://img.shields.io/badge/WhatsApp-Contact-25D366?logo=whatsapp)](https://wa.me/6283854551575)
 
 </div>
