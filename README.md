@@ -10,7 +10,7 @@
   <a href="https://github.com/Futaroukun/Joy"><img src="https://img.shields.io/badge/Type-ESM-00d4ff" alt="Type"></a>
 </p>
 
-Joy adalah bot WhatsApp modern yang powerful dan memory leak-proof. Bot ini dibuat khusus untuk **ESM** dan gratis untuk dimodifikasi dan didistribusikan dengan biaya **$0**.
+Joy adalah bot WhatsApp modern yang powerful dan memory leak-proof. Bot ini dibuat menggunakan **Node.js ESM** dan gratis untuk dimodifikasi dan didistribusikan dengan biaya **$0**.
 
 ---
 
@@ -21,16 +21,17 @@ Joy adalah bot WhatsApp modern yang powerful dan memory leak-proof. Bot ini dibu
 - ☑️ Fully types for Serializer
 - ☑️ Plugin based system
 - ☑️ Interactive message support
-- ☑️ Case system
+- ☑️ Auto Reconnect
+- ☑️ Database JSON (LowDB)
 
 > **📌 Note**  
-> Saya tidak sepenuhnya menggunakan TypeScript untuk beberapa kode karena sangat memakan waktu, jadi saya memutuskan untuk menggunakan aturan TypeScript.
+> Bot ini menggunakan ECMAScript Modules (ESM), bukan CommonJS. Pastikan menggunakan `import/export` bukan `require()`.
 
 ---
 
 ## 📦 Installation
 
-Anda perlu mengkloning repositori ini. Namun, [Bun](https://bun.sh) harus diinstal di komputer Anda.
+Anda perlu mengkloning repositori ini. Pastikan [Node.js v20+](https://nodejs.org) sudah terinstal di komputer Anda.
 
 ### 1. Clone repositori:
 ```bash
@@ -55,8 +56,6 @@ global.info = {
 Untuk menginstal modul, Anda dapat langsung menjalankan perintah:
 
 ```bash
-bun install
-# or
 npm install
 ```
 
@@ -64,9 +63,9 @@ npm install
 Jalankan file utama dengan:
 
 ```bash
-bun index.ts
+npm start
 # or
-bun run index.ts
+node main.js
 ```
 
 Selesai! Bot Anda siap digunakan!
@@ -78,16 +77,14 @@ Selesai! Bot Anda siap digunakan!
 Joy Bot adalah skrip berbasis plugin. Semua perintah tersedia dan akan otomatis terdeteksi di folder [plugins](./plugins). Untuk memulai, Anda perlu membuat perintah seperti ini:
 
 ```javascript
-import type { PluginHandler } from '@yuki/utils';
-
-let handler: PluginHandler = {
-  name: "Say Hello World!",
-  call: ["hello"],
-  exec: async (m, Yuki, { args }) => {
-    // You can use Regex for example /*[Hh]ello/.test(m.body)
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+    // You can use Regex for example /^hello$/i.test(command)
     m.reply("Hello World!");
-  }
-};
+}
+
+handler.help = ['hello']
+handler.tags = ['main']
+handler.command = /^(hello|hai)$/i
 
 // Export It
 export default handler;
@@ -95,9 +92,9 @@ export default handler;
 
 ---
 
-## 🔧 Type plugin
+## 🔧 Plugin System
 
-Saya telah membuat plugin lengkap dengan tipe Imagine() yang tersedia di file [types/plugin/type.ts](./types/plugin/type.ts). Jika Anda memiliki pertanyaan atau mengalami masalah atau bug, silakan kunjungi halaman [issue](https://github.com/Futaroukun/Joy/issues).
+Joy Bot menggunakan sistem plugin modular. Semua plugin berada di folder [plugins](./plugins) dan akan otomatis terdeteksi. Jika Anda memiliki pertanyaan atau mengalami masalah atau bug, silakan kunjungi halaman [issue](https://github.com/Futaroukun/Joy/issues).
 
 ---
 
