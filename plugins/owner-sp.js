@@ -207,7 +207,7 @@ let handler = async (m, { text, usedPrefix, command }) => {
 }
 
 handler.command = /^(sp|saveplugin)$/i;
-handler.help = ['sp <nama_plugin>'];
+handler.help = ['sp *nama_plugin*'];
 handler.tags = ['owner'];
 handler.owner = true;
 

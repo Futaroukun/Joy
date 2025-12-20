@@ -61,7 +61,7 @@ let handler = async (m, { text, usedPrefix, command }) => {
     }
 }
 
-handler.help = ['sf <path>'];
+handler.help = ['sf *path*'];
 handler.tags = ['owner'];
 handler.command = /^(sf|savefile)$/i;
 handler.owner = true;

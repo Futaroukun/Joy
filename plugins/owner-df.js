@@ -1,5 +1,5 @@
-import { join } from 'path'
-import { readdirSync, unlinkSync, existsSync, statSync } from 'fs'
+import fs from 'fs'
+import path from 'path'
 
 /**
  * Fungsi untuk mengonversi ukuran byte menjadi satuan yang mudah dibaca
@@ -12,73 +12,64 @@ const formatSize = (bytes) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-let handler = async (m, { conn, usedPrefix, command, args }) => {
+let handler = async (m, { text, usedPrefix, command }) => {
+    // Validasi input path file
+    if (!text) {
+        return m.reply(
+            '*PATH FILE DIPERLUKAN*\n\n' +
+            '*Format penggunaan:*\n' +
+            '*' + usedPrefix + command + ' <path/lokasi_file>*\n\n' +
+            '*Contoh:*\n' +
+            '• ' + usedPrefix + command + ' tmp/foto.jpg\n' +
+            '• ' + usedPrefix + command + ' database.json'
+        );
+    }
+
+    const filePath = path.join(process.cwd(), text);
+
+    // Cek apakah file benar-benar ada
+    if (!fs.existsSync(filePath)) {
+        return m.reply(
+            '*FILE TIDAK DITEMUKAN*\n\n' +
+            'Lokasi: *' + text + '* tidak ditemukan atau sudah dihapus.'
+        );
+    }
+
     try {
-        const featuresDir = join(process.cwd(), 'plugins')
-        let ar1 = []
-        
-        // Membaca daftar plugin yang tersedia
-        try {
-            const files = readdirSync(featuresDir)
-            ar1 = files.filter(file => file.endsWith('.js')).map(file => file.replace('.js', ''))
-        } catch (error) {
-            return m.reply(`*KESALAHAN SISTEM*\n\nGagal membaca direktori plugins: ${error.message}`)
-        }
-        
-        // Validasi input nama plugin
-        if (!args[0]) {
-            return m.reply(
-                '*NAMA PLUGIN DIPERLUKAN*\n\n' +
-                '*Format penggunaan:*\n' +
-                '*' + usedPrefix + command + ' <nama_plugin>*\n\n' +
-                '*Contoh:*\n' +
-                usedPrefix + command + ' *test-fitur*'
-            )
-        }
+        // Ambil info ukuran sebelum dihapus
+        const stats = fs.statSync(filePath);
+        const fileSize = formatSize(stats.size);
 
-        // Cek apakah plugin ada di dalam daftar
-        if (!ar1.includes(args[0])) {
-            return m.reply(
-                '*PLUGIN TIDAK DITEMUKAN*\n\n' +
-                'Daftar plugin yang tersedia:\n' +
-                '==================================\n' +
-                ar1.map(v => ' ' + v).join('\n')
-            )
-        }
-        
-        const file = join(featuresDir, args[0] + '.js')
-        
-        // Cek keberadaan file secara fisik
-        if (!existsSync(file)) {
-            return m.reply(`*FILE TIDAK DITEMUKAN*\n\nFile *plugins/${args[0]}.js* tidak ada di penyimpanan.`)
-        }
-
-        // Mengambil ukuran file sebelum dihapus
-        const stats = statSync(file)
-        const fileSize = formatSize(stats.size)
-        
         // Proses penghapusan
-        unlinkSync(file)
+        if (stats.isDirectory()) {
+            // Jika yang diinput adalah folder, gunakan rmSync dengan recursive
+            fs.rmSync(filePath, { recursive: true, force: true });
+        } else {
+            // Jika file biasa
+            fs.unlinkSync(filePath);
+        }
 
-        // Respon sukses (disesuaikan dengan gaya sp)
-        conn.reply(m.chat, 
-            '*PLUGIN BERHASIL DIHAPUS*\n\n' +
-            '*Nama Plugin:* ' + args[0] + '.js\n' +
-            '*Lokasi:* plugins/' + args[0] + '.js\n' +
+        // Respon sukses
+        return m.reply(
+            '*FILE BERHASIL DIHAPUS*\n\n' +
+            '*Lokasi:* ' + text + '\n' +
             '*Ukuran Dibersihkan:* *' + fileSize + '*\n\n' +
-            '*Status: File telah dihapus permanen*', 
-            m
-        )
-        
+            '*Status: Penghapusan permanen berhasil*'
+        );
+
     } catch (error) {
-        console.error(error)
-        m.reply(`*GAGAL MENGHAPUS PLUGIN*\n\n*Kesalahan:* ${error.message}`)
+        console.error(error);
+        return m.reply(
+            '*GAGAL MENGHAPUS FILE*\n\n' +
+            '*Kesalahan:* ' + error.message + '\n\n' +
+            '*Catatan:* Pastikan bot memiliki izin akses atau file tidak sedang digunakan.'
+        );
     }
 }
 
-handler.help = ['dp <nama_plugin>']
-handler.tags = ['owner']
-handler.command = /^(dp|deleteplugin)$/i
-handler.owner = true // Menggunakan owner agar seragam dengan sp
+handler.help = ['df *path*'];
+handler.tags = ['owner'];
+handler.command = /^(df|deletefile)$/i;
+handler.owner = true;
 
-export default handler
+export default handler;
