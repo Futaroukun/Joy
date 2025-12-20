@@ -62,7 +62,7 @@ let handler = async (m, {
     }
 }
 
-handler.help = ['gp <nama_plugin>']
+handler.help = ['gp *nama_plugin*']
 handler.tags = ['owner']
 handler.command = /^(gp|getplugin)$/i
 handler.owner = true

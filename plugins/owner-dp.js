@@ -76,7 +76,7 @@ let handler = async (m, { conn, usedPrefix, command, args }) => {
     }
 }
 
-handler.help = ['dp <nama_plugin>']
+handler.help = ['dp *nama_plugin*']
 handler.tags = ['owner']
 handler.command = /^(dp|deleteplugin)$/i
 handler.owner = true // Menggunakan owner agar seragam dengan sp
