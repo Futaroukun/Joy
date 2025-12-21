@@ -22,7 +22,7 @@ Joy adalah bot WhatsApp modern yang powerful dan memory leak-proof. Bot ini dibu
 - [x] Auto Reconnect
 - [x] Plugins Sytem
 
-> **Note**  
+> [!NOTE]
 > Bot ini menggunakan ECMAScript Modules (ESM), bukan CommonJS. Pastikan menggunakan `import/export` bukan `require()`.
 
 ---
