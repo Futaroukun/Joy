@@ -14,7 +14,7 @@ function getNetworkInfo() {
   for (const [name, nets] of Object.entries(interfaces)) {
     for (const net of nets) {
       if (net.family === 'IPv4' && !net.internal) {
-        return `📡 ${name}: ${net.address}`
+        return `Net Interface: ${name}: ${net.address}`
       }
     }
   }
@@ -34,9 +34,8 @@ function calculateCoreUsage(cpus) {
 }
 
 var handler = async (m, { conn }) => {
-  // PENGUKURAN PING YANG TELAH DIPERBAIKI
   const old = performance.now()
-  await conn.sendPresenceUpdate('available') // Melakukan round-trip ke server WA
+  await conn.sendPresenceUpdate('available') 
   const neww = performance.now()
   const ping = Math.round(neww - old)
 
@@ -62,61 +61,61 @@ var handler = async (m, { conn }) => {
   }
 
   let coreDisplay = coreUsages.map(core => 
-    `▸ Core ${core.core}: ${core.usage}%`
+    `* Core ${core.core}: ${core.usage}%`
   ).join('\n')
 
   if (coreUsages.length > 8) {
     coreDisplay = coreUsages.slice(0, 8).map(core => 
-      `▸ Core ${core.core}: ${core.usage}%`
+      `* Core ${core.core}: ${core.usage}%`
     ).join('\n') + 
-    `\n▸ ... and ${coreUsages.length - 8} more cores` +
-    `\n▸ Avg Usage: ${overallCpuUsage}%`
+    `\n* ... and ${coreUsages.length - 8} more cores` +
+    `\n* Avg Usage: ${overallCpuUsage}%`
   }
 
   let maxim = `
-🏓 *PING PERFORMANCE*
-• Response Time: ${ping} ms
-• Status: ${getPingStatus(ping)}
+*PING PERFORMANCE*
+* Response Time: ${ping} ms
+* Status: ${getPingStatus(ping)}
 
-🖥️ *SYSTEM INFO*
-• Host: ${hostname()}
-• Platform: ${platform()} ${arch()}
-• OS: ${release()}
+*SYSTEM INFO*
+* Host: ${hostname()}
+* Platform: ${platform()} ${arch()}
+* OS: ${release()}
 
-💾 *MEMORY USAGE*
-• Total: ${format(totalMemory)}
-• Used: ${format(usedMemory)} (${memoryUsage}%)
-• Free: ${format(freeMemory)}
+*MEMORY USAGE*
+* Total: ${format(totalMemory)}
+* Used: ${format(usedMemory)} (${memoryUsage}%)
+* Free: ${format(freeMemory)}
 
-⚡ *CPU STATUS*
-• Model: ${cpus[0]?.model.split('@')[0].trim() || 'Unknown'}
-• Cores: ${cpus.length}
-• Usage: ${overallCpuUsage}%
+*CPU STATUS*
+* Model: ${cpus[0]?.model.split('@')[0].trim() || 'Unknown'}
+* Cores: ${cpus.length}
+* Usage: ${overallCpuUsage}%
 
-📊 *PER CORE USAGE*
+*PER CORE USAGE*
 ${coreDisplay}
 
 ${getNetworkInfo()}
 
-🕐 *BOT STATUS*
-• Uptime: ${clockString(process.uptime() * 1000)}
-• Performance: ${getPerformanceStatus(ping, parseFloat(overallCpuUsage), memoryUsage)}
+*BOT STATUS*
+* Uptime: ${clockString(process.uptime() * 1000)}
+* Performance: ${getPerformanceStatus(ping, parseFloat(overallCpuUsage), memoryUsage)}
   `
 
-  m.reply(maxim)
+  m.reply(maxim.trim())
 }
 
 function getPingStatus(ping) {
-  if (ping < 50) return '🟢 Excellent'
-  if (ping < 100) return '🟡 Good'
-  if (ping < 200) return '🟠 Average'
-  return '🔴 Poor'
+  if (ping < 50) return 'Excellent'
+  if (ping < 100) return 'Good'
+  if (ping < 200) return 'Average'
+  return 'Poor'
 }
 
 function getPerformanceStatus(ping, cpuUsage, memoryUsage) {
-  if (ping < 100 && cpuUsage < 80 && memoryUsage < 80) return '🟢 Optimal'
-  if (ping < 200 && cpuUsage < 90 && memoryUsage < 90) return '🟡 Stable'
-  return '🔴 Needs Attention'
+  if (ping < 100 && cpuUsage < 80 && memoryUsage < 80) return 'Optimal'
+  if (ping < 200 && cpuUsage < 90 && memoryUsage < 90) return 'Stable'
+  return 'Needs Attention'
 }
 
 function clockString(ms) {
