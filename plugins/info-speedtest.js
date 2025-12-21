@@ -5,7 +5,7 @@ const exec = promisify(cp.exec).bind(cp)
 
 let handler = async (m, { conn }) => {
     try {
-        await m.reply('*⏳ Memulai Speedtest.*')
+        await m.reply('*Memulai proses Speedtest, mohon tunggu sebentar.*')
         
         let o
         try {
@@ -16,11 +16,12 @@ let handler = async (m, { conn }) => {
         
         let { stdout, stderr } = o
         let result = stdout || stderr
-        conn.reply(m.chat, `📊 *Speedtest Results*\n\n${result}`, m)
+        
+        conn.reply(m.chat, `*SPEEDTEST RESULTS*\n\n${result}`, m)
         
     } catch (error) {
         conn.reply(m.chat, 
-            '*❌ Gagal Melakukan Speedtest.*', 
+            '*GAGAL MELAKUKAN SPEEDTEST*\n\nTerjadi kesalahan saat menjalankan modul uji kecepatan.', 
             m
         )
     }
