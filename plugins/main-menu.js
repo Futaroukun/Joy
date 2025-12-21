@@ -1,10 +1,9 @@
 import { jidNormalizedUser } from 'baileys';
-import fs from 'fs'; // Menggunakan fs standar untuk readFileSync
+import fs from 'fs';
 import { join } from 'path';
 import os from 'os';
 
 // === BAGIAN LOAD FILE (OPTIMASI KECEPATAN) ===
-// File dibaca sekali saat bot start, bukan setiap ada command.
 const thumbnailPath = join(process.cwd(), 'src', 'thumbnail.jpg');
 const packagePath = join(process.cwd(), 'package.json');
 
@@ -12,31 +11,31 @@ let thumbBuffer = null;
 let _package = {};
 
 try {
-    // Baca Thumbnail
     if (fs.existsSync(thumbnailPath)) {
         thumbBuffer = fs.readFileSync(thumbnailPath);
     } else {
-        console.error('Thumbnail tidak ditemukan di:', thumbnailPath);
+        console.log('[WARN] Thumbnail tidak ditemukan:', thumbnailPath);
     }
-
-    // Baca Package.json
+    
     if (fs.existsSync(packagePath)) {
         _package = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
+    } else {
+        console.log('[WARN] package.json tidak ditemukan');
     }
 } catch (e) {
-    console.error('Gagal memuat file eksternal:', e);
+    console.error('[ERROR] Gagal memuat file eksternal:', e.message);
 }
 
-// Kategori Menu Manual (Bisa ditambah jika ingin nama custom)
+// Mapping Tag ID -> Nama Tampilan
 let tags = {
     'adminry': 'Admin Menu',
     'group': 'Groups Menu',
     'sticker': 'Sticker Menu',
     'info': 'Info Menu',
     'owner': 'Owner Menu',
+    'internet': 'Internet Menu',
 };
 
-// Template Tampilan Menu
 const defaultMenu = {
     before: `Hallo %name! 👋
 Saya adalah Bot Otomatis yang siap membantu Anda 24/7!
@@ -68,7 +67,7 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
         if (!user) return;
 
         let name = `@${m.sender.split('@')[0]}`;
-        let botname = global.info.namabot || conn.user?.name || 'Default Bot Name';
+        let botname = global.info?.namabot || conn.user?.name || 'WhatsApp Bot';
         let level = user.level || 0;
         let role = user.role || 'Beginner';
         let exp = user.exp || 0;
@@ -81,13 +80,12 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
         const date = d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
         const year = d.toLocaleDateString(locale, { year: 'numeric' });
 
-        // Info System
         let uptime = clockString(process.uptime() * 1000);
         let platform = os.platform();
         let rtotalreg = Object.values(global.db.data.users).filter(u => u.registered).length;
 
         const cpus = os.cpus();
-        const cpuModel = cpus ? cpus[0].model.trim() : 'N/A';
+        const cpuModel = cpus && cpus.length > 0 ? cpus[0].model.trim() : 'N/A';
         const totalMem = formatBytes(os.totalmem());
         const freeMem = formatBytes(os.freemem());
         const serverArch = os.arch();
@@ -99,19 +97,14 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
 
         let mode;
         switch (chatMode) {
-            case 'pconly':
-                mode = 'PC Only'
-                break;
-            case 'gconly':
-                mode = 'GC Only'
-                break;
-            default:
-                mode = 'Publik'
+            case 'pconly': mode = 'PC Only'; break;
+            case 'gconly': mode = 'GC Only'; break;
+            default: mode = 'Publik';
         }
 
-        // --- PEMBUATAN MENU & LOGIKA TAG OTOMATIS ---
+        // --- FILTER PLUGIN ---
         let help = Object.values(global.plugins)
-            .filter(plugin => plugin.help && !plugin.disable)
+            .filter(plugin => plugin && plugin.help && !plugin.disable)
             .map(plugin => ({
                 help: Array.isArray(plugin.help) ? plugin.help : [plugin.help],
                 tags: Array.isArray(plugin.tags) ? plugin.tags : [plugin.tags],
@@ -120,14 +113,19 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
                 premium: plugin.premium,
             }));
 
+        // --- HITUNG TAG AKTIF ---
+        let activeTags = new Set();
+
         for (let plugin of help) {
             if (plugin && plugin.tags) {
                 for (let tag of plugin.tags) {
-                    if (!(tag in tags)) {
-                        // LOGIKA BARU: Kapitalisasi otomatis + Kata 'Menu'
-                        // cth: 'ai' -> 'Ai Menu'
-                        let capitalize = tag.charAt(0).toUpperCase() + tag.slice(1);
-                        tags[tag] = `${capitalize} Menu`;
+                    if (tag) {
+                        activeTags.add(tag);
+                        
+                        if (!(tag in tags)) {
+                            let capitalize = tag.charAt(0).toUpperCase() + tag.slice(1);
+                            tags[tag] = `${capitalize} Menu`;
+                        }
                     }
                 }
             }
@@ -142,12 +140,18 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
             readmore: readMore,
         };
 
-        let menuType = text.toLowerCase().trim();
+        let menuType = text ? text.toLowerCase().trim() : '';
         let menuText = [];
         let { before, header, body, footer, after } = defaultMenu;
 
         if (!menuType) {
-            let tagList = Object.keys(tags).sort().map(tag => `│ • \`${usedPrefix + command} ${tag}\``).join('\n');
+            // Tampilkan daftar menu yang tersedia
+            let tagList = Object.keys(tags)
+                .filter(tag => activeTags.has(tag))
+                .sort()
+                .map(tag => `│ • \`${usedPrefix + command} ${tag}\``)
+                .join('\n');
+
             menuText = [
                 before,
                 `Berikut daftar menu yang tersedia:`,
@@ -159,13 +163,20 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
                 `*Contoh:* \`${usedPrefix + command} sticker\``,
                 `\n\n` + after
             ];
-        } else if (menuType === 'all' || tags[menuType]) {
-            let categories = menuType === 'all' ? Object.keys(tags).sort() : [menuType];
+        } else if (menuType === 'all' || (tags[menuType] && activeTags.has(menuType))) {
+            let categories = menuType === 'all' 
+                ? Object.keys(tags).filter(tag => activeTags.has(tag)).sort()
+                : [menuType];
+
             menuText.push(before);
 
             for (let tag of categories) {
                 if (!tags[tag]) continue;
-                let filteredHelp = help.filter(menu => menu.tags && menu.tags.includes(tag) && menu.help);
+                
+                let filteredHelp = help.filter(menu => 
+                    menu.tags && menu.tags.includes(tag) && menu.help
+                );
+                
                 if (filteredHelp.length === 0) continue;
 
                 menuText.push(header.replace(/%category/g, tags[tag]));
@@ -174,7 +185,10 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
                         return menu.help.map(cmd => {
                             let premiumMark = menu.premium ? ' (P)' : '';
                             let limitMark = menu.limit ? ' (L)' : '';
-                            return body.replace(/%cmd/g, `${menu.prefix ? '' : usedPrefix}${cmd}${premiumMark}${limitMark}`);
+                            return body.replace(
+                                /%cmd/g, 
+                                `${menu.prefix ? '' : usedPrefix}${cmd}${premiumMark}${limitMark}`
+                            );
                         }).join('\n');
                     }).join('\n')
                 );
@@ -183,33 +197,45 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
             menuText.push(after);
         } else {
             menuText = [
-                `Menu \`${text}\` tidak ditemukan.`,
+                `Menu \`${text}\` tidak ditemukan atau tidak memiliki fitur aktif.`,
                 `Silakan ketik \`${usedPrefix + command}\` untuk melihat daftar menu yang tersedia.`
             ];
         }
 
-        let textToSend = menuText.join('\n').replace(/%([a-zA-Z0-9]+)/g, (match, key) => replace[key] || match);
+        let textToSend = menuText.join('\n').replace(
+            /%([a-zA-Z0-9]+)/g, 
+            (match, key) => replace[key] || match
+        );
 
-        // === KIRIM PESAN ===
-        // Tidak perlu await readFile lagi karena thumbBuffer sudah diload di atas
-        conn.sendMessage(m.chat, {
-            text: textToSend,
-            contextInfo: {
-                mentionedJid: [m.sender],
-                externalAdReply: {
-                    title: global.info.namabot + ` © ` + year,
-                    body: `Server Uptime: ${uptime}`,
-                    thumbnail: thumbBuffer, // Langsung pakai buffer global
-                    sourceUrl: global.lgc,
-                    mediaType: 1,
-                    renderLargerThumbnail: true
-                }
+        // Prepare context info dengan fallback
+        const contextInfo = {
+            mentionedJid: [m.sender],
+            externalAdReply: {
+                title: (global.info?.namabot || 'WhatsApp Bot') + ` © ` + year,
+                body: `Server Uptime: ${uptime}`,
+                mediaType: 1,
+                renderLargerThumbnail: true
             }
+        };
+
+        // Tambahkan thumbnail hanya jika ada
+        if (thumbBuffer) {
+            contextInfo.externalAdReply.thumbnail = thumbBuffer;
+        }
+
+        // Tambahkan sourceUrl hanya jika ada
+        if (global.lgc) {
+            contextInfo.externalAdReply.sourceUrl = global.lgc;
+        }
+
+        await conn.sendMessage(m.chat, {
+            text: textToSend,
+            contextInfo: contextInfo
         }, { quoted: m });
 
     } catch (e) {
-        console.error(e);
-        m.reply('Terjadi kesalahan saat menampilkan menu.');
+        console.error('[MENU ERROR]', e);
+        m.reply('❌ Terjadi kesalahan saat menampilkan menu.\n\n' + e.message);
     }
 };
 
