@@ -38,7 +38,7 @@ async function githubUpload(conn, commitMessage = 'Update') {
     if (!changes.length) {
       return {
         success: false,
-        message: '❌ Tidak ada perubahan, push dibatalkan'
+        message: '*PUSH DIBATALKAN*\n\nTidak ada perubahan file yang terdeteksi.'
       }
     }
 
@@ -57,21 +57,21 @@ async function githubUpload(conn, commitMessage = 'Update') {
     const { stdout: commitHash } = await exec('git rev-parse --short HEAD')
 
     const summary = []
-    if (addedFiles.length) summary.push('• Ditambahkan:\n' + addedFiles.join('\n'))
-    if (deletedFiles.length) summary.push('• Dihapus:\n' + deletedFiles.join('\n'))
-    if (modifiedFiles.length) summary.push('• Diubah:\n' + modifiedFiles.join('\n'))
+    if (addedFiles.length) summary.push('*Ditambahkan:*\n' + addedFiles.join('\n'))
+    if (deletedFiles.length) summary.push('*Dihapus:*\n' + deletedFiles.join('\n'))
+    if (modifiedFiles.length) summary.push('*Diubah:*\n' + modifiedFiles.join('\n'))
 
     return {
       success: true,
       message: [
-        '✅ UPLOAD GITHUB BERHASIL',
+        '*UPLOAD GITHUB BERHASIL*',
         '',
-        `Hash: ${commitHash.trim()}`,
-        `Pesan: ${commitMessage}`,
+        `*Hash:* ${commitHash.trim()}`,
+        `*Pesan:* ${commitMessage}`,
         '',
         summary.join('\n\n'),
         '',
-        `Repo: ${repoUrl}`
+        `*Repo:* ${repoUrl}`
       ].join('\n')
     }
 
@@ -79,9 +79,9 @@ async function githubUpload(conn, commitMessage = 'Update') {
     return {
       success: false,
       message: [
-        '❌ UPLOAD GITHUB GAGAL',
+        '*UPLOAD GITHUB GAGAL*',
         '',
-        err.message
+        `*Kesalahan:* ${err.message}`
       ].join('\n')
     }
   }
@@ -90,18 +90,20 @@ async function githubUpload(conn, commitMessage = 'Update') {
 // Handler command .update
 const handler = async (m, { conn, isOwner, args }) => {
   if (!isOwner) {
-    return conn.reply(m.chat, 'lu siapa 🗿 command owner doang', m)
+    return conn.reply(m.chat, '*AKSES DITOLAK*\n\nPerintah ini hanya dapat digunakan oleh Owner.', m)
   }
 
-  const commitMessage = args.join(' ').trim() || 'Commit manual oleh bot'
+  const commitMessage = args.join(' ').trim() || 'Manual update via bot'
 
   let loading
   try {
     loading = await conn.sendMessage(m.chat, {
       text: [
-        '🚀 Upload ke GitHub...',
+        '*PROSES UPLOAD GITHUB*',
         '',
-        `Pesan commit: ${commitMessage}`
+        `*Pesan commit:* ${commitMessage}`,
+        '',
+        'Sedang mengirim perubahan ke repository...'
       ].join('\n')
     }, { quoted: m })
   } catch {}
@@ -123,6 +125,6 @@ const handler = async (m, { conn, isOwner, args }) => {
 handler.help = ['update *commit*']
 handler.tags = ['owner']
 handler.command = /^(update|u)$/i
-handler.rowner = true
+handler.owner = true
 
 export default handler
