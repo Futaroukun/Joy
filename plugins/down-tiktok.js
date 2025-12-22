@@ -1,9 +1,8 @@
 import axios from 'axios'
 import * as cheerio from 'cheerio'
 
-/**
- * Fungsi untuk mengonversi ukuran byte menjadi satuan yang mudah dibaca
- */
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 const formatSize = (bytes) => {
     if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
@@ -12,9 +11,6 @@ const formatSize = (bytes) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-/**
- * Scraper 1: TikWM (Utama)
- */
 async function tikwm(url) {
     try {
         const response = await axios.get(`https://tikwm.com/api/?hd=1&url=${url}`);
@@ -24,9 +20,6 @@ async function tikwm(url) {
     }
 }
 
-/**
- * Scraper 2: Savetik (Backup & Slide)
- */
 async function savetik(url) {
     try {
         const r = await axios.post(
@@ -68,20 +61,18 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     try {
         await m.reply('*Sedang memproses media, mohon tunggu...*');
         
-        // Mencoba TikWM terlebih dahulu
         let result = await tikwm(text);
         
         if (result.code === 0) {
             const data = result.data;
             
-            // Cek apakah konten berupa Slide Foto (Images) di TikWM
             if (data.images && data.images.length > 0) {
                 await m.reply('*TIKTOK FOTO DETECTED*\n\n*Jumlah:* ' + data.images.length + ' foto\n*Status:* Mengirim file...');
                 for (let img of data.images) {
                     await conn.sendMessage(m.chat, { image: { url: img } }, { quoted: m });
+                    await sleep(2000);
                 }
             } else {
-                // Kirim Video
                 const videoUrl = data.hdplay || data.play;
                 let caption = `*TIKTOK DOWNLOADER*\n\n` +
                     `*Judul:* ${data.title}\n` +
@@ -95,13 +86,11 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                 await conn.sendMessage(m.chat, { video: { url: videoUrl }, caption }, { quoted: m });
             }
             
-            // Kirim Audio
             if (data.music) {
                 await conn.sendMessage(m.chat, { audio: { url: data.music }, mimetype: 'audio/mpeg' }, { quoted: m });
             }
             
         } else {
-            // TikWM Gagal, Coba Savetik
             let dataBackup = await savetik(text);
             
             if (!dataBackup || (!dataBackup.mp4 && !dataBackup.foto.length)) {
@@ -112,6 +101,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                 await m.reply('*TIKTOK FOTO DETECTED (Backup Server)*\n\n*Jumlah:* ' + dataBackup.foto.length + ' foto');
                 for (let pic of dataBackup.foto) {
                     await conn.sendMessage(m.chat, { image: { url: pic } }, { quoted: m });
+                    await sleep(3000);
                 }
             } else {
                 const videoUrl = dataBackup.mp4_hd || dataBackup.mp4;
