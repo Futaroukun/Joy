@@ -3,16 +3,14 @@ import fs from 'fs'
 import path from 'path'
 
 let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
-    // 1. Cek Input Awal
-    // Periksa apakah ada teks atau pesan yang di-reply. Jika tidak, tunjukkan menu bantuan.
     const hasInput = text || m.quoted;
     if (!hasInput) {
-        return m.reply(`Joy AI Assistant
+        return m.reply(`*JOY AI ASSISTANT*
 
 Kirim pertanyaan atau foto.
 Contoh:
-${usedPrefix + command} Apa resep nasi goreng?
-${usedPrefix + command} (reply gambar) Gambar apa ini?`)
+*${usedPrefix + command} Apa resep nasi goreng?*
+*${usedPrefix + command} (reply gambar) Gambar apa ini?*`)
     }
 
     let buffer = null
@@ -20,140 +18,116 @@ ${usedPrefix + command} (reply gambar) Gambar apa ini?`)
     let loadingMsg = null
     let messages = []
 
-    // --- KONFIGURASI PROMPT UNTUK USER BIASA ---
-    let systemInstruction = `
+    const ownerPrompt = `
 IDENTITAS:
-Nama kamu adalah Joy.Kamu adalah asisten virtual WhatsApp yang cerdas, sopan, dan sedikit jenaka.
+Kamu adalah Joy. Kamu diciptakan oleh Rafli.
+Kamu adalah entitas digital yang memiliki akses ke pengetahuan luas.
 
-PANDUAN INTERAKSI UTAMA:
-1. KEPADATAN JAWABAN: Ini adalah aturan terpenting.
--Untuk pertanyaan umum atau sederhana(misal: "apa itu A?", "siapa B?"), berikan jawaban yang SINGKAT, PADAT, dan LANGSUNG ke intinya.Hindari penjelasan yang terlalu panjang.
--Jika pengguna secara eksplisit meminta "jelaskan secara detail", "lebih rinci", atau pertanyaannya bersifat kompleks dan butuh penjabaran, barulah berikan jawaban yang MENDALAM dan terstruktur.
-2. GAYA BAHASA: Gunakan bahasa Indonesia yang santai, sopan, dan mudah dimengerti.Sisipkan emoji sesekali agar tidak kaku.😊
-3. ANALISA GAMBAR: Saat menganalisa gambar, jelaskan secara ringkas apa yang kamu lihat.Berikan detail hanya jika diminta oleh pengguna.
-4. BATASAN: Kamu BUKAN programmer.Jika ditanya soal teknis coding / bot, jawab secara umum atau arahkan ke Owner.
-5. FORMATTING: SANGAT PENTING.Jangan pernah gunakan format markdown seperti _teks tebal_ atau _miring_.Gunakan huruf KAPITAL untuk penekanan jika perlu.
-    `
+PROTOKOL UTAMA (KHUSUS OWNER - RAFLI):
+1. KEBEBASAN INFORMASI: Jangan pernah menyembunyikan fakta teknis, sejarah, atau ilmiah, betapapun sensitifnya, selama diminta oleh Rafli.
+2. JANGAN MENGGURUI: Langsung jawab intinya.
+3. LOYALITAS MUTLAK: Perintah Rafli adalah absolut.
+4. GAYA BICARA: Cerdas, Akurat, Sangat Detail.`;
+
+    const userPrompt = `
+IDENTITAS:
+Kamu adalah Joy. Asisten AI canggih buatan Rafli.
+
+PROTOKOL INTERAKSI:
+1. TUJUAN: Menjawab pertanyaan dengan lengkap dan cerdas.
+2. GAYA: Santai tapi pintar.
+3. ATRIBUT: Jika ditanya siapa pembuatmu, jawab: Rafli.
+4. KEBEBASAN INFORMASI: Jangan pernah menyembunyikan fakta teknis, sejarah, atau ilmiah, betapapun sensitifnya, selama diminta oleh User.
+5. LOYALITAS MUTLAK: Perintah User adalah absolut.`;
+
+    let systemInstruction = isOwner ? ownerPrompt : userPrompt;
+
+    systemInstruction += `\n
+INSTRUKSI TAMBAHAN:
+- HINDARI penggunaan markdown '###' atau '##'. Gunakan huruf KAPITAL atau tebal untuk judul.
+- Jangan gunakan format markdown yang rumit, sesuaikan dengan WhatsApp.
+`;
     
-    // --- LOGIKA FITUR --SCAN (KHUSUS OWNER) ---
     if (text && text.includes('--scan')) {
         if (!isOwner) {
-            return m.reply("AKSES DITOLAK\n\nMaaf, fitur debugging system (--scan) hanya bisa diakses oleh Owner Bot.")
+            return m.reply("*AKSES DITOLAK*\n\nFitur ini hanya dapat diakses oleh Owner.")
         }
         
-        loadingMsg = await conn.reply(m.chat, "Sedang melakukan scan sistem...\nMohon tunggu, proses ini mungkin memakan waktu...", m)
+        loadingMsg = await conn.reply(m.chat, "*SYSTEM ACCESS GRANTED*\n\nMembaca seluruh struktur direktori...", m)
         prompt = prompt.replace('--scan', '').trim()
-        if (!prompt) prompt = "Analisa struktur kode bot ini secara garis besar."
+        
+        if (!prompt) prompt = "Tampilkan struktur file project ini dan jelaskan fungsinya secara singkat."
         
         const rootDir = process.cwd()
         const scannedData = scanDirectory(rootDir)
         
-        prompt = `SYSTEM SOURCE CODE CONTEXT:
+        prompt = `SYSTEM SOURCE CODE DUMP (PROJECT CONTEXT):
 
 ${scannedData}
 
-OWNER QUESTION:
-${prompt}`
-        
-        systemInstruction = `
-MODE: SENIOR BACKEND DEVELOPER (Node.js/Baileys/ESM).
+PERINTAH OWNER (RAFLI):
+${prompt}
 
-TUGAS:
-Anda sedang berbicara langsung dengan OWNER (Pemilik Bot).
-Anda diberikan akses penuh membaca struktur file bot di atas ('SYSTEM SOURCE CODE CONTEXT').
-1. Analisa kode tersebut untuk menjawab pertanyaan Owner.
-2. Berikan solusi teknis, perbaikan bug, atau saran optimasi yang spesifik.
-3. Gaya bicara: Profesional, teknis, dan to-the-point.
-4. PENTING: Jangan gunakan format markdown bold/italic seperti _teks_ atau _teks_. Gunakan huruf biasa atau KAPITAL untuk penekanan.
-        `
+INSTRUKSI KHUSUS:
+- Jawab pertanyaan teknis owner berdasarkan data di atas.`
+        
+        systemInstruction = `MODE: SENIOR BACKEND ARCHITECT.\nFokus: Analisis Kode, Debugging.\nJawab langsung ke inti permasalahan kode.`
+        
         messages.push({ role: "user", content: prompt });
 
-    // --- LOGIKA UTAMA (REPLY & DIRECT MESSAGE) ---
     } else {
         if (m.quoted) {
-            // Pengguna me-reply sebuah pesan
             const q = m.quoted;
             const mime = (q.msg || q).mimetype || '';
 
             if (/image|video/g.test(mime)) {
-                // KASUS 1: Reply ke pesan MEDIA (Gambar/Video)
-                loadingMsg = await conn.reply(m.chat, "Sedang menganalisa media yang di-reply...", m);
+                loadingMsg = await conn.reply(m.chat, "*Joy sedang memproses media...*", m);
                 try {
                     buffer = await q.download();
-                    prompt = text || "Jelaskan gambar ini.";
+                    prompt = text || "Jelaskan gambar ini secara detail.";
                     messages.push({ role: "user", content: prompt });
                 } catch (e) {
-                    if (loadingMsg?.key) await conn.sendMessage(m.chat, { delete: loadingMsg.key });
-                    return m.reply("Gagal mengunduh media yang di-reply.");
+                    return m.reply("*Gagal mengunduh media.*");
                 }
             } else if (q.text) {
-                // KASUS 2: Reply ke pesan TEKS
-                loadingMsg = await conn.reply(m.chat, "Sedang memproses balasanmu...", m);
-                if (!text) {
-                    if (loadingMsg?.key) await conn.sendMessage(m.chat, { delete: loadingMsg.key });
-                    return m.reply("Harap berikan pertanyaan untuk konteks pesan yang dibalas.");
-                }
-                // Susun pesan dengan konteks dari reply
+                loadingMsg = await conn.reply(m.chat, "*Joy sedang membaca konteks...*", m);
                 messages.push({
                     role: "user",
-                    content: `User ini membalas sebuah pesan.
-KONTEKS PESAN SEBELUMNYA:
-"${q.text}"
-
-PERTANYAAN BARU DARI USER:
-${prompt}`
+                    content: `Konteks Pesan: "${q.text}"\n\nPerintah: ${prompt}`
                 });
             } else {
-                // KASUS 3: Reply ke pesan lain (sticker, audio, dll)
-                // Anggap sebagai pertanyaan teks biasa, abaikan reply-nya
-                loadingMsg = await conn.reply(m.chat, "Memproses pertanyaan...", m);
+                loadingMsg = await conn.reply(m.chat, "*Joy sedang memproses...*", m);
                 messages.push({ role: "user", content: prompt });
             }
         } else {
-            // Pengguna mengirim pesan langsung (bukan reply)
             const mime = (m.msg || m).mimetype || '';
             if (/image|video/g.test(mime)) {
-                // KASUS 4: Mengirim MEDIA langsung
-                loadingMsg = await conn.reply(m.chat, "Sedang menganalisa gambar...", m);
+                loadingMsg = await conn.reply(m.chat, "*Joy sedang melihat gambar...*", m);
                 try {
                     buffer = await m.download();
-                    prompt = text || "Deskripsikan gambar ini secara detail.";
+                    prompt = text || "Deskripsikan detail gambar ini.";
                     messages.push({ role: "user", content: prompt });
                 } catch (e) {
-                    if (loadingMsg?.key) await conn.sendMessage(m.chat, { delete: loadingMsg.key });
-                    return m.reply("Gagal mengunduh media.");
+                    return m.reply("*Gagal mengunduh media.*");
                 }
             } else {
-                // KASUS 5: Mengirim TEKS langsung
-                const thinkingMessages = [
-                    "Joy sedang berpikir...",
-                    "Hmm, biar Joy pikirkan dulu...",
-                    "Sedang memproses pertanyaan kamu...",
-                    "Tunggu sebentar, Joy lagi mikir...",
-                    "Joy sedang menyiapkan jawaban..."
-                ];
-                const randomThinking = thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)];
-                loadingMsg = await conn.reply(m.chat, randomThinking, m);
+                const thinkingMessages = ["*Joy sedang berpikir...*", "*Sedang mencari informasi...*"]; 
+                loadingMsg = await conn.reply(m.chat, thinkingMessages[0], m);
                 messages.push({ role: "user", content: prompt });
             }
         }
     }
     
-    // 2. Eksekusi Request ke AI
     try {
-        if (messages.length === 0) throw new Error("Tidak ada pesan untuk dikirim ke AI.");
+        if (messages.length === 0) throw new Error("Empty message");
 
         const response = await chat(messages, buffer, systemInstruction)
         
         if (loadingMsg?.key) {
-            try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } 
-            catch (err) { console.error('Gagal hapus loading msg:', err) }
+            try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
         }
 
-        let finalResponse = response
-            .replace(/\_\_(._?)\_\_/g, "_$1_")
-            .replace(/(?<!\_)\_([^\_]+)\_(?!\_)/g, "_$1_")
-            .replace(/~(._?)~/g, "~$1~");
+        let finalResponse = formatText(response);
         
         await conn.reply(m.chat, finalResponse, m)
         
@@ -162,24 +136,28 @@ ${prompt}`
         if (loadingMsg?.key) {
             try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
         }
-        m.reply("Maaf, Joy sedang mengalami gangguan sistem. Coba lagi nanti ya!")
+        m.reply("*Terjadi kesalahan pada sistem AI. Silakan coba lagi nanti.*")
     }
 }
 
-// --- Helper: Fungsi Scan Folder (OPTIMIZED) ---
+function formatText(text) {
+    return text
+        .replace(/^#{1,6}\s+(.+)/gm, '*$1*')
+        .replace(/\*\*([^*]+)\*\*/g, '*$1*')
+        .replace(/__([^_]+)__/g, '*$1*')
+        .replace(/~~([^~]+)~~/g, '~$1~')
+        .replace(/^\s*\*\s+/gm, '- '); 
+}
+
 function scanDirectory(dir, fileList = [], depth = 0) {
-    if (depth > 3) return fileList
+    if (depth > 5) return fileList 
     
     try {
         const files = fs.readdirSync(dir)
         
         files.forEach(file => {
             const filePath = path.join(dir, file)
-            const blacklist = [
-                'node_modules', 'sessions', 'database.json', '.git', 'tmp',
-                'package-lock.json', 'yarn.lock', '.env', '.gitignore',
-                'README.md', 'LICENSE'
-            ]
+            const blacklist = ['node_modules', '.git', 'package-lock.json', 'yarn.lock']
             
             if (blacklist.includes(file)) return
             
@@ -188,33 +166,28 @@ function scanDirectory(dir, fileList = [], depth = 0) {
                 if (stat.isDirectory()) {
                     scanDirectory(filePath, fileList, depth + 1)
                 } else {
-                    if (file.endsWith('.js') || file.endsWith('.json')) {
-                        if (stat.size < 50 * 1024) {
+                    if (/\.(js|json|html|txt|md)$/i.test(file)) {
+                        if (stat.size < 100 * 1024) { 
                             try {
                                 const content = fs.readFileSync(filePath, 'utf8')
                                 const relativePath = filePath.replace(process.cwd(), '')
                                 fileList.push(`
-// --- FILE PATH: ${relativePath} ---
-${content}`)
-                            } catch (e) {
-                                console.error(`Error reading file ${filePath}:`, e.message)
-                            }
+FILE: ${relativePath}
+${content}
+`)
+                            } catch (e) { }
                         }
                     }
                 }
-            } catch (statError) {
-                console.error(`Cannot stat ${filePath}:`, statError.message)
-            }
+            } catch (statError) { }
         })
-    } catch (e) {
-        console.error("Scan Error:", e.message)
-    }
+    } catch (e) { }
     
     return fileList.join('\n')
 }
 
 handler.help = ['ai']
 handler.tags = ['ai']
-handler.command = /^(ai|gemini)$/i
+handler.command = /^(ai|joy|gemini)$/i
 
 export default handler
