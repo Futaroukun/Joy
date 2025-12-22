@@ -1,5 +1,3 @@
-/* XRDHZ-MD - FIXED MAIN.JS */
-
 import "./settings.js";
 import path, { join } from "path";
 import pino from "pino";

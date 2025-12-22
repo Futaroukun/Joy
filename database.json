@@ -158,7 +158,8 @@
       "sBye": "",
       "sPromote": "",
       "sDemote": "",
-      "sewaDate": -1
+      "sewaDate": -1,
+      "antidelete": true
     }
   },
   "settings": {

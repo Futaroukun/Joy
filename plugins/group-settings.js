@@ -1,4 +1,5 @@
 import moment from 'moment-timezone'
+import { getCacheStats, clearCache } from '../function/antidelete.js'
 
 let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isROwner }) => {
     let isEnable = /true|enable|(turn)?on|1/i.test(command)
@@ -6,7 +7,7 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
     let user = global.db.data.users[m.sender]
     let name = `${user.registered ? user.name : await conn.getName(m.sender)}`
     let type = (args[0] || '').toLowerCase()
-
+    
     const getStatus = (value) => value ? 'AKTIF' : 'NONAKTIF'
     
     const featureConfig = {
@@ -19,7 +20,7 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
         },
         antilink: {
             name: 'Anti Link',
-            description: 'Blokir pengiriman tautan otomatis', 
+            description: 'Blokir pengiriman tautan otomatis',
             dbProperty: 'antilink',
             access: 'admin',
             scope: 'group'
@@ -28,6 +29,13 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
             name: 'Anti Spam',
             description: 'Blokir pengiriman pesan spam',
             dbProperty: 'antispam',
+            access: 'admin',
+            scope: 'group'
+        },
+        antidelete: {
+            name: 'Anti Delete',
+            description: 'Deteksi dan kembalikan pesan yang dihapus',
+            dbProperty: 'antidelete',
             access: 'admin',
             scope: 'group'
         },
@@ -46,15 +54,15 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
             scope: 'global'
         }
     }
-
+    
     const createMenuMessage = () => {
         let menu = `*PENGATURAN BOT*\n\nHalo *${name}*! ${getGreeting()}\n`
-
+        
         const availableFeatures = Object.entries(featureConfig).filter(([key, feature]) => {
             if (isOwner) return true
             return feature.scope === 'group' && m.isGroup
         })
-
+        
         if (availableFeatures.length === 0) {
             if (!m.isGroup && !isOwner) {
                 menu += '\n*AKSES DITOLAK*\n\nFitur pengaturan hanya dapat diakses di dalam grup atau oleh Owner.'
@@ -63,10 +71,10 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
             }
             return menu
         }
-
+        
         const groupFeatures = availableFeatures.filter(([k, f]) => f.scope === 'group')
         const globalFeatures = availableFeatures.filter(([k, f]) => f.scope === 'global')
-
+        
         if (groupFeatures.length > 0 && m.isGroup) {
             menu += '\n*PENGATURAN GRUP:*\n'
             groupFeatures.forEach(([key, feature]) => {
@@ -75,7 +83,7 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
                 menu += `*Status:* ${status}\n*Fitur:* ${feature.name} ${accessLabel}\n*Ket:* ${feature.description}\n\n`
             })
         }
-
+        
         if (isOwner && globalFeatures.length > 0) {
             menu += '\n*PENGATURAN OWNER:*\n'
             globalFeatures.forEach(([key, feature]) => {
@@ -85,7 +93,18 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
                 menu += `*Status:* ${status}\n*Fitur:* ${feature.name}\n*Ket:* ${feature.description}\n\n`
             })
         }
-
+        
+        if (m.isGroup && chat.antidelete) {
+            const stats = getCacheStats()
+            menu += `\n*STATISTIK ANTI-DELETE:*\n`
+            menu += `* Cache: ${stats.totalMessages}/${stats.maxSize} pesan\n`
+            menu += `* Durasi: ${stats.cacheDuration}\n\n`
+            
+            if (isOwner) {
+                menu += `*Info Owner:* Gunakan ${usedPrefix}settings antidelete-clear untuk bersihkan cache\n\n`
+            }
+        }
+        
         menu += `
 *CARA PENGGUNAAN:*
 * ${usedPrefix}enable <fitur> (Aktifkan)
@@ -95,11 +114,20 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
         
         return menu
     }
-
+    
+    if (type === 'antidelete-clear' && isOwner) {
+        const clearedCount = clearCache()
+        return m.reply(
+            `*PEMBERSIHAN CACHE ANTI-DELETE*\n\n` +
+            `Berhasil menghapus *${clearedCount}* pesan dari sistem cache.\n\n` +
+            `Sistem akan mulai menyimpan pesan baru kembali.`
+        )
+    }
+    
     if (!type) {
         return m.reply(createMenuMessage())
     }
-
+    
     if (!featureConfig[type]) {
         let availableFeatures = Object.entries(featureConfig)
             .filter(([k, f]) => isOwner || f.scope === 'group')
@@ -108,24 +136,24 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
         
         return m.reply(`*FITUR TIDAK DITEMUKAN*\n\nFitur "${type}" tidak tersedia dalam daftar.\n\n*Daftar Fitur:* ${availableFeatures}`)
     }
-
+    
     const feature = featureConfig[type]
-
+    
     if (feature.scope === 'group' && !m.isGroup) {
         return m.reply(`*FITUR KHUSUS GRUP*\n\nFitur *${feature.name}* hanya dapat digunakan di dalam grup.`)
     }
-
+    
     if (feature.access === 'owner' && !isOwner) {
         return m.reply('*AKSES DITOLAK*\n\nFitur ini hanya dapat diakses oleh Owner Bot.')
     }
-
+    
     if (feature.scope === 'group' && feature.access === 'admin') {
         if (!(isAdmin || isOwner)) {
             global.dfail('admin', m, conn)
             throw false
         }
     }
-
+    
     if (feature.scope === 'group') {
         chat[feature.dbProperty] = isEnable
     } else {
@@ -139,7 +167,34 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
             global.autoRead = isEnable
         }
     }
-
+    
+    if (type === 'antidelete') {
+        const stats = getCacheStats()
+        let response = `*${feature.name}* berhasil di *${isEnable ? 'Aktifkan' : 'Nonaktifkan'}*\n\n`
+        
+        if (isEnable) {
+            response += `*FITUR ANTI-DELETE AKTIF*\n\n`
+            response += `*Kemampuan Fitur:*\n`
+            response += `* Deteksi pesan yang dihapus\n`
+            response += `* Kirim ulang pesan asli otomatis\n`
+            response += `* Menampilkan informasi pengirim\n`
+            response += `* Mendukung teks, media, stiker, dan dokumen\n\n`
+            response += `*Statistik Sistem:*\n`
+            response += `* Kapasitas: ${stats.totalMessages}/${stats.maxSize} pesan\n`
+            response += `* Durasi Penyimpanan: ${stats.cacheDuration}\n`
+            response += `* Pembersihan otomatis: Setiap 5 menit\n\n`
+            response += `*Catatan Penting:*\n`
+            response += `* Pesan disimpan maksimal 24 jam\n`
+            response += `* Pesan dari bot tidak akan direkam\n`
+            response += `* Cache bersifat sementara di memori RAM`
+        } else {
+            response += `*FITUR ANTI-DELETE NONAKTIF*\n\n`
+            response += `Pesan yang dihapus tidak akan dipantau lagi di grup ini.`
+        }
+        
+        return m.reply(response)
+    }
+    
     await m.reply(`*${feature.name}* berhasil di *${isEnable ? 'Aktifkan' : 'Nonaktifkan'}*`)
 }
 

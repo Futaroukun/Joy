@@ -1,10 +1,6 @@
-/* XRDHZ-MD
-  Script ini tidak untuk diperjual-belikan atau gratis.
-  Script masih dalam tahap pengembangan mungkin akan ada bug, error dan lain sebagainya.
-*/
-
 import "./settings.js";
 import { smsg } from "./function/simple.js";
+import { storeMessage, handleMessageRevocation } from "./function/antidelete.js"
 import { fileURLToPath } from "url";
 import path from "path";
 import { format } from "util";
@@ -33,8 +29,17 @@ export async function handler(chatUpdate) {
 
     try {
         m = (await smsg(this, m)) || m;
+        
+        if (m.mtype === 'protocolMessage' && m.msg.type === 0) {
+            console.log(chalk.white.bold(" [SISTEM]") + " " + chalk.red.bold(`ANTI-DELETE: Pesan tipe REVOKE terdeteksi di ${m.chat}`));
+            await handleMessageRevocation(this, m);
+            return; // Hentikan eksekusi lebih lanjut
+        }
+        
         if (m.sender.endsWith("@broadcast") || m.sender.endsWith("@newsletter")) return;
         
+        // Anti Delete
+        await storeMessage(m, this);
         // Handle mentions
         if (m?.msg?.contextInfo?.mentionedJid?.length) {
             if (!conn.storeMentions) conn.storeMentions = {};
@@ -110,6 +115,7 @@ export async function handler(chatUpdate) {
                 if (chat) {
                     if (!("antispam" in chat)) chat.antispam = false;
                     if (!("antilink" in chat)) chat.antilink = false;
+                    if (!("antidelete" in chat)) chat.antidelete = false;
                     if (!("antivirtex" in chat)) chat.antivirtex = false;
                     if (!("mute" in chat)) chat.mute = false;
                     if (!("detect" in chat)) chat.detect = true;
@@ -124,6 +130,7 @@ export async function handler(chatUpdate) {
                     global.db.data.chats[m.chat] = {
                         antispam: false,
                         antilink: false,
+                        antidelete: false,
                         antivirtex: false,
                         mute: false,
                         detect: true,
