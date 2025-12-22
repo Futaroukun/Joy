@@ -159,7 +159,7 @@
       "sPromote": "",
       "sDemote": "",
       "sewaDate": -1,
-      "antidelete": true
+      "antidelete": false
     }
   },
   "settings": {
