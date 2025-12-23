@@ -1,13 +1,13 @@
-import { 
-    downloadContentFromMessage, 
-    generateForwardMessageContent, 
-    generateWAMessageFromContent, 
-    proto 
+import {
+    downloadContentFromMessage,
+    generateForwardMessageContent,
+    generateWAMessageFromContent,
+    proto
 } from 'baileys'
 
 const messageStore = new Map()
 const MAX_CACHE_SIZE = 5000
-const CACHE_DURATION = 24 * 60 * 60 * 1000 
+const CACHE_DURATION = 24 * 60 * 60 * 1000
 
 setInterval(() => {
     const now = Date.now()
@@ -25,7 +25,7 @@ setInterval(() => {
         const toRemove = sortedEntries.slice(0, messageStore.size - MAX_CACHE_SIZE)
         toRemove.forEach(([key]) => messageStore.delete(key))
     }
-}, 300000) 
+}, 300000)
 
 function getContentType(content) {
     if (!content) return null
@@ -70,14 +70,14 @@ export async function copyNForward(conn, jid, message, forceForward = false, opt
     } catch (e) {
         console.error('Error in copyNForward:', e)
         
-        const text = message.message?.conversation || 
-                     message.message?.extendedTextMessage?.text ||
-                     message.message?.imageMessage?.caption ||
-                     message.message?.videoMessage?.caption
+        const text = message.message?.conversation ||
+            message.message?.extendedTextMessage?.text ||
+            message.message?.imageMessage?.caption ||
+            message.message?.videoMessage?.caption
         
         if (text) {
-            await conn.sendMessage(jid, { 
-                text: `*PESAN YANG DIHAPUS (FALLBACK):*\n\n${text}` 
+            await conn.sendMessage(jid, {
+                text: `*PESAN YANG DIHAPUS (FALLBACK):*\n\n${text}`
             })
         }
     }
@@ -95,16 +95,16 @@ export async function storeMessage(message, conn) {
         const isGroup = remoteJid.endsWith('@g.us')
         const chatData = global.db.data.chats[remoteJid]
         
-        if (isGroup && chatData && !chatData.antidelete) return
+        if (!isGroup || !chatData?.antidelete) return
         
         const mtype = getContentType(message.message)
         
         if ([
-            'protocolMessage', 
-            'senderKeyDistributionMessage', 
-            'reactionMessage',
-            'messageContextInfo'
-        ].includes(mtype)) return
+                'protocolMessage',
+                'senderKeyDistributionMessage',
+                'reactionMessage',
+                'messageContextInfo'
+            ].includes(mtype)) return
         
         const storedMessage = {
             message: JSON.parse(JSON.stringify(message.message)),
@@ -142,8 +142,8 @@ export async function handleMessageRevocation(conn, revocationMessage) {
         const isGroup = remoteJid.endsWith('@g.us')
         
         if (isGroup) {
-            const chatData = global.db.data.chats[remoteJid]
-            if (!chatData || !chatData.antidelete) return
+            const chatData = global.db.data.chats[remoteJid];
+            if (!isGroup || !chatData?.antidelete) return;
         }
         
         const original = messageStore.get(targetId)
@@ -164,7 +164,7 @@ export async function handleMessageRevocation(conn, revocationMessage) {
         console.log(`Anti-delete triggered: ${targetId} in ${remoteJid}`)
         
         const botName = global.info?.namabot || 'Joy Bot'
-        const header = 
+        const header =
             `*ANTI-DELETE DETECTED*\n\n` +
             `*Bot:* ${botName}\n` +
             `*Pengirim Asli:* @${sender.split('@')[0]}\n` +
