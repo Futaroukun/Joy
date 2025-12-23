@@ -114,10 +114,10 @@ export async function connectionUpdate(update, conn) {
             
             if (isAuthError) {
                 console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("⚠️  AUTH/STREAM ERROR DETECTED!")}`);
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Membersihkan corrupted sessions...")}`);
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Membersihkan sessions...")}`);
                 
-                // Clear corrupted sessions (kecuali creds.json)
-                clearCorruptedSessions();
+                // Clear sessions (kecuali creds.json)
+                clearSessionFiles();
                 
                 console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Reconnecting dengan fresh session...")}`);
                 
@@ -133,7 +133,7 @@ export async function connectionUpdate(update, conn) {
             // BAD SESSION - Restart dengan clean
             if (statusCode === DisconnectReason.badSession) {
                 console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("⚠️  BAD SESSION!")}`);
-                clearCorruptedSessions();
+                clearSessionFiles();
                 await new Promise(resolve => setTimeout(resolve, 3000));
                 await global.reloadHandler(true);
                 return false;
