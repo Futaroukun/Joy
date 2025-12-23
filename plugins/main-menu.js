@@ -97,8 +97,8 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
 
         let mode;
         switch (chatMode) {
-            case 'pconly': mode = 'PC Only'; break;
-            case 'gconly': mode = 'GC Only'; break;
+            case 'pconly': mode = 'Private Only'; break;
+            case 'gconly': mode = 'Group Only'; break;
             default: mode = 'Publik';
         }
 
