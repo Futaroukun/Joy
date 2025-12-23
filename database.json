@@ -5,7 +5,7 @@
       "age": -1,
       "level": 0,
       "exp": 0,
-      "limit": 10,
+      "limit": 1010,
       "afk": false,
       "afkReason": "",
       "register": false,

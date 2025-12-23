@@ -11,13 +11,80 @@ import { jidNormalizedUser } from "baileys";
 const isNumber = x => typeof x === "number" && !isNaN(x);
 const printMessages = (await import("./function/print.js")).default;
 
+// ===== FUNGSI HELPER UNTUK KONVERSI LID =====
+/**
+ * Konversi JID ke LID dengan fallback
+ * @param {Object} conn - Connection object
+ * @param {String} jid - JID yang akan dikonversi
+ * @returns {Promise<String>} - LID hasil konversi
+ */
+async function ensureLID(conn, jid) {
+    if (!jid) return null;
+    
+    // Jika sudah LID, return langsung
+    if (jid.endsWith('@lid')) return jid;
+    
+    try {
+        // Coba ambil dari cache
+        const cachedLID = conn.getLid(jid);
+        if (cachedLID && cachedLID.endsWith('@lid')) {
+            return cachedLID;
+        }
+        
+        // Coba fetch dari server
+        if (jid.endsWith('@s.whatsapp.net')) {
+            const serverLID = await conn.getLidPN(jid);
+            if (serverLID && serverLID.endsWith('@lid')) {
+                // Update cache
+                if (!conn.storeLid) conn.storeLid = {};
+                conn.storeLid[jid] = serverLID;
+                return serverLID;
+            }
+        }
+        
+        // Fallback ke fungsi bawaan
+        return conn.getLid(jid);
+    } catch (error) {
+        console.error(`Error converting ${jid} to LID:`, error.message);
+        return conn.getLid(jid);
+    }
+}
+
+/**
+ * Migrasi data user dari JID ke LID
+ * @param {Object} db - Database object
+ * @param {String} oldJid - JID lama
+ * @param {String} newLid - LID baru
+ */
+function migrateUserData(db, oldJid, newLid) {
+    if (!db.data.users[oldJid]) return false;
+    
+    // Ambil data JID lama
+    const oldData = db.data.users[oldJid];
+    
+    // Ambil data LID yang mungkin sudah ada
+    const existingLidData = db.data.users[newLid] || {};
+    
+    // Gabungkan data: data dari JID lama menimpa data LID yang ada
+    db.data.users[newLid] = {
+        ...existingLidData,
+        ...oldData
+    };
+    
+    // Hapus data JID lama untuk membersihkan database
+    delete db.data.users[oldJid];
+    
+    const phone = oldJid.split('@')[0];
+    const lidNum = newLid.split('@')[0].slice(-8);
+    console.log(chalk.green(`[MIGRATE] SUCCESS: ${phone} -> ...${lidNum}. Data merged.`));
+    return true;
+}
+
 export async function handler(chatUpdate) {
     if (!chatUpdate) return;
 
-    // Fix: Pastikan messages ada dan valid
     if (!chatUpdate.messages || !Array.isArray(chatUpdate.messages)) return;
     
-    // Push messages ke chats
     try {
         await this.pushMessage(chatUpdate.messages);
     } catch (e) {
@@ -33,18 +100,29 @@ export async function handler(chatUpdate) {
         if (m.mtype === 'protocolMessage' && m.msg.type === 0) {
             console.log(chalk.white.bold(" [SISTEM]") + " " + chalk.red.bold(`ANTI-DELETE: Pesan tipe REVOKE terdeteksi di ${m.chat}`));
             await handleMessageRevocation(this, m);
-            return; // Hentikan eksekusi lebih lanjut
+            return;
         }
         
         if (m.sender.endsWith("@broadcast") || m.sender.endsWith("@newsletter")) return;
         
+        // ===== KONVERSI SENDER KE LID =====
+        const senderLID = await ensureLID(this, m.sender);
+        
+        // Log HANYA jika ada konversi JID -> LID (bukan LID -> LID)
+        if (m.sender !== senderLID && !m.sender.endsWith('@lid')) {
+            console.log(chalk.blue(`[LID] ${m.sender} -> ${senderLID}`));
+        }
+        
         // Anti Delete
         await storeMessage(m, this);
+        
         // Handle mentions
         if (m?.msg?.contextInfo?.mentionedJid?.length) {
             if (!conn.storeMentions) conn.storeMentions = {};
-            const jidMentions = [...new Set(m.msg.contextInfo.mentionedJid.map(jid => conn.getLid(jid)))];
-            conn.storeMentions[m.id] = jidMentions;
+            const jidMentions = await Promise.all(
+                m.msg.contextInfo.mentionedJid.map(jid => ensureLID(this, jid))
+            );
+            conn.storeMentions[m.id] = [...new Set(jidMentions)];
         }
         
         // Fetch LID jika belum ada
@@ -64,16 +142,23 @@ export async function handler(chatUpdate) {
             }
         }
         
-        // Skip pesan dari bot sendiri yang bukan command
         if (m.isBaileys) return;
         
         const decodedBotLid = jidNormalizedUser(conn?.user?.lid);
         
-        // Load database
+        // ===== LOAD DATABASE DENGAN LID =====
         try {
             if (global.db.data == null) await global.loadDatabase();
-            let user = global.db.data.users[m.sender];
-            if (typeof user !== "object") global.db.data.users[m.sender] = {};
+            
+            // ===== MIGRASI OTOMATIS DARI JID KE LID =====
+            if (m.sender !== senderLID && global.db.data.users[m.sender]) {
+                migrateUserData(global.db, m.sender, senderLID);
+            }
+            
+            // Gunakan LID untuk akses database
+            let user = global.db.data.users[senderLID];
+            if (typeof user !== "object") global.db.data.users[senderLID] = {};
+            
             if (user) {
                 if (!("name" in user)) user.name = m.name;
                 if (!isNumber(user.age)) user.age = -1;
@@ -91,8 +176,8 @@ export async function handler(chatUpdate) {
                 if (!isNumber(user.regTime)) user.regTime = -1;
                 if (!isNumber(user.premiumDate)) user.premiumDate = -1;
                 if (!isNumber(user.bannedDate)) user.bannedDate = -1;
-            } else
-                global.db.data.users[m.sender] = {
+            } else {
+                global.db.data.users[senderLID] = {
                     name: m.name,
                     age: -1,
                     level: 0,
@@ -108,6 +193,10 @@ export async function handler(chatUpdate) {
                     premiumDate: -1,
                     bannedDate: -1
                 };
+                
+                // Log HANYA untuk user benar-benar baru
+                console.log(chalk.green(`[NEW USER] ${senderLID} registered in database`));
+            }
 
             if (m.isGroup) {
                 let chat = global.db.data.chats[m.chat];
@@ -126,7 +215,7 @@ export async function handler(chatUpdate) {
                     if (!("sPromote" in chat)) chat.sPromote = "";
                     if (!("sDemote" in chat)) chat.sDemote = "";
                     if (!isNumber(chat.sewaDate)) chat.sewaDate = -1;
-                } else
+                } else {
                     global.db.data.chats[m.chat] = {
                         antispam: false,
                         antilink: false,
@@ -142,6 +231,7 @@ export async function handler(chatUpdate) {
                         sDemote: "",
                         sewaDate: -1
                     };
+                }
             }
 
             let setting = global.db.data.settings[decodedBotLid];
@@ -152,7 +242,7 @@ export async function handler(chatUpdate) {
                 if (!("autoread" in setting)) setting.autoread = true;
                 if (!("autobackup" in setting)) setting.autobackup = true;
                 if (!isNumber(setting.backupDate)) setting.backupDate = -1;
-            } else
+            } else {
                 global.db.data.settings[decodedBotLid] = {
                     chatMode: "",
                     antispam: true,
@@ -160,31 +250,39 @@ export async function handler(chatUpdate) {
                     autobackup: true,
                     backupDate: -1
                 };
+            }
         } catch (error) {
             console.log('Database error:', error);
         }
 
         if (typeof m.text !== "string") m.text = "";
         
-        // Get owner list
+        // ===== KONVERSI OWNER LIST KE LID =====
         const decodedOwnLid = await Promise.all(
-            global.owner.map(o => conn.getLidPN(`${o.replace(/[^0-9]/g, "")}@s.whatsapp.net`))
+            global.owner.map(async o => {
+                const jid = `${o.replace(/[^0-9]/g, "")}@s.whatsapp.net`;
+                return await ensureLID(conn, jid);
+            })
         );
-        const isROwner = ([...decodedOwnLid] || decodedBotLid).includes(m.sender);
+        
+        const isROwner = ([...decodedOwnLid] || decodedBotLid).includes(senderLID);
         const isOwner = isROwner || m.fromMe || false;
 
         let usedPrefix;
         const groupMetadata = (m.isGroup ? (conn.chats[m.chat] || {}).metadata || (await this.groupMetadata(m.chat).catch(_ => null)) : {}) || {};
         const participants = (m.isGroup ? groupMetadata.participants : []) || [];
-        const user = m.isGroup ? participants.find(u => u.id === m.sender) : {};
+        
+        // ===== KONVERSI PARTICIPANT IDS KE LID =====
+        const user = m.isGroup ? participants.find(u => u.id === senderLID) : {};
         const bot = m.isGroup ? participants.find(u => u.id === decodedBotLid) : {};
+        
         const isRAdmin = user?.admin === "superadmin" || false;
         const isAdmin = isRAdmin || user?.admin === "admin" || false;
         const isBotAdmin = bot?.admin || false;
 
-        const isRegister = global.db.data?.users[m.sender]?.register === true;
-        const isPremium = global.db.data?.users[m.sender]?.premium === true;
-        const isBannned = global.db.data?.users[m.sender]?.banned === true;
+        const isRegister = global.db.data?.users[senderLID]?.register === true;
+        const isPremium = global.db.data?.users[senderLID]?.premium === true;
+        const isBannned = global.db.data?.users[senderLID]?.banned === true;
         const isMuted = m.isGroup && global.db.data?.chats[m.chat]?.mute === true;
         const isSewa = m.isGroup && global.db.data?.chats[m.chat]?.sewa === true;
         const chatMode = global.db.data?.settings[decodedBotLid]?.chatMode;
@@ -354,7 +452,7 @@ export async function handler(chatUpdate) {
                         if (own) {
                             let msg = `*『 ERROR MESSAGE 』*\n`;
                             msg += `*📂 PLUGIN :* ${m.plugin}\n`;
-                            msg += `*👤 SENDER :* ${m.sender}\n`;
+                            msg += `*👤 SENDER :* ${senderLID}\n`;
                             msg += `*📄 CHAT :* ${m.chat}\n`;
                             msg += `*📥 COMMAND :* ${usedPrefix + command}\n`;
                             msg += `*🔒 ERROR :*\n${text}`;
@@ -376,7 +474,6 @@ export async function handler(chatUpdate) {
     } catch (error) {
         console.log('Handler error:', error);
     } finally {
-        // Auto read messages
         if (global.autoRead) {
             try {
                 await conn.readMessages([m.key]);
@@ -385,7 +482,6 @@ export async function handler(chatUpdate) {
             }
         }
         
-        // Print messages
         try {
             await printMessages(m, this);
         } catch (e) {
@@ -394,10 +490,7 @@ export async function handler(chatUpdate) {
     }
 }
 
-/**
- * Hadler Participants Update
- * @param {import('baileys').BaileysEventMap<unknown>['group-participants.update']} groupsUpdate
- */
+// ===== PARTICIPANTS UPDATE DENGAN LID =====
 export async function participantsUpdate({ id, participants, action }) {
     try {
         if (this.isHandlerInit) return;
@@ -410,10 +503,20 @@ export async function participantsUpdate({ id, participants, action }) {
                 if (chat?.sambutan) {
                     let groupMetadata = (await this.groupMetadata(id)) || (conn.chats[id] || {})?.metadata || {};
                     for (let user of participants) {
-                        let lid = (user?.id).decodeJid();
-                        if (!lid) continue;
-
-                        if (lid.endsWith("@s.whatsapp.net")) lid = await conn.getLidPN(lid);
+                        // PERBAIKAN: Pastikan participant ID langsung dikonversi ke LID
+                        let participantId = user?.id || user;
+                        if (!participantId) continue;
+                        
+                        // Decode dulu
+                        let jid = participantId.toString().decodeJid();
+                        
+                        // WAJIB konversi ke LID untuk SEMUA kasus
+                        let lid = await ensureLID(this, jid);
+                        
+                        // Log hanya jika ada konversi
+                        if (jid !== lid && !jid.endsWith('@lid')) {
+                            console.log(chalk.blue(`[PARTICIPANTS] ${jid} -> ${lid}`));
+                        }
 
                         let pp;
                         try {
@@ -429,6 +532,27 @@ export async function participantsUpdate({ id, participants, action }) {
                                       .replace("@desc", groupMetadata.desc ? String.fromCharCode(8206).repeat(4001) + groupMetadata?.desc : "")
                                 : chat.sBye || conn.sBye || "Selamat Tinggal @user"
                         ).replace("@user", "@" + lid.split("@")[0]);
+                        
+                        // PENTING: Pastikan user baru langsung masuk database dengan LID
+                        if (!global.db.data.users[lid]) {
+                            global.db.data.users[lid] = {
+                                name: await this.getName(lid),
+                                age: -1,
+                                level: 0,
+                                exp: 0,
+                                limit: 10,
+                                afk: false,
+                                afkReason: "",
+                                register: false,
+                                premium: false,
+                                banned: false,
+                                afkTime: -1,
+                                regTime: -1,
+                                premiumDate: -1,
+                                bannedDate: -1
+                            };
+                            console.log(chalk.green(`[NEW USER] Created DB entry for LID: ${lid}`));
+                        }
 
                         try {
                             await this.sendMessage(
@@ -463,10 +587,38 @@ export async function participantsUpdate({ id, participants, action }) {
             case "demote":
                 if (chat?.detect) {
                     for (let user of participants) {
-                        let lid = (user?.id).decodeJid();
-                        if (!lid) continue;
-
-                        if (lid.endsWith("@s.whatsapp.net")) lid = await conn.getLidPN(lid);
+                        // PERBAIKAN: Sama seperti add/remove
+                        let participantId = user?.id || user;
+                        if (!participantId) continue;
+                        
+                        let jid = participantId.toString().decodeJid();
+                        let lid = await ensureLID(this, jid);
+                        
+                        // Log hanya jika ada konversi
+                        if (jid !== lid && !jid.endsWith('@lid')) {
+                            console.log(chalk.blue(`[PROMOTE/DEMOTE] ${jid} -> ${lid}`));
+                        }
+                        
+                        // PENTING: Pastikan user ada di database
+                        if (!global.db.data.users[lid]) {
+                            global.db.data.users[lid] = {
+                                name: await this.getName(lid),
+                                age: -1,
+                                level: 0,
+                                exp: 0,
+                                limit: 10,
+                                afk: false,
+                                afkReason: "",
+                                register: false,
+                                premium: false,
+                                banned: false,
+                                afkTime: -1,
+                                regTime: -1,
+                                premiumDate: -1,
+                                bannedDate: -1
+                            };
+                        }
+                        
                         message = (
                             action === "promote" ? chat.sPromote || conn.sPromote || "Selamat @user telah menjadi Admin" : chat.sDemote || conn.sDemote || "@user telah diberhentikan sebagai Admin"
                         ).replace("@user", "@" + lid.split("@")[0]);
@@ -490,10 +642,6 @@ export async function participantsUpdate({ id, participants, action }) {
     }
 }
 
-/**
- * Handler groups update
- * @param {import('baileys').BaileysEventMap<unknown>['groups.update']} groupsUpdate
- */
 export async function groupsUpdate(groupsUpdate) {
     try {
         if (!groupsUpdate) return;
@@ -507,7 +655,9 @@ export async function groupsUpdate(groupsUpdate) {
 
             if (groupUpdate?.author) {
                 let user = (groupUpdate?.author).decodeJid();
-                if (user?.endsWith("@s.whatsapp.net")) user = await conn.getLidPN(user);
+                if (user?.endsWith("@s.whatsapp.net")) {
+                    user = await ensureLID(conn, user);
+                }
 
                 if (groupUpdate.desc && user) text = (chat?.sDesc || "*Deskripsi group diganti oleh* @user\n\n@desc").replace("@user", `@${user.split("@")[0]}`).replace("@desc", groupUpdate.desc);
                 if (groupUpdate.subject && user)
@@ -526,14 +676,9 @@ export async function groupsUpdate(groupsUpdate) {
     }
 }
 
-/**
- * Handler deleted message
- * @param {import('baileys').BaileysEventMap<unknown>['message.delete']} message
- */
 export async function catchDeleted(message) {
     try {
         if (!message) return;
-        // console.log(message);
     } catch (error) {
         console.error('Catch deleted error:', error);
     }
