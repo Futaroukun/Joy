@@ -1,8 +1,3 @@
-/* XRDHZ-MD
-  Script ini tidak untuk diperjual-belikan atau gratis.
-  Script masih dalam tahap pengembangan mungkin akan ada bug, error dan lain sebagainya.
-*/
-
 import store from "./store.js";
 import fs from "fs";
 import os from "os";
@@ -19,6 +14,7 @@ import { watchFile, unwatchFile } from "fs";
 import { fileURLToPath } from "url";
 import { toAudio } from "./converter.js";
 import { imageToWebp, videoToWebp, writeExifImg, writeExifVid } from "./exif.js";
+import { randomBytes } from "crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +25,7 @@ const {
    downloadContentFromMessage,
    generateForwardMessageContent,
    generateWAMessageFromContent,
+   generateWAMessage,
    getDevice,
    WAMessageStubType,
    extractMessageContent,
@@ -288,6 +285,55 @@ export function makeWASocket(connectionOptions, options = {}) {
                conn.ev.on(eventName, on);
             });
          }
+      },
+      // conn.sendAlbum
+      sendAlbum: {
+         async value(jid, array, quoted) {
+            const conn = this;
+            const album = await generateWAMessageFromContent(
+               jid,
+               {
+                  messageContextInfo: {
+                     messageSecret: randomBytes(32)
+                  },
+                  albumMessage: {
+                     expectedImageCount: array.filter(a =>
+                        a.hasOwnProperty("image")
+                     ).length,
+                     expectedVideoCount: array.filter(a =>
+                        a.hasOwnProperty("video")
+                     ).length
+                  }
+               },
+               {
+                  userJid: jidNormalizedUser(conn.user.id),
+                  quoted,
+                  upload: conn.waUploadToServer
+               }
+            );
+            await conn.relayMessage(album.key.remoteJid, album.message, {
+               messageId: album.key.id
+            });
+            for (let content of array) {
+               const mediaMessage = await generateWAMessage(album.key.remoteJid, content, {
+                  upload: conn.waUploadToServer
+               });
+               if (mediaMessage.message) {
+                  mediaMessage.message.messageContextInfo = {
+                     messageSecret: randomBytes(32),
+                     messageAssociation: {
+                        associationType: 1,
+                        parentMessageKey: album.key
+                     }
+                  };
+               }
+               await conn.relayMessage(mediaMessage.key.remoteJid, mediaMessage.message, {
+                  messageId: mediaMessage.key.id
+               });
+            }
+            return album;
+         },
+         enumerable: true
       },
       // conn.sendStickerImage
       sendStickerImage: {

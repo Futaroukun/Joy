@@ -31,11 +31,13 @@ const getInitialAuth = () => {
 const searchPinterestAPI = async (query, limit = 5) => {
     try {
         const { csrftoken, cookieHeader } = await getInitialAuth()
-        let results = []
+        let allResults = []
         let bookmark = null
-        let keepFetching = true
+        let fetchCount = 0
+        const maxFetch = 3 // Fetch multiple pages for more variety
 
-        while (keepFetching && results.length < limit) {
+        // Fetch multiple pages to get more results
+        while (fetchCount < maxFetch) {
             const postData = {
                 options: {
                     query: query,
@@ -79,28 +81,41 @@ const searchPinterestAPI = async (query, limit = 5) => {
             if (jsonResponse.resource_response && jsonResponse.resource_response.data && jsonResponse.resource_response.data.results) {
                 const pins = jsonResponse.resource_response.data.results
                 pins.forEach(pin => {
-                    if (results.length < limit) {
-                        const imageUrl = pin.images?.['736x']?.url || pin.images?.['orig']?.url
-                        const pinLink = pin.link || `https://www.pinterest.com/pin/${pin.id}/`
-                        
-                        if (imageUrl) {
-                            results.push({
-                                imageUrl: imageUrl,
-                                pinLink: pinLink,
-                                title: pin.title || pin.grid_title || ''
-                            })
-                        }
+                    const imageUrl = pin.images?.['736x']?.url || pin.images?.['orig']?.url
+                    const pinLink = pin.link || `https://www.pinterest.com/pin/${pin.id}/`
+                    const creatorName = pin.pinner?.full_name || pin.pinner?.username || 'Unknown'
+                    const creatorUsername = pin.pinner?.username || ''
+                    const creatorUrl = pin.pinner?.username ? `https://www.pinterest.com/${pin.pinner.username}/` : ''
+                    
+                    if (imageUrl) {
+                        allResults.push({
+                            imageUrl: imageUrl,
+                            pinLink: pinLink,
+                            title: pin.title || pin.grid_title || '',
+                            creatorName: creatorName,
+                            creatorUsername: creatorUsername,
+                            creatorUrl: creatorUrl
+                        })
                     }
                 })
 
                 bookmark = jsonResponse.resource_response.bookmark
-                if (!bookmark || pins.length === 0) keepFetching = false
+                if (!bookmark || pins.length === 0) break
             } else {
-                keepFetching = false
+                break
             }
+            
+            fetchCount++
         }
 
-        return results.slice(0, limit)
+        // Shuffle results randomly
+        for (let i = allResults.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allResults[i], allResults[j]] = [allResults[j], allResults[i]]
+        }
+
+        // Return random selection
+        return allResults.slice(0, limit)
     } catch (e) {
         throw new Error(e.message)
     }
@@ -125,30 +140,20 @@ const handler = async (m, { usedPrefix, command, conn, text }) => {
     if (!text || text.trim() === '') {
         return m.reply(
             `*PINTEREST SEARCH*\n\n` +
-            `Gunakan format berikut:\n` +
-            `• ${usedPrefix + command} <query> -img (Output Image)\n` +
-            `• ${usedPrefix + command} <query> -stc (Output Sticker)\n\n` +
+            `Gunakan format:\n` +
+            `• ${usedPrefix + command} <query>\n\n` +
             `*Contoh:*\n` +
-            `• ${usedPrefix + command} alya -img\n` +
-            `• ${usedPrefix + command} kucing lucu -stc`
+            `• ${usedPrefix + command} alya\n` +
+            `• ${usedPrefix + command} kucing lucu\n` +
+            `• ${usedPrefix + command} anime aesthetic`
         )
     }
 
-    let isSticker = false
-    let query = text
-
-    if (text.toLowerCase().endsWith('-stc')) {
-        isSticker = true
-        query = text.replace(/-stc$/i, '').trim()
-    } else if (text.toLowerCase().endsWith('-img')) {
-        isSticker = false
-        query = text.replace(/-img$/i, '').trim()
-    }
-
+    const query = text.trim()
     let loadingMsg = null
 
     try {
-        loadingMsg = await m.reply(`*Sedang mencari ${isSticker ? 'sticker' : 'gambar'} untuk: ${query}...*`)
+        loadingMsg = await m.reply(`*Sedang mencari gambar untuk: ${query}...*`)
 
         const results = await searchPinterestAPI(query, 5)
 
@@ -157,74 +162,69 @@ const handler = async (m, { usedPrefix, command, conn, text }) => {
             return m.reply('*Tidak ada hasil ditemukan.*')
         }
 
-        if (isSticker) {
-            
-            if (loadingMsg?.key) await conn.sendMessage(m.chat, { delete: loadingMsg.key })
-            
-            for (let i = 0; i < results.length; i++) {
-                try {
-                    const buffer = await downloadBuffer(results[i].imageUrl)
-                    await conn.sendMessage(m.chat, { 
-                        sticker: buffer,
-                        packname: global.info?.namabot || 'Pinterest',
-                        author: query
-                    }, { quoted: m })
-                    
-                    await new Promise(r => setTimeout(r, 1000))
-                } catch (e) {
-                    console.error('Error sending sticker:', e)
-                }
-            }
-            
-        } else {
-            
-            const push = []
-            
-            for (const result of results) {
-                try {
-                    const buffer = await downloadBuffer(result.imageUrl)
-                    const { imageMessage } = await generateWAMessageContent(
-                        { image: buffer },
-                        { upload: conn.waUploadToServer }
-                    )
-                    
-                    push.push({
-                        body: proto.Message.InteractiveMessage.Body.create({
-                            text: result.title || 'Pinterest Image'
-                        }),
-                        footer: proto.Message.InteractiveMessage.Footer.create({
-                            text: global.info?.namabot || 'Pinterest Search'
-                        }),
-                        header: proto.Message.InteractiveMessage.Header.create({
-                            title: '',
-                            hasMediaAttachment: true,
-                            imageMessage: imageMessage
-                        }),
-                        nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
-                            buttons: [
-                                {
-                                    name: 'cta_url',
-                                    buttonParamsJson: JSON.stringify({
-                                        display_text: 'Source Link',
-                                        url: result.pinLink,
-                                        merchant_url: result.pinLink
-                                    })
-                                }
-                            ]
-                        })
+        const push = []
+        
+        for (const result of results) {
+            try {
+                const buffer = await downloadBuffer(result.imageUrl)
+                const { imageMessage } = await generateWAMessageContent(
+                    { image: buffer },
+                    { upload: conn.waUploadToServer }
+                )
+                
+                const creatorInfo = result.creatorUsername 
+                    ? `\n📌 By: ${result.creatorName} (@${result.creatorUsername})`
+                    : result.creatorName !== 'Unknown' 
+                    ? `\n📌 By: ${result.creatorName}`
+                    : ''
+
+                push.push({
+                    body: proto.Message.InteractiveMessage.Body.create({
+                        text: (result.title || 'Pinterest Image') + creatorInfo
+                    }),
+                    footer: proto.Message.InteractiveMessage.Footer.create({
+                        text: global.info?.namabot || 'Pinterest Search'
+                    }),
+                    header: proto.Message.InteractiveMessage.Header.create({
+                        title: '',
+                        hasMediaAttachment: true,
+                        imageMessage: imageMessage
+                    }),
+                    nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
+                        buttons: [
+                            {
+                                name: 'cta_url',
+                                buttonParamsJson: JSON.stringify({
+                                    display_text: 'Source Link',
+                                    url: result.pinLink,
+                                    merchant_url: result.pinLink
+                                })
+                            },
+                            ...(result.creatorUrl ? [{
+                                name: 'cta_url',
+                                buttonParamsJson: JSON.stringify({
+                                    display_text: 'Creator Profile',
+                                    url: result.creatorUrl,
+                                    merchant_url: result.creatorUrl
+                                })
+                            }] : [])
+                        ]
                     })
-                } catch (imgError) {
-                    continue
-                }
+                })
+            } catch (imgError) {
+                continue
             }
+        }
 
-            if (push.length === 0) {
-                if (loadingMsg?.key) await conn.sendMessage(m.chat, { delete: loadingMsg.key })
-                return m.reply('*Gagal memuat gambar.*')
-            }
-
+        if (push.length === 0) {
             if (loadingMsg?.key) await conn.sendMessage(m.chat, { delete: loadingMsg.key })
+            return m.reply('*Gagal memuat gambar.*')
+        }
 
+        if (loadingMsg?.key) await conn.sendMessage(m.chat, { delete: loadingMsg.key })
+
+        // Try carousel first
+        try {
             const carouselMsg = generateWAMessageFromContent(
                 m.chat,
                 {
@@ -257,6 +257,38 @@ const handler = async (m, { usedPrefix, command, conn, text }) => {
             await conn.relayMessage(m.chat, carouselMsg.message, {
                 messageId: carouselMsg.key.id
             })
+        } catch (carouselError) {
+            // Fallback to regular image sending
+            console.error('Carousel failed, using fallback:', carouselError)
+            
+            await m.reply(`*PINTEREST RESULT: ${query.toUpperCase()}*\n_Mengirim ${results.length} gambar..._`)
+            
+            for (let i = 0; i < results.length; i++) {
+                const result = results[i]
+                try {
+                    const buffer = await downloadBuffer(result.imageUrl)
+                    
+                    const creatorInfo = result.creatorUsername 
+                        ? `📌 By: ${result.creatorName} (@${result.creatorUsername})`
+                        : result.creatorName !== 'Unknown' 
+                        ? `📌 By: ${result.creatorName}`
+                        : ''
+                    
+                    const caption = `*${result.title || 'Pinterest Image'}*\n${creatorInfo}\n\n🔗 Source: ${result.pinLink}${result.creatorUrl ? `\n👤 Profile: ${result.creatorUrl}` : ''}`
+                    
+                    await conn.sendMessage(m.chat, {
+                        image: buffer,
+                        caption: caption
+                    }, { quoted: m })
+                    
+                    // Delay to avoid flooding
+                    if (i < results.length - 1) {
+                        await new Promise(r => setTimeout(r, 1500))
+                    }
+                } catch (sendError) {
+                    console.error(`Failed to send image ${i + 1}:`, sendError)
+                }
+            }
         }
 
     } catch (error) {
@@ -267,7 +299,7 @@ const handler = async (m, { usedPrefix, command, conn, text }) => {
     }
 }
 
-handler.help = ['pinterest <query> -img/-stc']
+handler.help = ['pinterest <query>']
 handler.tags = ['internet']
 handler.command = /^(pin|pinterest)$/i
 handler.limit = false
