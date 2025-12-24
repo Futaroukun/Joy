@@ -32,7 +32,7 @@ const {
    jidDecode,
    jidNormalizedUser,
    generateMessageIDV2
-} = await import("baileys");
+} = await import("@whiskeysockets/baileys");
 
 /**
  * Fungsi membuat socket ke baileys.

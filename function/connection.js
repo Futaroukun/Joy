@@ -1,6 +1,6 @@
 import readline from "readline";
 import chalk from "chalk";
-import { DisconnectReason } from "baileys";
+import { DisconnectReason } from '@whiskeysockets/baileys';
 import { headerLog } from "../function/console.js";
 import { clearSessionFiles } from "./auto-clear-sessions.js";
 import { unlinkSync, readdirSync, existsSync } from "fs";

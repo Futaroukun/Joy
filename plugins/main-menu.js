@@ -1,4 +1,4 @@
-import { jidNormalizedUser } from 'baileys';
+import { jidNormalizedUser } from '@whiskeysockets/baileys';
 import fs from 'fs';
 import { join } from 'path';
 import os from 'os';

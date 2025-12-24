@@ -1,7 +1,7 @@
 import fs from 'fs'
 import {
 	S_WHATSAPP_NET
-} from 'baileys'
+} from '@whiskeysockets/baileys'
 import { Jimp } from 'jimp'
 let handler = async (m, {
 	conn,

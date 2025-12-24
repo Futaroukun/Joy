@@ -10,7 +10,7 @@ import {
     generateMessageIDV2,
     generateMessageID,
     prepareWAMessageMedia
-} from 'baileys'; // DIUBAH: dari '@whiskeysockets/baileys' menjadi 'baileys'
+} from '@whiskeysockets/baileys'; // DIUBAH: dari '@whiskeysockets/baileys' menjadi 'baileys'
 
 function buildInteractiveButtons(buttons = []) {
   return buttons.map((b, i) => {

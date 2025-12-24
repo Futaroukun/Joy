@@ -6,7 +6,7 @@ import path from "path";
 import { format } from "util";
 import { unwatchFile, watchFile, readFileSync } from "fs";
 import chalk from "chalk";
-import { jidNormalizedUser } from "baileys";
+import { jidNormalizedUser } from '@whiskeysockets/baileys';
 
 const isNumber = x => typeof x === "number" && !isNaN(x);
 const printMessages = (await import("./function/print.js")).default;

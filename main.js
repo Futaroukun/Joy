@@ -19,7 +19,7 @@ import { makeWASocket, protoType } from "./function/simple.js";
 import { requestPairing, connectionUpdate } from "./function/connection.js";
 import { startAutoClearSessions } from "./function/auto-clear-sessions.js";
 
-const { Browsers, useMultiFileAuthState, fetchLatestWaWebVersion, makeCacheableSignalKeyStore, DisconnectReason } = await import("baileys");
+const { Browsers, useMultiFileAuthState, fetchLatestWaWebVersion, makeCacheableSignalKeyStore, DisconnectReason } = await import('@whiskeysockets/baileys');
 
 protoType();
 global.__filename = function filename(pathURL = import.meta.url, rmPrefix = platform !== "win32") {

@@ -3,7 +3,7 @@ import {
     generateForwardMessageContent,
     generateWAMessageFromContent,
     proto
-} from 'baileys'
+} from '@whiskeysockets/baileys'
 
 const messageStore = new Map()
 const MAX_CACHE_SIZE = 5000

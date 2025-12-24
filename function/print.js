@@ -1,4 +1,4 @@
-import { WAMessageStubType } from "baileys";
+import { WAMessageStubType } from "@whiskeysockets/baileys";
 import { parsePhoneNumber } from "awesome-phonenumber";
 import chalk from "chalk";
 import { fileURLToPath } from "url";

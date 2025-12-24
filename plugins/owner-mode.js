@@ -1,4 +1,4 @@
-import { jidNormalizedUser } from 'baileys'
+import { jidNormalizedUser } from '@whiskeysockets/baileys'
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
     const botLid = jidNormalizedUser(conn.user.lid)

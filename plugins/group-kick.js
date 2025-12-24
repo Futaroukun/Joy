@@ -1,4 +1,4 @@
-import { areJidsSameUser } from 'baileys'
+import { areJidsSameUser } from '@whiskeysockets/baileys'
 
 let handler = async (m, { conn, participants }) => {
     let usr = m.quoted ? [m.quoted.sender] : m.mentionedJid
