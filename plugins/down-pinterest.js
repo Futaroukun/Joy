@@ -222,7 +222,7 @@ const handler = async (m, { usedPrefix, command, conn, text }) => {
 }
 
 handler.help = ['pinterest *query*']
-handler.tags = ['internet']
+handler.tags = ['downloader']
 handler.command = /^(pin|pinterest)$/i
 handler.limit = false
 
