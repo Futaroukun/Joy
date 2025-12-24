@@ -175,6 +175,38 @@
       "regTime": -1,
       "premiumDate": -1,
       "bannedDate": -1
+    },
+    "2061584318613@lid": {
+      "name": "628551000185",
+      "age": -1,
+      "level": 0,
+      "exp": 0,
+      "limit": 10,
+      "afk": false,
+      "afkReason": "",
+      "register": false,
+      "premium": false,
+      "banned": false,
+      "afkTime": -1,
+      "regTime": -1,
+      "premiumDate": -1,
+      "bannedDate": -1
+    },
+    "120363278432732866@g.us": {
+      "name": {},
+      "age": -1,
+      "level": 0,
+      "exp": 0,
+      "limit": 10,
+      "afk": false,
+      "afkReason": "",
+      "register": false,
+      "premium": false,
+      "banned": false,
+      "afkTime": -1,
+      "regTime": -1,
+      "premiumDate": -1,
+      "bannedDate": -1
     }
   },
   "chats": {
