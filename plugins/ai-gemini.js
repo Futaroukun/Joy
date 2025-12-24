@@ -130,37 +130,52 @@ INSTRUKSI KHUSUS:
       let finalResponse = formatText(response);
       
       // ===== LOGIKA BARU UNTUK CTA_COPY =====
-      const codeBlockRegex = /```(?:[a-z]+)?\n([\s\S]+?)\n```/; // Regex untuk menangkap isi dari blok kode pertama
-      const match = finalResponse.match(codeBlockRegex);
+      const codeBlockRegex = /```(?:[a-z]+)?\n([\s\S]+?)\n```/g;
+      const matches = [...finalResponse.matchAll(codeBlockRegex)];
+      const buttons = [];
+      const MAX_BUTTONS = 3; // Batasan aman untuk tombol interaktif WhatsApp
+
+      if (matches.length > 0) {
+         for (let i = 0; i < matches.length && i < MAX_BUTTONS; i++) {
+            const match = matches[i];
+            const blockContent = match[1];
       
-      if (match && match[1]) {
-         // Jika ada blok kode, kirim dengan tombol cta_copy
-         const blockContent = match[1];
-         const lines = blockContent.split('\n');
-         while (lines.length > 0 && (lines[0].trim().startsWith('FILE:') || lines[0].trim().startsWith('//'))) {
-            lines.shift();
+            // Membersihkan kode dari header 'FILE:' atau komentar
+            const lines = blockContent.split('\n');
+            while (lines.length > 0 && (lines[0].trim().startsWith('FILE:') || lines[0].trim().startsWith('//'))) {
+               lines.shift();
+            }
+            const codeToCopy = lines.join('\n').trim();
+      
+            // Hanya tambahkan tombol jika ada konten kode yang valid
+            if (codeToCopy) {
+               buttons.push({
+                  name: 'cta_copy',
+                  buttonParamsJson: JSON.stringify({
+                     display_text: `Salin Kode ${i + 1}`,
+                     copy_code: codeToCopy
+                  })
+               });
+            }
          }
-         
-         const codeToCopy = lines.join('\n').trim();
-         
-         const buttons = [{
-            name: 'cta_copy',
-            buttonParamsJson: JSON.stringify({
-               display_text: 'Salin Kode',
-               copy_code: codeToCopy
-            })
-         }];
-         
+      }
+
+      if (buttons.length > 0) {
+         let footerText = `Klik tombol untuk menyalin kode.`;
+         if (matches.length > MAX_BUTTONS) {
+            footerText += `\n(Hanya ${MAX_BUTTONS} blok kode pertama yang dibuatkan tombol).`;
+         }
+   
          const buttonMessageData = {
             text: finalResponse,
-            footer: 'Klik tombol di bawah untuk menyalin kode.',
+            footer: footerText,
             buttons: buttons
          };
-         
+   
          await sendButtons(conn, m.chat, buttonMessageData, { quoted: m });
-         
+   
       } else {
-         // Jika tidak ada blok kode, kirim sebagai teks biasa
+         // Jika tidak ada blok kode yang ditemukan, kirim sebagai teks biasa
          await conn.reply(m.chat, finalResponse, m);
       }
       // ===== AKHIR LOGIKA BARU =====
