@@ -1,6 +1,7 @@
 import chat from '../function/gemini.js'
 import fs from 'fs'
 import path from 'path'
+import { sendButtons } from '../function/button.js' // DI TAMBAHKAN: Impor fungsi sendButtons
 
 let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     const hasInput = text || m.quoted;
@@ -129,7 +130,41 @@ INSTRUKSI KHUSUS:
 
         let finalResponse = formatText(response);
         
-        await conn.reply(m.chat, finalResponse, m)
+        // ===== LOGIKA BARU UNTUK CTA_COPY =====
+        const codeBlockRegex = /```(?:[a-z]+)?\n([\s\S]+?)\n```/; // Regex untuk menangkap isi dari blok kode pertama
+        const match = finalResponse.match(codeBlockRegex);
+
+        if (match && match[1]) {
+            // Jika ada blok kode, kirim dengan tombol cta_copy
+            const blockContent = match[1];
+            const lines = blockContent.split('\n');
+            if (lines.length > 0 && lines[0].trim().startsWith('FILE:')) {
+                lines.shift();
+            }
+            
+            const codeToCopy = lines.join('\n').trim();
+            
+            const buttons = [{
+                name: 'cta_copy',
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'Salin Kode',
+                    copy_code: codeToCopy
+                })
+            }];
+
+            const buttonMessageData = {
+                text: finalResponse,
+                footer: 'Klik tombol di bawah untuk menyalin kode.',
+                buttons: buttons
+            };
+            
+            await sendButtons(conn, m.chat, buttonMessageData, { quoted: m });
+            
+        } else {
+            // Jika tidak ada blok kode, kirim sebagai teks biasa
+            await conn.reply(m.chat, finalResponse, m);
+        }
+        // ===== AKHIR LOGIKA BARU =====
         
     } catch (e) {
         console.error('Error AI:', e)
@@ -141,6 +176,7 @@ INSTRUKSI KHUSUS:
 }
 
 function formatText(text) {
+    // Fungsi formatText tetap sama, karena tidak mengganggu blok kode ```
     return text
         .replace(/^#{1,6}\s+(.+)/gm, '*$1*')
         .replace(/\*\*([^*]+)\*\*/g, '*$1*')
@@ -190,4 +226,4 @@ handler.help = ['ai']
 handler.tags = ['ai']
 handler.command = /^(ai|joy|gemini)$/i
 
-export default handler
+export default handler;
