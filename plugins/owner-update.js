@@ -3,17 +3,14 @@ import { promisify } from 'util'
 
 const exec = promisify(cp.exec).bind(cp)
 
-// Fungsi upload ke GitHub (MANUAL ONLY)
 async function githubUpload(conn, commitMessage = 'Update') {
   try {
-    // Ambil URL repo
     const { stdout: remoteUrl } = await exec('git config --get remote.origin.url')
     const repoUrl = remoteUrl.trim()
       .replace('git@github.com:', 'https://github.com/')
       .replace('.git', '')
       .replace(/https:\/\/.*?@github\.com/, 'https://github.com')
 
-    // Cek perubahan
     const { stdout: changesStdout } = await exec('git status -s')
     const changes = changesStdout.trim().split('\n').filter(Boolean)
 
@@ -34,15 +31,13 @@ async function githubUpload(conn, commitMessage = 'Update') {
       }
     })
 
-    // Kalau gak ada perubahan
     if (!changes.length) {
       return {
         success: false,
-        message: '*PUSH DIBATALKAN*\n\nTidak ada perubahan file yang terdeteksi.'
+        message: '*UPLOAD DIBATALKAN*\n\nGak ada perubahan file yang terdeteksi di sini.'
       }
     }
 
-    // Git command
     const gitCommands = [
       'git config --global user.email "raflisetiawan093@gmail.com"',
       'git config --global user.name "Futaroukun"',
@@ -53,7 +48,6 @@ async function githubUpload(conn, commitMessage = 'Update') {
 
     await exec(gitCommands)
 
-    // Ambil hash commit
     const { stdout: commitHash } = await exec('git rev-parse --short HEAD')
 
     const summary = []
@@ -81,16 +75,15 @@ async function githubUpload(conn, commitMessage = 'Update') {
       message: [
         '*UPLOAD GITHUB GAGAL*',
         '',
-        `*Kesalahan:* ${err.message}`
+        `*Error:* ${err.message}`
       ].join('\n')
     }
   }
 }
 
-// Handler command .update
 const handler = async (m, { conn, isOwner, args }) => {
   if (!isOwner) {
-    return conn.reply(m.chat, '*AKSES DITOLAK*\n\nPerintah ini hanya dapat digunakan oleh Owner.', m)
+    return conn.reply(m.chat, '*AKSES DITOLAK*\n\nCuma Owner yang bisa pakai perintah ini.', m)
   }
 
   const commitMessage = args.join(' ').trim() || 'Manual update via bot'
@@ -99,11 +92,11 @@ const handler = async (m, { conn, isOwner, args }) => {
   try {
     loading = await conn.sendMessage(m.chat, {
       text: [
-        '*PROSES UPLOAD GITHUB*',
+        '*LAGI UPLOAD KE GITHUB*',
         '',
         `*Pesan commit:* ${commitMessage}`,
         '',
-        'Sedang mengirim perubahan ke repository...'
+        'Tunggu bentar, lagi kirim perubahan ke repo...'
       ].join('\n')
     }, { quoted: m })
   } catch {}
@@ -112,7 +105,6 @@ const handler = async (m, { conn, isOwner, args }) => {
 
   await conn.reply(m.chat, result.message, m)
 
-  // hapus pesan loading
   if (loading?.key) {
     setTimeout(async () => {
       try {
