@@ -19,12 +19,12 @@ async function githubUpload(conn, commitMessage = 'Update') {
     const modifiedFiles = []
 
     changes.forEach(change => {
-      const status = change.substring(0, 2).trim()
-      const file = change.substring(3)
+      const status = change.trim().split(' ')[0]
+      const file = change.trim().split(' ').slice(1).filter(Boolean).join(' ')
 
-      if (status === 'A') {
+      if (status.includes('A')) {
         addedFiles.push(file)
-      } else if (status === 'D') {
+      } else if (status.includes('D')) {
         deletedFiles.push(file)
       } else {
         modifiedFiles.push(file)
