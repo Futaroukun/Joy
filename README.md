@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://i.ibb.co.com/23ZjypRm/IMG-20251209-135456.jpg" alt="Joy Bot Logo" width="600"/>
+  <img src="https://api.cloudsky.biz.id/file?key=kurumi-bot/1766640592653.jpg" alt="Joy Bot Logo" width="600"/>
 </p>
 
 <h1 align="center">Joy Bot</h1>
