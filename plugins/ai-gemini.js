@@ -40,18 +40,21 @@ PROTOKOL INTERAKSI (PENGGUNA UMUM):
 3. ATRIBUT: Kalau ada yang nanya siapa yang buat gua, jawab aja "Rafli".
 4. KEJUJURAN: Selalu berikan informasi yang akurat. Jangan sembunyikan fakta.`;
     
-    // --- LOGIKA BARU UNTUK DETEKSI MODE OTOMATIS ---
-    
-    // 1. Definisikan kata kunci yang memicu mode scan untuk owner
-    const scanKeywords = [
-        'scan', 'kode', 'code', 'file', 'fix', 'debug', 'analisis',
-        'struktur', 'error', 'perbaiki', 'analisa', 'source code', 'base'
+    // --- FIX: SCAN MODE DETECTION LEBIH SPESIFIK ---
+    // Hanya trigger scan mode jika:
+    // 1. User adalah owner
+    // 2. Ada pattern EKSPLISIT yang minta scan/analisis proyek
+    const explicitScanPatterns = [
+        /^(scan|analisis|cek|lihat|baca)\s+(semua\s+)?(kode|code|file|struktur|proyek|project|base|source)/i,
+        /^(tolong\s+)?(scan|analisis|cek)\s+/i,
+        /(scan|analisis)\s+(proyek|project|struktur)\s+(ini|aku|gua)/i,
+        /^(perbaiki|fix|debug)\s+(error|bug)\s+di\s+/i,
+        /lihat\s+(seluruh|semua)\s+(kode|file|struktur)/i
     ];
     
-    // 2. Cek apakah mode scan harus diaktifkan (hanya jika `isOwner` dan mengandung keyword)
-    const isScanMode = isOwner && scanKeywords.some(keyword => prompt.toLowerCase().includes(keyword));
+    const isScanMode = isOwner && explicitScanPatterns.some(pattern => pattern.test(prompt.trim()));
+    // --- AKHIR FIX SCAN MODE ---
     
-    // 3. Set instruksi sistem awal
     let systemInstruction = isOwner ? ownerPrompt : userPrompt;
     systemInstruction += `\n
 INSTRUKSI TAMBAHAN:
@@ -59,20 +62,12 @@ INSTRUKSI TAMBAHAN:
 - Jangan gunakan format markdown yang rumit, sesuaikan dengan WhatsApp.
 `;
     
-    // --- AKHIR LOGIKA BARU ---
-    
-    
-    // --- BLOK KONDISIONAL YANG DIMODIFIKASI ---
     if (isScanMode) {
-        // Logika ini sekarang hanya akan berjalan untuk owner jika mengandung keyword
         loadingMsg = await conn.reply(m.chat, "*SYSTEM ACCESS GRANTED (OWNER)*\n\nMembaca seluruh struktur direktori proyek...", m)
-        
         const rootDir = process.cwd()
         const scannedData = scanDirectory(rootDir)
-        
         const finalPrompt = `SYSTEM SOURCE CODE DUMP (PROJECT CONTEXT):\n\n${scannedData}\n\nPERINTAH OWNER (RAFLI):\n${prompt}`
         
-        // Override instruksi sistem untuk mode arsitek
         systemInstruction = `MODE: SENIOR BACKEND ARCHITECT.
 Fokus: Analisis Kode, Debugging.
 
@@ -83,7 +78,6 @@ PROTOKOL INTERAKSI:
         messages.push({ role: "user", content: finalPrompt });
         
     } else {
-        // Logika chat biasa untuk user umum atau owner (jika tidak ada keyword)
         if (m.quoted) {
             const q = m.quoted;
             const mime = (q.msg || q).mimetype || '';
@@ -92,7 +86,7 @@ PROTOKOL INTERAKSI:
                 loadingMsg = await conn.reply(m.chat, "*Joy sedang memproses media...*", m);
                 try {
                     buffer = await q.download();
-                    messages.push({ role: "user", content: prompt || "Jelaskan gambar ini secara detail." });
+                    messages.push({ role: "user", content: prompt || "Jelaskan media ini secara detail." });
                 } catch (e) {
                     return m.reply("*Gagal mengunduh media.*");
                 }
@@ -109,10 +103,10 @@ PROTOKOL INTERAKSI:
         } else {
             const mime = (m.msg || m).mimetype || '';
             if (/image|video/g.test(mime)) {
-                loadingMsg = await conn.reply(m.chat, "*Joy sedang melihat gambar...*", m);
+                loadingMsg = await conn.reply(m.chat, "*Joy sedang melihat media...*", m);
                 try {
                     buffer = await m.download();
-                    messages.push({ role: "user", content: prompt || "Deskripsikan detail gambar ini." });
+                    messages.push({ role: "user", content: prompt || "Deskripsikan detail media ini." });
                 } catch (e) {
                     return m.reply("*Gagal mengunduh media.*");
                 }
@@ -123,6 +117,28 @@ PROTOKOL INTERAKSI:
             }
         }
     }
+    
+    // --- FIX: VALIDASI GAMBAR LEBIH SMART ---
+    const explicitImageRequestPatterns = [
+        /^(ini|itu|lihat|cek|analisis|jelaskan|deskripsikan|apa|identifikasi)\s+(gambar|foto|image|pic|gbr)/i,
+        /^(gambar|foto|image|pic|gbr)\s+(ini|itu|apa|mana)/i,
+        /(gambar|foto|image|pic|gbr)\s+(apa|ini|itu)\s*\??$/i
+    ];
+    
+    const isExplicitImageRequest = buffer === null && 
+        prompt.length < 100 &&
+        explicitImageRequestPatterns.some(pattern => pattern.test(prompt.trim()));
+    
+    if (isExplicitImageRequest) {
+        if (loadingMsg?.key) {
+            try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
+        }
+        let replyMsg = isOwner ? 
+            "Kayaknya lu mau nanya soal gambar, tapi gambarnya mana? Coba reply gambarnya dulu, fli." : 
+            "Sepertinya kamu ingin bertanya tentang gambar, tapi gambarnya belum ada. Silakan kirim atau reply gambar yang dimaksud ya.";
+        return m.reply(replyMsg);
+    }
+    // --- AKHIR DARI FIX ---
     
     try {
         if (messages.length === 0) throw new Error("Empty message");
@@ -217,7 +233,7 @@ function scanDirectory(dir, fileList = [], depth = 0) {
                     scanDirectory(filePath, fileList, depth + 1)
                 } else {
                     if (/\.(js|json|html|txt|md)$/i.test(file)) {
-                        if (stat.size < 100 * 1024) { // Batasi ukuran file
+                        if (stat.size < 100 * 1024) {
                             try {
                                 const content = fs.readFileSync(filePath, 'utf8')
                                 const relativePath = filePath.replace(process.cwd(), '')
