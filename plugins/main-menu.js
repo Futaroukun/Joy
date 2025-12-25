@@ -2,28 +2,19 @@ import { jidNormalizedUser } from '@whiskeysockets/baileys';
 import fs from 'fs';
 import { join } from 'path';
 import os from 'os';
+import fetch from 'node-fetch';
 
-// === BAGIAN LOAD FILE (OPTIMASI KECEPATAN) ===
-const thumbnailPath = join(process.cwd(), 'src', 'thumbnail.jpg');
 const packagePath = join(process.cwd(), 'package.json');
-
-let thumbBuffer = null;
 let _package = {};
 
 try {
-    if (fs.existsSync(thumbnailPath)) {
-        thumbBuffer = fs.readFileSync(thumbnailPath);
-    } else {
-        console.log('[WARN] Thumbnail tidak ditemukan:', thumbnailPath);
-    }
-    
     if (fs.existsSync(packagePath)) {
         _package = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
     } else {
         console.log('[WARN] package.json tidak ditemukan');
     }
 } catch (e) {
-    console.error('[ERROR] Gagal memuat file eksternal:', e.message);
+    console.error('[ERROR] Gagal memuat package.json:', e.message);
 }
 
 // Mapping Tag ID -> Nama Tampilan
@@ -68,11 +59,7 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
 
         let name = `@${m.sender.split('@')[0]}`;
         let botname = global.info?.namabot || conn.user?.name || 'WhatsApp Bot';
-        let level = user.level || 0;
-        let role = user.role || 'Beginner';
-        let exp = user.exp || 0;
         let limit = (user.limit === Infinity) ? 'Unlimited' : (user.limit || 0);
-        let prems = user.premiumTime > 0 ? '✅' : '❌';
 
         // Info Waktu
         const d = new Date(new Date().getTime() + 7 * 3600 * 1000);
@@ -82,7 +69,6 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
 
         let uptime = clockString(process.uptime() * 1000);
         let platform = os.platform();
-        let rtotalreg = Object.values(global.db.data.users).filter(u => u.registered).length;
 
         const cpus = os.cpus();
         const cpuModel = cpus && cpus.length > 0 ? cpus[0].model.trim() : 'N/A';
@@ -133,8 +119,8 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
 
         const readMore = String.fromCharCode(8206).repeat(4001);
         let replace = {
-            '%': '%', p: usedPrefix, name, level, role, limit, prems,
-            totalexp: exp, date, year, uptime, platform, mode, rtotalreg,
+            '%': '%', p: usedPrefix, name, limit,
+            date, year, uptime, platform, mode,
             me: botname, version: _package.version || '1.0.0',
             cpuModel, totalMem, freeMem, serverArch, serverOS,
             readmore: readMore,
@@ -207,7 +193,23 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
             (match, key) => replace[key] || match
         );
 
-        // Prepare context info dengan fallback
+        const thumbnailUrl = 'https://api.cloudsky.biz.id/file?key=kurumi-bot/1766671505860.jpg';
+        const fallbackThumbnailPath = join(process.cwd(), 'src', 'thumbnail.jpg');
+        let finalThumbnailBuffer = null;
+
+        try {
+            const response = await fetch(thumbnailUrl);
+            if (!response.ok) throw new Error(`Status: ${response.status}`);
+            finalThumbnailBuffer = await response.buffer();
+        } catch (error) {
+            console.warn(`[MENU] Gagal memuat thumbnail dari URL (${error.message}), menggunakan fallback lokal.`);
+            if (fs.existsSync(fallbackThumbnailPath)) {
+                finalThumbnailBuffer = fs.readFileSync(fallbackThumbnailPath);
+            } else {
+                console.error('[MENU] Thumbnail fallback tidak ditemukan di:', fallbackThumbnailPath);
+            }
+        }
+        
         const contextInfo = {
             mentionedJid: [m.sender],
             externalAdReply: {
@@ -218,12 +220,10 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
             }
         };
 
-        // Tambahkan thumbnail hanya jika ada
-        if (thumbBuffer) {
-            contextInfo.externalAdReply.thumbnail = thumbBuffer;
+        if (finalThumbnailBuffer) {
+            contextInfo.externalAdReply.thumbnail = finalThumbnailBuffer;
         }
 
-        // Tambahkan sourceUrl hanya jika ada
         if (global.lgc) {
             contextInfo.externalAdReply.sourceUrl = global.lgc;
         }

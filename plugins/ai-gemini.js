@@ -238,6 +238,6 @@ ${content}
 
 handler.help = ['ai *teks*']
 handler.tags = ['ai']
-handler.command = /^(ai|joy|gemini)$/i
+handler.command = /^(ai|gemini)$/i
 
 export default handler;
