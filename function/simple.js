@@ -1103,7 +1103,7 @@ export async function smsg(conn, m, hasParent) {
       },
       name: {
          get() {
-            return (m.pushName !== null && m.pushName) || conn?.getName(m.sender);
+            return (typeof m.pushName === 'string' && m.pushName.trim()) || conn?.getName(m.sender);
          },
          enumerable: true
       },
