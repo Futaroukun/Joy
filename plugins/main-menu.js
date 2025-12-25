@@ -210,7 +210,7 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
                 mediaType: 1,
                 renderLargerThumbnail: true,
                 thumbnail: finalThumbnailBuffer,
-                sourceUrl: global.lgc || thumbnailUrl
+                sourceUrl: ``
             }
         };
 
