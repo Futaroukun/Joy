@@ -10,14 +10,11 @@ let _package = {};
 try {
     if (fs.existsSync(packagePath)) {
         _package = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
-    } else {
-        console.log('[WARN] package.json tidak ditemukan');
     }
 } catch (e) {
-    console.error('[ERROR] Gagal memuat package.json:', e.message);
+    console.error(e);
 }
 
-// Mapping Tag ID -> Nama Tampilan
 let tags = {
     'adminry': 'Admin Menu',
     'group': 'Groups Menu',
@@ -61,7 +58,6 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
         let botname = global.info?.namabot || conn.user?.name || 'WhatsApp Bot';
         let limit = (user.limit === Infinity) ? 'Unlimited' : (user.limit || 0);
 
-        // Info Waktu
         const d = new Date(new Date().getTime() + 7 * 3600 * 1000);
         const locale = 'id-ID';
         const date = d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -88,7 +84,6 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
             default: mode = 'Publik';
         }
 
-        // --- FILTER PLUGIN ---
         let help = Object.values(global.plugins)
             .filter(plugin => plugin && plugin.help && !plugin.disable)
             .map(plugin => ({
@@ -99,7 +94,6 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
                 premium: plugin.premium,
             }));
 
-        // --- HITUNG TAG AKTIF ---
         let activeTags = new Set();
 
         for (let plugin of help) {
@@ -131,7 +125,6 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
         let { before, header, body, footer, after } = defaultMenu;
 
         if (!menuType) {
-            // Tampilkan daftar menu yang tersedia
             let tagList = Object.keys(tags)
                 .filter(tag => activeTags.has(tag))
                 .sort()
@@ -194,20 +187,19 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
         );
 
         const thumbnailUrl = 'https://api.cloudsky.biz.id/file?key=kurumi-bot/1766671505860.jpg';
-        const fallbackThumbnailPath = join(process.cwd(), 'src', 'thumbnail.jpg');
         let finalThumbnailBuffer = null;
 
         try {
             const response = await fetch(thumbnailUrl);
-            if (!response.ok) throw new Error(`Status: ${response.status}`);
-            finalThumbnailBuffer = await response.buffer();
+            const buffer = await response.arrayBuffer();
+            finalThumbnailBuffer = Buffer.from(buffer);
         } catch (error) {
-            console.warn(`[MENU] Gagal memuat thumbnail dari URL (${error.message}), menggunakan fallback lokal.`);
-            if (fs.existsSync(fallbackThumbnailPath)) {
-                finalThumbnailBuffer = fs.readFileSync(fallbackThumbnailPath);
-            } else {
-                console.error('[MENU] Thumbnail fallback tidak ditemukan di:', fallbackThumbnailPath);
-            }
+            try {
+                const fallbackThumbnailPath = join(process.cwd(), 'src', 'thumbnail.jpg');
+                if (fs.existsSync(fallbackThumbnailPath)) {
+                    finalThumbnailBuffer = fs.readFileSync(fallbackThumbnailPath);
+                }
+            } catch (ignored) {}
         }
         
         const contextInfo = {
@@ -216,17 +208,11 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
                 title: (global.info?.namabot || 'WhatsApp Bot') + ` © ` + year,
                 body: `Server Uptime: ${uptime}`,
                 mediaType: 1,
-                renderLargerThumbnail: true
+                renderLargerThumbnail: true,
+                thumbnail: finalThumbnailBuffer,
+                sourceUrl: global.lgc || thumbnailUrl
             }
         };
-
-        if (finalThumbnailBuffer) {
-            contextInfo.externalAdReply.thumbnail = finalThumbnailBuffer;
-        }
-
-        if (global.lgc) {
-            contextInfo.externalAdReply.sourceUrl = global.lgc;
-        }
 
         await conn.sendMessage(m.chat, {
             text: textToSend,
@@ -234,8 +220,7 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
         }, { quoted: m });
 
     } catch (e) {
-        console.error('[MENU ERROR]', e);
-        m.reply('❌ Terjadi kesalahan saat menampilkan menu.\n\n' + e.message);
+        m.reply('❌ Terjadi kesalahan saat menampilkan menu.');
     }
 };
 
