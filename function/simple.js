@@ -44,28 +44,13 @@ export function makeWASocket(connectionOptions, options = {}) {
    let conn = _makeWASocket(connectionOptions);
    let sock = Object.defineProperties(conn, {
       // conn.chats
-      chats: {
-         value: { ...(options.chats || {}) },
-         writable: true
-      },
+      chats: { value: { ...(options.chats || {}) }, writable: true },
       // conn.storeLid
-      storeLid: {
-         value: {},
-         writable: true,
-         configurable: true
-      },
+      storeLid: { value: {}, writable: true, configurable: true },
       // conn.storeNumber
-      storeNumber: {
-         value: {},
-         writable: true,
-         configurable: true
-      },
+      storeNumber: { value: {}, writable: true, configurable: true },
       // conn.storeMentions
-      storeMentions: {
-         value: {},
-         writable: true,
-         configurable: true
-      },
+      storeMentions: { value: {}, writable: true, configurable: true },
       // conn.decodeJid
       decodeJid: {
          value(jid) {
@@ -79,13 +64,12 @@ export function makeWASocket(connectionOptions, options = {}) {
             if (!conn.storeNumber) conn.storeNumber = {};
             if (!sender || typeof sender !== "string") return "";
             if (sender.endsWith("@s.whatsapp.net")) return sender.split("@")[0];
-
+      
             if (conn.storeNumber[sender]) return conn.storeNumber[sender];
             for (let chat of Object.values(conn.chats)) {
                if (!chat.metadata?.participants) continue;
                const user = chat.metadata.participants.find(p => p.id === sender);
-               if (!user || !user.phoneNumber) continue;
-               if (user) return conn.storeNumber[sender] = (user?.phoneNumber).split("@")[0];
+               if (user?.phoneNumber) return conn.storeNumber[sender] = (user.phoneNumber).split("@")[0];
             }
             return sender;
          }
@@ -115,10 +99,10 @@ export function makeWASocket(connectionOptions, options = {}) {
             if (!sender || typeof sender !== "string") return "";
             if (sender.endsWith("@s.whatsapp.net")) {
                const lid = await conn.signalRepository?.lidMapping?.getLIDForPN?.(sender);
-               return lid.decodeJid();
+               return lid?.decodeJid();
             } else if (sender.endsWith("@lid")) {
                const Jid = await conn.signalRepository?.lidMapping?.getPNForLID?.(sender);
-               return Jid.decodeJid();
+               return Jid?.decodeJid();
             } else return sender;
          }
       },
@@ -138,15 +122,9 @@ export function makeWASocket(connectionOptions, options = {}) {
                      _mtype[_mtype.length - 1];
                   const chat = conn.decodeJid(message.key.remoteJid || message.message?.senderKeyDistributionMessage?.groupId || "");
                   if (message.message?.[mtype]?.contextInfo?.quotedMessage) {
-                     /**
-                      * @type {import("baileys").proto.IContextInfo}
-                      */
                      let context = message.message[mtype].contextInfo;
                      let participant = conn.decodeJid(context.participant);
                      const remoteJid = conn.decodeJid(context.remoteJid || participant);
-                     /**
-                      * @type {import("baileys").proto.IMessage}
-                      */
                      let quoted = message.message[mtype].contextInfo.quotedMessage;
                      if (remoteJid && remoteJid !== "status@broadcast" && quoted) {
                         let qMtype = Object.keys(quoted)[0];
@@ -529,8 +507,8 @@ export function makeWASocket(connectionOptions, options = {}) {
             for await (const chunk of stream) {
                buffer = Buffer.concat([buffer, chunk]);
             }
-            let type = await FileType.fromBuffer(buffer);
-            trueFileName = attachExtension ? filename + "." + type.ext : filename;
+            let type = await fileTypeFromBuffer(buffer);
+            let trueFileName = attachExtension ? filename + "." + type.ext : filename;
             // save to file
             await fs.writeFileSync(trueFileName, buffer);
             return trueFileName;
@@ -768,7 +746,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                         }
                      }
                   } catch (e) {
-                     // console.warn(`Failed to get LID for ${jid}:`, e); // Opsional untuk debug
+                     // console.warn(`Failed to get LID for ${jid}:`, e);
                   }
                }
 
@@ -813,12 +791,6 @@ export function makeWASocket(connectionOptions, options = {}) {
                   emitGroupUpdate({ icon: m.messageStubParameters[0] });
                   break;
                default: {
-                  /*  console.log({
-                            messageStubType: m.messageStubType,
-                            messageStubParameters: m.messageStubParameters,
-                            type: WAMessageStubType[m.messageStubType]
-                        });
-                        */
                   break;
                }
             }
@@ -912,7 +884,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                     return conn.query({
                        tag: "iq",
                        attrs: {
-                          to: S_WHATSAPP_NET,
+                          to: "@s.whatsapp.net",
                           type: "set",
                           xmlns: "status"
                        },
@@ -937,14 +909,18 @@ export function makeWASocket(connectionOptions, options = {}) {
 }
 
 /**
- * Fungsi untuk serialize pesan.
+ * ========================================================
+ * FUNGSI SMSG YANG TELAH DIPERBARUI
+ * ========================================================
+ * Fungsi untuk serialize pesan dengan dukungan interactive message
  * @param {ReturnType<typeof makeWASocket>} conn
  * @param {import("baileys").proto.WebMessageInfo} m
  * @param {Boolean} hasParent
  * @returns
  */
 export async function smsg(conn, m, hasParent) {
-   if (!m) return;
+   if (!m) return m;
+   
    m = proto.WebMessageInfo.create(m);
    const messageId = generateMessageIDV2().slice(0, 4);
    const MediaType = [
@@ -1085,8 +1061,39 @@ export async function smsg(conn, m, hasParent) {
       text: {
          get() {
             const msg = m.msg;
-            const text = (typeof msg === "string" ? msg : msg?.text) || msg?.caption || msg?.contentText || "";
+            
+            // ========== LOGIKA BARU: EKSTRAKSI TEKS DARI INTERACTIVE MESSAGE ==========
+            let extractedText = "";
+            
+            if (m.mtype === 'conversation') {
+               extractedText = m.message.conversation;
+            } else if (m.mtype === 'extendedTextMessage') {
+               extractedText = m.message.extendedTextMessage.text;
+            } else if (m.mtype === 'templateButtonReplyMessage') {
+               extractedText = m.message.templateButtonReplyMessage.selectedId || '';
+            } else if (m.mtype === 'interactiveResponseMessage') {
+               const response = m.message.interactiveResponseMessage;
+               if (response.nativeFlowResponseMessage?.paramsJson) {
+                  try {
+                     const params = JSON.parse(response.nativeFlowResponseMessage.paramsJson);
+                     extractedText = params.id || '';
+                  } catch (e) {
+                     console.error("Error parsing interactive response JSON:", e);
+                  }
+               } else if (response.listResponseMessage?.singleSelectReply?.selectedRowId) {
+                  extractedText = response.listResponseMessage.singleSelectReply.selectedRowId;
+               }
+            } else if (m.mtype === 'buttonsResponseMessage') {
+               extractedText = m.message.buttonsResponseMessage.selectedButtonId || '';
+            } else if (m.mtype === 'listResponseMessage') {
+               extractedText = m.message.listResponseMessage.singleSelectReply?.selectedRowId || '';
+            }
+            
+            // Gunakan extractedText jika ada, atau fallback ke text/caption biasa
+            const text = extractedText || (typeof msg === "string" ? msg : msg?.text) || msg?.caption || msg?.contentText || "";
+            
             return typeof m._text === "string" ? m._text : "" || (typeof text === "string" ? text : text?.selectedDisplayText || text?.hydratedTemplate?.hydratedContentText || text) || "";
+            // ========== AKHIR LOGIKA BARU ==========
          },
          set(str) {
             return (m._text = str);
@@ -1254,14 +1261,38 @@ export async function smsg(conn, m, hasParent) {
                         return this.getQuotedObj;
                      }
                   },
+                  // ========== METODE DOWNLOAD YANG LEBIH BERSIH UNTUK QUOTED ==========
                   download: {
-                     value(saveToFile = false) {
-                        const mtype = this.mediaType;
-                        return conn?.downloadM(this.mediaMessage[mtype], mtype.replace(/message/i, ""), saveToFile);
+                     async value(saveToFile = false) {
+                        try {
+                           const mtype = this.mediaType;
+                           if (!mtype) return null;
+                           
+                           const stream = await downloadContentFromMessage(
+                              this.mediaMessage[mtype], 
+                              mtype.replace(/Message/gi, "")
+                           );
+                           
+                           let buffer = Buffer.from([]);
+                           for await (const chunk of stream) {
+                              buffer = Buffer.concat([buffer, chunk]);
+                           }
+                           
+                           if (saveToFile) {
+                              const { filename } = await conn.getFile(buffer, true);
+                              return filename;
+                           }
+                           
+                           return buffer;
+                        } catch (e) {
+                           console.error("Error downloading quoted media:", e);
+                           return null;
+                        }
                      },
                      enumerable: true,
                      configurable: true
                   },
+                  // ========== AKHIR METODE DOWNLOAD QUOTED ==========
                   reply: {
                      /**
                       * Balas ke pesan quoted
@@ -1279,19 +1310,56 @@ export async function smsg(conn, m, hasParent) {
          },
          enumerable: true
       },
+      // ========== METODE DOWNLOAD YANG LEBIH BERSIH ==========
       download: {
-         value(saveToFile = false) {
-            const mtype = m.mediaType;
-            return conn?.downloadM(m.mediaMessage[mtype], mtype.replace(/message/i, ""), saveToFile);
+         async value(saveToFile = false) {
+            try {
+               const mtype = m.mediaType;
+               if (!mtype) return null;
+               
+               const stream = await downloadContentFromMessage(
+                  m.mediaMessage[mtype], 
+                  mtype.replace(/Message/gi, "")
+               );
+               
+               let buffer = Buffer.from([]);
+               for await (const chunk of stream) {
+                  buffer = Buffer.concat([buffer, chunk]);
+               }
+               
+               if (saveToFile) {
+                  const { filename } = await conn.getFile(buffer, true);
+                  return filename;
+               }
+               
+               return buffer;
+            } catch (e) {
+               console.error("Error downloading media:", e);
+               return null;
+            }
          },
          enumerable: true,
          configurable: true
       },
+      // ========== AKHIR METODE DOWNLOAD ==========
       reply: {
          value(text, chatId, options) {
             return conn.reply(chatId ? chatId : this.chat, text, this, options);
          }
+      },
+      // ========== HELPER UNTUK REACT KE PESAN ==========
+      react: {
+         value(emoji) {
+            return conn.sendMessage(m.chat, { 
+               react: { 
+                  text: emoji, 
+                  key: m.key 
+               } 
+            });
+         },
+         enumerable: true
       }
+      // ========== AKHIR HELPER REACT ==========
    });
 }
 
@@ -1332,13 +1400,13 @@ export function protoType() {
    };
 
    Number.prototype.toTimeString = function toTimeString() {
-      // const milliseconds = this % 1000
       const seconds = Math.floor((this / 1000) % 60);
       const minutes = Math.floor((this / (60 * 1000)) % 60);
       const hours = Math.floor((this / (60 * 60 * 1000)) % 24);
       const days = Math.floor(this / (24 * 60 * 60 * 1000));
       return ((days ? `${days} day(s) ` : "") + (hours ? `${hours} hour(s) ` : "") + (minutes ? `${minutes} minute(s) ` : "") + (seconds ? `${seconds} second(s)` : "")).trim();
    };
+   
    Number.prototype.getRandom = String.prototype.getRandom = Array.prototype.getRandom = getRandom;
 
    String.prototype.decodeJid = function decodeJid() {
