@@ -155,6 +155,7 @@ export async function handler(chatUpdate) {
                 migrateUserData(global.db, m.sender, senderLID);
             }
             
+            if (!senderLID.endsWith('@g.us')) {
             // Gunakan LID untuk akses database
             let user = global.db.data.users[senderLID];
             if (typeof user !== "object") global.db.data.users[senderLID] = {};
@@ -196,6 +197,7 @@ export async function handler(chatUpdate) {
                 
                 // Log HANYA untuk user benar-benar baru
                 console.log(chalk.green(`[NEW USER] ${senderLID} registered in database`));
+                }
             }
 
             if (m.isGroup) {
