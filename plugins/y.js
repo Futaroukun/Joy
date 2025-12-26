@@ -1,65 +1,81 @@
-import { 
-    getExpProgress, 
-    getRankTitle, 
-    formatNumber,
-    generateProgressBar 
-} from '../lib/leveling.js'
+import { getLevelingInfo, formatNumber, generateProgressBar } from '../lib/leveling.js';
+import { areJidsSameUser } from '@whiskeysockets/baileys';
 
-let handler = async (m, { conn }) => {
-    try {
-        // Ambil data user yang mention atau sender
-        let who = m.mentionedJid?.[0] || m.quoted?.sender || m.sender
-        let user = global.db.data.users[who]
-        
-        if (!user) {
-            return m.reply('*USER TIDAK DITEMUKAN*\n\nUser tidak terdaftar dalam database.')
-        }
-        
-        // Hitung progress EXP
-        const progress = getExpProgress(user.exp, user.level)
-        const rankTitle = getRankTitle(user.level)
-        const progressBar = generateProgressBar(progress.percentage, 15)
-        
-        // Format pesan
-        let message = `*PROFILE LEVELING*\n\n`
-        message += `*Nama:* ${user.name}\n`
-        message += `*Level:* ${user.level}\n`
-        message += `*Rank:* ${rankTitle}\n`
-        message += `*Total EXP:* ${formatNumber(user.exp)}\n\n`
-        
-        message += `*PROGRESS KE LEVEL ${user.level + 1}*\n`
-        message += `${progressBar} ${progress.percentage}%\n`
-        message += `${formatNumber(progress.current)} / ${formatNumber(progress.needed)} EXP\n\n`
-        
-        message += `*STATUS AKUN*\n`
-        message += `• Premium: ${user.premium ? 'Aktif (2x EXP) ⭐' : 'Tidak Aktif'}\n`
-        message += `• Limit: ${user.limit}\n`
-        message += `• Registered: ${user.register ? 'Ya' : 'Tidak'}\n\n`
-        
-        if (user.premium) {
-            message += `*BONUS PREMIUM:*\n`
-            message += `• Mendapat 2x lipat EXP setiap interaksi\n`
-            message += `• EXP per chat: 6 (3 x 2)\n\n`
-        } else {
-            message += `*INFO:*\n`
-            message += `• EXP per chat: 3\n`
-            message += `• Upgrade ke Premium untuk 2x EXP!\n\n`
-        }
-        
-        message += `Terus aktif untuk naik level! 🚀`
-        
-        await conn.reply(m.chat, message, m, {
-            mentions: [who]
-        })
-        
-    } catch (error) {
-        console.error('Rank command error:', error)
-        m.reply('*TERJADI KESALAHAN*\n\nGagal mengambil data leveling.')
+let handler = async (m, { conn, usedPrefix, command, isOwner, isAdmin }) => {
+    // 1. Tentukan target user
+    // Prioritas: Mention > Reply > Diri sendiri
+    let who = m.mentionedJid && m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : m.sender;
+    
+    // Pastikan kita tidak menarget bot itu sendiri secara tidak sengaja
+    if (areJidsSameUser(who, conn.user.jid)) {
+        who = m.sender;
     }
-}
+    
+    // 2. Ambil data user dari database
+    let user = global.db.data.users[who];
+    if (!user) {
+        return m.reply(`*USER TIDAK DITEMUKAN*\n\nUser tersebut belum terdaftar di database bot.`);
+    }
+    
+    // 3. Ambil nama user
+    const name = await conn.getName(who);
+    
+    // 4. Manfaatkan fungsi getLevelingInfo dari leveling.js
+    const info = getLevelingInfo(user);
+    
+    // 5. Tentukan status user (Owner, Premium, Banned, dll)
+    const ownerLids = global.owner.map(o => {
+        const jid = `${o.replace(/[^0-9]/g, '')}@s.whatsapp.net`;
+        return conn.getLid(jid);
+    });
+    
+    let status = [];
+    if (ownerLids.includes(who)) {
+        status.push('Developer');
+    }
+    if (user.premium) {
+        status.push('Premium User')
+    }
+    
+    // 6. Siapkan pesan balasan
+    let profileText = `
+*USER PROFILE*
 
-handler.help = ['rank', 'level']
-handler.tags = ['info']
-handler.command = /^(rank|level|lvl)$/i
+*Nama:* ${name}
+*Status:* ${status.length > 0 ? status.join(', ') : 'Standard User'}
+*Banned:* ${user.banned ? 'Ya' : 'Tidak'}
 
-export default handler
+*LEVEL & RANK*
+- Level: *${info.level}*
+- Rank: *${info.rank}*
+- EXP: *${formatNumber(info.exp)}*
+- Limit: *${formatNumber(user.limit)}*
+
+`;
+    
+    // 7. Tambahkan progress bar atau pesan max level
+    if (info.isMaxLevel) {
+        profileText += `*STATUS LEVEL*
+Selamat! Anda telah mencapai level maksimal (*Level 120*). EXP tidak akan bertambah lagi.`;
+    } else {
+        const expToNextLevel = info.progress.needed - info.progress.current;
+        profileText += `*PROGRESS MENUJU LV. ${info.level + 1}*
+${generateProgressBar(info.progress.percentage, 15)}
+*${info.progress.percentage}%* (${formatNumber(info.progress.current)} / ${formatNumber(info.progress.needed)})
+
+*Butuh:* *${formatNumber(expToNextLevel)}* EXP lagi untuk level up.
+
+*TIER INFO*
+- Tier: *${info.tierInfo.tierName}*
+- Multiplier: *${info.tierInfo.tierMultiplier}x* EXP Requirement`;
+    }
+    
+    // 8. Kirim pesan
+    await conn.reply(m.chat, profileText.trim(), m, { mentions: [who] });
+};
+
+handler.help = ['profile', 'level', 'my'];
+handler.tags = ['info'];
+handler.command = /^(profile|level|my|me)$/i;
+
+export default handler;
