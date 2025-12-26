@@ -1,6 +1,7 @@
 import "./settings.js";
 import { smsg } from "./function/simple.js";
-import { storeMessage, handleMessageRevocation } from "./function/antidelete.js"
+import { storeMessage, handleMessageRevocation } from "./function/antidelete.js";
+import { handleExpGain, validateUserData } from "./lib/leveling.js";
 import { fileURLToPath } from "url";
 import path from "path";
 import { format } from "util";
@@ -416,6 +417,11 @@ export async function handler(chatUpdate) {
                 }
 
                 m.isCommand = true;
+                
+                if(user && !user.banned && plugin.exp) {
+                    validateUserData(user);
+                    await handleExpGain(this, m, user)
+                }
 
                 let extra = {
                     match,

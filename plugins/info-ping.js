@@ -122,5 +122,6 @@ function clockString(ms) {
 handler.help = ['ping']
 handler.tags = ['info']
 handler.command = /^(ping|status|stats)$/i
+handler.exp = 3
 
 export default handler

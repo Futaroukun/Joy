@@ -3,8 +3,8 @@
     "210650966061175@lid": {
       "name": "M",
       "age": -1,
-      "level": 0,
-      "exp": 0,
+      "level": 1,
+      "exp": 3,
       "limit": 1010,
       "afk": false,
       "afkReason": "",
