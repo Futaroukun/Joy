@@ -357,7 +357,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                : /^data:.*?\/.*?;base64,/i.test(path)
                ? Buffer.from(path.split`,`[1], "base64")
                : /^https?:\/\//.test(path)
-               ? await getBuffer(path)
+               ? await (await fetch(path)).buffer()
                : fs.existsSync(path)
                ? fs.readFileSync(path)
                : Buffer.alloc(0);
