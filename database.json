@@ -3,9 +3,9 @@
     "210650966061175@lid": {
       "name": "M",
       "age": -1,
-      "level": 1,
-      "exp": 120,
-      "limit": 1010,
+      "level": 120,
+      "exp": 182251315,
+      "limit": 10,
       "afk": false,
       "afkReason": "",
       "register": false,

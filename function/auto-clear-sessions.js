@@ -36,7 +36,7 @@ export function clearSessionFiles(sessionsPath = './sessions') {
         }
         
         if (deletedCount > 0) {
-            console.log(`${chalk.white.bold(" [SESSION-CLEANER]")} ${chalk.green.bold(`✅ Berhasil membersihkan ${deletedCount} file sessions usang.`)}`);
+            console.log(`${chalk.white.bold(" [SESSION-CLEANER]")} ${chalk.green.bold(`Berhasil membersihkan ${deletedCount} file sessions usang.`)}`);
         } else {
             console.log(`${chalk.white.bold(" [SESSION-CLEANER]")} ${chalk.blue.bold("Tidak ada file session usang untuk dibersihkan.")}`);
         }
@@ -52,14 +52,14 @@ export function clearSessionFiles(sessionsPath = './sessions') {
 export function startAutoClearSessions(intervalHours = 3) {
     const intervalMs = intervalHours * 60 * 60 * 1000;
     
-    console.log(`${chalk.white.bold(" [SESSION-CLEANER]")} ${chalk.blue.bold(`🔄 Auto-clear sessions diaktifkan (setiap ${intervalHours} jam).`)}`);
+    console.log(`${chalk.white.bold(" [SESSION-CLEANER]")} ${chalk.blue.bold(`Auto-clear sessions diaktifkan (setiap ${intervalHours} jam).`)}`);
     
     // Clear pertama kali saat startup
-    clearSessionFiles();
+    // clearSessionFiles();
     
     // Set interval untuk clear otomatis
     setInterval(() => {
-        console.log(`${chalk.white.bold(" [SESSION-CLEANER]")} ${chalk.yellow.bold("⏰ Memulai pembersihan sessions terjadwal...")}`);
+        console.log(`${chalk.white.bold(" [SESSION-CLEANER]")} ${chalk.yellow.bold("Memulai pembersihan sessions terjadwal...")}`);
         clearSessionFiles();
     }, intervalMs);
 }
