@@ -416,12 +416,19 @@ export async function handler(chatUpdate) {
                     continue;
                 }
 
-                m.isCommand = true;
-                
-                if(user && !user.banned && plugin.exp) {
-                    validateUserData(user);
-                    await handleExpGain(this, m, user)
+                if (!m.fromMe && !senderLID.endsWith('@g.us')) {
+                    const expUser = global.db.data.users[senderLID];
+                    if (expUser && !expUser.banned) {
+                        try {
+                            const oldExp = expUser.exp;
+                            await handleExpGain(this, m, expUser);
+                        } catch (e) {
+                            console.error('EXP giving error:', e);
+                        }
+                    }
                 }
+
+                m.isCommand = true;
 
                 let extra = {
                     match,
