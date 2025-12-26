@@ -29,12 +29,12 @@ export default async function (m, conn = { user: {} }) {
 
     console.log(chalk.gray("-".repeat(50)));
     console.log(
-        `${chalk.white(" » BOT:")} ${chalk.black(chalk.bgBlue("%s"))}
-${chalk.white(" » SENDER:")} ${chalk.white("%s")}
-${chalk.white(" » NAME:")} ${chalk.blueBright("%s")}
-${chalk.white(" » DATE:")} ${chalk.gray("%s")}
-${chalk.white(" » SEND TO:")} ${chalk.green("%s")}
-${chalk.white(" » MTYPE:")} ${chalk.yellow("%s")} ${chalk.red("[%s %sB]")}`.trim(),
+        `${chalk.white(" › BOT:")} ${chalk.black(chalk.bgBlue("%s"))}
+${chalk.white(" › SENDER:")} ${chalk.white("%s")}
+${chalk.white(" › NAME:")} ${chalk.blueBright("%s")}
+${chalk.white(" › DATE:")} ${chalk.gray("%s")}
+${chalk.white(" › SEND TO:")} ${chalk.green("%s")}
+${chalk.white(" › MTYPE:")} ${chalk.yellow("%s")} ${chalk.red("[%s %sB]")}`.trim(),
         global.info.namabot,
         sender,
         _name,

@@ -21,8 +21,8 @@ const sleep = ms => {
 export async function headerLog() {
     await sleep(600);
     console.clear();
-    CFonts.say("\n XRDHZ-MD", {
-        font: "tiny",
+    CFonts.say("\n Joy", {
+        font: "slick",
         align: "left",
         colors: ["white"],
         gradient: ["green", "blue"]
@@ -31,10 +31,10 @@ export async function headerLog() {
     console.log(chalk.bold.white("━".repeat(50)));
     console.log(chalk.bold.yellow(" • SCRIPT INFO"));
     console.log(chalk.gray("-".repeat(50)));
-    console.log(chalk.white(` ➢ 🤖  Author: ${chalk.green.bold(author)}`));
-    console.log(chalk.white(` ➢ 👤  Github: ${chalk.blue(global.lgh)}`));
-    console.log(chalk.white(` ➢ ✅  Whatsapp: ${chalk.blue(global.lwa)}`));
-    console.log(chalk.white(` ➢ ⚙️  Baileys: ${chalk.cyan(dependencies.baileys.replace("^", "v"))}`));
+    console.log(chalk.white(` ◉ Author: ${chalk.green.bold(author)}`));
+    console.log(chalk.white(` ◉ Github: ${chalk.blue(global.lgh)}`));
+    console.log(chalk.white(` ◉ Whatsapp: ${chalk.blue(global.lwa)}`));
+    console.log(chalk.white(` ◉ Baileys: ${chalk.cyan(dependencies.baileys.replace("^", "v"))}`));
     console.log(chalk.gray("━".repeat(50)));
     console.log(chalk.bold.blue(" • SERVER INFO"));
     console.log(chalk.gray("-".repeat(50)));

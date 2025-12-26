@@ -7,8 +7,8 @@ import { unlinkSync, readdirSync, existsSync } from "fs";
 import { join } from "path";
 
 /**
- * Fungsi untuk membuat pairing kode.
- * @param {ReturnType<typeof makeWASocket>} conn
+- Fungsi untuk membuat pairing kode.
+- @param {ReturnType<typeof makeWASocket>} conn
  */
 export async function requestPairing(conn) {
     if (!conn.authState.creds.registered) {
@@ -55,9 +55,9 @@ export async function requestPairing(conn) {
 
 
 /**
- * Fungsi untuk update koneksi dengan FIXED ERROR HANDLING
- * @param {*} update
- * @param {ReturnType<typeof makeWASocket>} conn
+- Fungsi untuk update koneksi dengan LOGIKA RECONNECT YANG LEBIH BAIK
+- @param {*} update
+- @param {ReturnType<typeof makeWASocket>} conn
  */
 export async function connectionUpdate(update, conn) {
     const { receivedPendingNotifications, connection, lastDisconnect, isOnline, isNewLogin } = update;
@@ -68,131 +68,71 @@ export async function connectionUpdate(update, conn) {
         console.log(e);
     }
     
-    try {
-        if (connection === "open") {
-            console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.green.bold(`TERHUBUNG ✅`)}`);
-            return true;
-        }
+    if (connection === "connecting") {
+        console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold(`MENCOBA TERHUBUNG... ⏳`)}`);
+        return;
+    }
+    
+    if (connection === "open") {
+        console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.green.bold(`TERHUBUNG ✅`)}`);
+        return;
+    }
+
+    if (connection === "close") {
+        const statusCode = lastDisconnect?.error?.output?.statusCode;
+        const reason = new DisconnectReason(lastDisconnect?.error)?.toString();
         
-        if (connection === "close") {
-            const statusCode = lastDisconnect?.error?.output?.statusCode;
-            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-            const errorMessage = lastDisconnect?.error?.message || '';
-            
-            console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold(`KONEKSI TERPUTUS`)}`);
-            console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold(`Status Code: ${statusCode}`)}`);
-            
-            // === HANDLE SPECIFIC ERROR CODES ===
-            
-            // LOGGED OUT - Hapus semua sessions
-            if (statusCode === DisconnectReason.loggedOut) {
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("❌ BOT LOGGED OUT!")}`);
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Menghapus semua sessions...")}`);
+        console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold(`KONEKSI TERPUTUS`)}`);
+        console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold(`Penyebab: ${reason} (Code: ${statusCode})`)}`);
+
+        // === LOGIKA BARU: MEMBEDAKAN ERROR FATAL DAN SEMENTARA ===
+
+        switch (statusCode) {
+            // 1. FATAL: Logged Out -> Hapus semua session & matikan bot
+            case DisconnectReason.loggedOut:
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("❌ BOT LOGGED OUT! Sesi tidak valid.")}`);
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Menghapus semua file sessions...")}`);
                 
                 const sessionsPath = './sessions';
                 if (existsSync(sessionsPath)) {
-                    const files = readdirSync(sessionsPath);
-                    for (const file of files) {
-                        try {
-                            unlinkSync(join(sessionsPath, file));
-                        } catch {}
-                    }
+                    readdirSync(sessionsPath).forEach(file => {
+                        try { unlinkSync(join(sessionsPath, file)); } catch {}
+                    });
                 }
                 
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("Silakan restart bot dan re-pair")}`);
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("Silakan restart bot dan lakukan pairing ulang.")}`);
                 process.exit(1);
-            }
-            
-            // AUTH ERRORS (428, 401, 403, 515, 503, dll)
-            const authErrorCodes = [428, 401, 403, 515, 503, 500];
-            const isAuthError =
-                authErrorCodes.includes(statusCode) ||
-                errorMessage.toLowerCase().includes('auth') ||
-                errorMessage.toLowerCase().includes('stream error') ||
-                errorMessage.toLowerCase().includes('connection') ||
-                errorMessage.toLowerCase().includes('terminated');
-            
-            if (isAuthError) {
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("⚠️  AUTH/STREAM ERROR DETECTED!")}`);
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Membersihkan sessions...")}`);
-                
-                // Clear sessions (kecuali creds.json)
-                clearSessionFiles();
-                
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Reconnecting dengan fresh session...")}`);
-                
-                // Delay sebelum reconnect
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                
-                // Reload handler dengan restart connection
+                break;
+
+            // 2. FATAL: Sesi Buruk / Error Auth -> Bersihkan session & hard restart
+            case DisconnectReason.badSession:
+            case DisconnectReason.connectionReplaced:
+            case DisconnectReason.multideviceMismatch: // Penting untuk Baileys v6+
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("⚠️  Sesi tidak valid atau digantikan. Membersihkan file session...")}`);
+                await clearSessionFiles();
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Melakukan hard restart...")}`);
                 await global.reloadHandler(true);
-                
-                return false;
-            }
-            
-            // BAD SESSION - Restart dengan clean
-            if (statusCode === DisconnectReason.badSession) {
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("⚠️  BAD SESSION!")}`);
-                clearSessionFiles();
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                break;
+
+            // 3. SEMENTARA: Masalah Jaringan -> Biarkan Baileys reconnect otomatis
+            case DisconnectReason.connectionClosed:
+            case DisconnectReason.connectionLost:
+            case DisconnectReason.timedOut:
+            case DisconnectReason.restartRequired:
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Masalah jaringan terdeteksi. Menunggu Baileys reconnect otomatis...")}`);
+                // KITA TIDAK MELAKUKAN APA-APA DI SINI.
+                // JANGAN PANGGIL reloadHandler(true).
+                break;
+
+            // 4. DEFAULT: Untuk error lain yang tidak terduga
+            default:
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.magenta.bold("Menjalankan hard restart untuk error tidak dikenal...")}`);
                 await global.reloadHandler(true);
-                return false;
-            }
-            
-            // CONNECTION CLOSED - Normal reconnect
-            if (statusCode === DisconnectReason.connectionClosed) {
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("CONNECTION CLOSED - Reconnecting...")}`);
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                await global.reloadHandler(true);
-                return false;
-            }
-            
-            // CONNECTION LOST - Reconnect
-            if (statusCode === DisconnectReason.connectionLost) {
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("CONNECTION LOST - Reconnecting...")}`);
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                await global.reloadHandler(true);
-                return false;
-            }
-            
-            // RESTART REQUIRED
-            if (statusCode === DisconnectReason.restartRequired) {
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("RESTART REQUIRED - Restarting...")}`);
-                await global.reloadHandler(true);
-                return false;
-            }
-            
-            // TIMED OUT
-            if (statusCode === DisconnectReason.timedOut) {
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("TIMED OUT - Reconnecting...")}`);
-                await new Promise(resolve => setTimeout(resolve, 3000));
-                await global.reloadHandler(true);
-                return false;
-            }
-            
-            // DEFAULT - Reconnect jika shouldReconnect = true
-            if (shouldReconnect) {
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold(`RECONNECTING... (Code: ${statusCode})`)}`);
-                await new Promise(resolve => setTimeout(resolve, 3000));
-                await global.reloadHandler(true);
-            }
+                break;
         }
-        
-        if (receivedPendingNotifications) {
-            console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellowBright.bold(`MENUNGGU PESAN MASUK 📥`)}`);
-        }
-        
-        return false;
-    } catch (error) {
-        console.error('Connection update error:', error);
-        
-        // Jika error saat handle connection, coba clean & reconnect
-        console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("Unexpected error, attempting recovery...")}`);
-        clearSessionFiles();
-        
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        await global.reloadHandler(true);
-        
-        return false;
+    }
+    
+    if (receivedPendingNotifications) {
+        console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellowBright.bold(`MENUNGGU PESAN MASUK 📥`)}`);
     }
 }
