@@ -1,9 +1,6 @@
 import { readdirSync, statSync } from 'fs'
 import { join } from 'path'
 
-/**
- * Fungsi untuk mengonversi ukuran byte menjadi satuan yang mudah dibaca
- */
 const formatSize = (bytes) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -15,8 +12,11 @@ const formatSize = (bytes) => {
 let handler = async (m, { usedPrefix, command }) => {
     try {
         const pluginsDir = join(process.cwd(), 'plugins')
-        const files = readdirSync(pluginsDir).filter(file => file.endsWith('.js'))
-        
+        // DIUBAH: Tambahkan .sort() untuk memastikan urutan konsisten
+        const files = readdirSync(pluginsDir)
+            .filter(file => file.endsWith('.js'))
+            .sort()
+
         if (files.length === 0) {
             return m.reply('*TIDAK ADA PLUGIN DITEMUKAN*\n\nFolder *plugins/* saat ini masih kosong.')
         }
@@ -26,6 +26,7 @@ let handler = async (m, { usedPrefix, command }) => {
             const stats = statSync(join(pluginsDir, file))
             totalSize += stats.size
             const name = file.replace('.js', '')
+            // Nomornya akan sesuai dengan urutan yang sudah disortir
             return `${index + 1}. *${name}* (${formatSize(stats.size)})`
         }).join('\n')
 
@@ -34,7 +35,7 @@ let handler = async (m, { usedPrefix, command }) => {
         response += '\n\n==================================\n'
         response += `*Total Plugin:* ${files.length}\n`
         response += `*Total Ukuran:* ${formatSize(totalSize)}\n`
-        response += `*Gunakan:* ${usedPrefix}gp <nama_plugin> untuk melihat kode.`
+        response += `*Gunakan:* ${usedPrefix}gp <nomor|nama> untuk melihat kode.`
 
         return m.reply(response)
 
