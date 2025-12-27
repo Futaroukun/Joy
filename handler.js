@@ -147,6 +147,12 @@ export async function handler(chatUpdate) {
         
         const decodedBotLid = jidNormalizedUser(conn?.user?.lid);
         
+        let isROwner = false;
+        let isOwner = false;
+        let isPremium = false;
+        let decodedOwnLid = [];
+        let userDb = {};
+        
         // ===== LOAD DATABASE DENGAN LID =====
         try {
             if (global.db.data == null) await global.loadDatabase();
@@ -199,6 +205,22 @@ export async function handler(chatUpdate) {
                 // Log HANYA untuk user benar-benar baru
                 console.log(chalk.green(`[NEW USER] ${senderLID} registered in database`));
                 }
+            }
+
+            decodedOwnLid = await Promise.all(
+                global.owner.map(async o => {
+                    const jid = `${o.replace(/[^0-9]/g, "")}@s.whatsapp.net`;
+                    return await ensureLID(conn, jid);
+                })
+            );
+            
+            userDb = global.db.data.users[senderLID] || {};
+            isROwner = ([...decodedOwnLid] || decodedBotLid).includes(senderLID);
+            isOwner = isROwner || m.fromMe || false;
+            isPremium = userDb.premium === true;
+
+            if (isOwner || isPremium) {
+                userDb.limit = Infinity;
             }
 
             if (m.isGroup) {
@@ -260,16 +282,6 @@ export async function handler(chatUpdate) {
 
         if (typeof m.text !== "string") m.text = "";
         
-        // ===== KONVERSI OWNER LIST KE LID =====
-        const decodedOwnLid = await Promise.all(
-            global.owner.map(async o => {
-                const jid = `${o.replace(/[^0-9]/g, "")}@s.whatsapp.net`;
-                return await ensureLID(conn, jid);
-            })
-        );
-        
-        const isROwner = ([...decodedOwnLid] || decodedBotLid).includes(senderLID);
-        const isOwner = isROwner || m.fromMe || false;
 
         let usedPrefix;
         const groupMetadata = (m.isGroup ? (conn.chats[m.chat] || {}).metadata || (await this.groupMetadata(m.chat).catch(_ => null)) : {}) || {};
@@ -284,7 +296,6 @@ export async function handler(chatUpdate) {
         const isBotAdmin = bot?.admin || false;
 
         const isRegister = global.db.data?.users[senderLID]?.register === true;
-        const isPremium = global.db.data?.users[senderLID]?.premium === true;
         const isBannned = global.db.data?.users[senderLID]?.banned === true;
         const isMuted = m.isGroup && global.db.data?.chats[m.chat]?.mute === true;
         const isSewa = m.isGroup && global.db.data?.chats[m.chat]?.sewa === true;

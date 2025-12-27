@@ -244,12 +244,23 @@ global.reloadHandler = async function reloadHandler(restartConnection) {
 global.plugins = {};
 const pluginFolder = global.__dirname(join(__dirname, "./plugins/index"));
 const pluginFilter = filename => /\.js$/.test(filename);
+
 async function featuresInit() {
     for (let filename of readdirSync(pluginFolder).filter(pluginFilter)) {
         try {
             let files = global.__filename(join(pluginFolder, filename));
             const module = await import(files);
             global.plugins[filename] = module.default || module;
+            
+            if (!global.db.data.pluginSettings) {
+                global.db.data.pluginSettings = {};
+            }
+            const pluginSettings = global.db.data.pluginSettings[filename];
+            if (pluginSettings && pluginSettings.disabled) {
+                global.plugins[filename].disable = true;
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.blue.bold(`Plugin "${filename}" dinonaktifkan.`)}`);
+            }
+            
         } catch (error) {
             console.log(`${chalk.white.bold(" [INFO]")} ${chalk.green.bold(`FITUR ERROR "${filename}"`)}`);
             console.log(error);

@@ -4,8 +4,8 @@
       "name": "M",
       "age": -1,
       "level": 120,
-      "exp": 182251315,
-      "limit": 10,
+      "exp": 182251606,
+      "limit": null,
       "afk": false,
       "afkReason": "",
       "register": false,
@@ -249,6 +249,14 @@
       "autoread": true,
       "autobackup": true,
       "backupDate": -1
+    }
+  },
+  "pluginSettings": {
+    "tools-upload.js": {
+      "disabled": false
+    },
+    "tools-roblox.js": {
+      "disabled": false
     }
   }
 }
