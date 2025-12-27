@@ -4,7 +4,7 @@
       "name": "M",
       "age": -1,
       "level": 120,
-      "exp": 182251648,
+      "exp": 182251738,
       "limit": null,
       "afk": false,
       "afkReason": "",
@@ -147,9 +147,9 @@
     "160168574738539@lid": {
       "name": "D",
       "age": -1,
-      "level": 0,
-      "exp": 0,
-      "limit": 10,
+      "level": 1,
+      "exp": 6,
+      "limit": 20,
       "afk": false,
       "afkReason": "",
       "register": false,
@@ -244,7 +244,7 @@
   },
   "settings": {
     "274062534299882@lid": {
-      "chatMode": "",
+      "chatMode": "gconly",
       "antispam": true,
       "autoread": true,
       "autobackup": true,

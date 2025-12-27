@@ -6,90 +6,76 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     
     const modes = {
         'all': {
-            name: 'Public Mode',
-            desc: 'Bot dapat digunakan di semua chat (Private & Group)',
+            name: 'Publik',
+            desc: 'Bisa dipakai dimana aja',
             value: ''
         },
         'gconly': {
-            name: 'Group Only Mode',
-            desc: 'Bot hanya dapat digunakan di Group Chat',
+            name: 'Group Only',
+            desc: 'Cuma bisa di grup',
             value: 'gconly'
         },
         'pconly': {
-            name: 'Private Only Mode',
-            desc: 'Bot hanya dapat digunakan di Private Chat',
+            name: 'Private Only',
+            desc: 'Cuma bisa di chat pribadi',
             value: 'pconly'
         }
     }
     
+    // Tampilan utama
     if (!args[0]) {
         const currentMode = settings.chatMode || ''
-        let modeDisplay
+        let modeDisplay = currentMode === 'gconly' ? 'Group Only' : 
+                         currentMode === 'pconly' ? 'Private Only' : 'Publik'
         
-        if (currentMode === 'gconly') {
-            modeDisplay = 'Group Only'
-        } else if (currentMode === 'pconly') {
-            modeDisplay = 'Private Only'
-        } else {
-            modeDisplay = 'Public (All Chat)'
-        }
+        let menu = `Mode Bot\n`
+        menu += `Mode sekarang: ${modeDisplay}\n\n`
         
-        let menu = '*BOT MODE CONFIGURATION*\n\n'
-        menu += `*Mode Saat Ini:* ${modeDisplay}\n\n`
-        menu += '*Daftar Mode yang Tersedia:*\n\n'
-        
+        menu += `Pilihan Mode:\n`
         for (let [key, mode] of Object.entries(modes)) {
             const isActive = (key === 'all' && !currentMode) || (currentMode === mode.value)
-            const status = isActive ? '✅' : '❎'
-            menu += `*Status:* ${status}\n`
-            menu += `*Mode:* ${mode.name}\n`
-            menu += `*Keterangan:* ${mode.desc}\n`
-            menu += `*Command:* ${usedPrefix + command} ${key}\n\n`
+            const status = isActive ? '[AKTIF]' : ''
+            menu += `${status} ${mode.name}\n`
+            menu += `   - ${mode.desc}\n`
+            menu += `   - ${usedPrefix + command} ${key}\n\n`
         }
         
-        menu += '*PENGGUNAAN:*\n'
-        menu += `${usedPrefix + command} <mode>\n\n`
-        menu += '*CONTOH:*\n'
-        menu += `* ${usedPrefix + command} all\n`
-        menu += `* ${usedPrefix + command} gconly\n`
-        menu += `* ${usedPrefix + command} pconly`
+        menu += `Cara pakai:\n`
+        menu += `${usedPrefix + command} <mode>\n`
+        menu += `Contoh: ${usedPrefix + command} gconly`
         
         return m.reply(menu)
     }
     
+    // Ganti mode
     const selectedMode = args[0].toLowerCase()
     
     if (!modes[selectedMode]) {
-        return m.reply(
-            '*MODE TIDAK VALID*\n\n' +
-            '*Daftar mode yang tersedia:*\n' +
-            '* all (Public)\n' +
-            '* gconly (Group Only)\n' +
-            '* pconly (Private Only)\n\n' +
-            `*Contoh:* ${usedPrefix + command} all`
-        )
+        return m.reply(`Mode tidak valid!\n\nPilihan mode:\n- all (Mode publik)\n- gconly (Group only)\n- pconly (Private only)\n\nContoh: ${usedPrefix + command} all`)
     }
     
     const newMode = modes[selectedMode].value
     settings.chatMode = newMode
     global.db.data.settings[botLid] = settings
     
-    let response = '*PENGATURAN MODE BERHASIL*\n\n'
-    response += `*Mode Baru:* ${modes[selectedMode].name}\n`
-    response += `*Keterangan:* ${modes[selectedMode].desc}\n\n`
+    const mode = modes[selectedMode]
+    
+    let successMsg = `Mode berhasil diganti!\n\n`
+    successMsg += `Mode baru: ${mode.name}\n`
+    successMsg += `Keterangan: ${mode.desc}\n\n`
     
     if (selectedMode === 'all') {
-        response += '*Status:* Bot sekarang merespons di semua tipe chat.'
+        successMsg += `Bot sekarang bisa dipakai di semua chat`
     } else if (selectedMode === 'gconly') {
-        response += '*Status:* Bot sekarang hanya merespons di dalam Grup.'
+        successMsg += `Bot cuma bakal respon di grup`
     } else if (selectedMode === 'pconly') {
-        response += '*Status:* Bot sekarang hanya merespons di dalam Chat Pribadi.'
+        successMsg += `Bot cuma bakal respon di chat pribadi`
     }
     
-    return m.reply(response)
+    return m.reply(successMsg)
 }
 
-handler.help = ['setmode *mode*']
+handler.help = ['setmode <mode>']
 handler.tags = ['owner']
 handler.command = /^(setmode|mode)$/i
 handler.owner = true

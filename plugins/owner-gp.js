@@ -1,20 +1,19 @@
 import cp, { exec as _exec } from 'child_process'
 import { promisify } from 'util'
 import { readdirSync } from 'fs'
+import { sendButtons } from '../function/button.js' // <-- DITAMBAHKAN
 
 const exec = promisify(_exec).bind(cp)
 
 let handler = async (m, { conn, usedPrefix, command, text }) => {
     try {
         const pluginsDir = './plugins'
-        // DIUBAH: Baca, filter, dan langsung urutkan file plugin secara alfabetis
         const pluginFiles = readdirSync(pluginsDir)
             .filter(file => file.endsWith('.js'))
             .sort() 
         
         const pluginNames = pluginFiles.map(file => file.replace('.js', ''))
 
-        // DIUBAH: Logika jika tidak ada input, tampilkan list bernomor
         if (!text) {
             let response = '*GET PLUGIN - PILIH PLUGIN*\n\n'
             response += 'Gunakan nomor atau nama plugin untuk mengambil kodenya.\n\n'
@@ -24,19 +23,15 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
             return m.reply(response)
         }
 
-        // --- LOGIKA BARU: Tentukan target berdasarkan nomor atau nama ---
         let targetPlugin = null
         const inputAsNumber = parseInt(text)
 
-        // Jika input adalah nomor yang valid
         if (!isNaN(inputAsNumber) && inputAsNumber > 0 && inputAsNumber <= pluginNames.length) {
             targetPlugin = pluginNames[inputAsNumber - 1]
         } 
-        // Jika input adalah nama plugin yang ada di list
         else if (pluginNames.includes(text)) {
             targetPlugin = text
         }
-        // --- AKHIR LOGIKA BARU ---
 
         if (!targetPlugin) {
             return m.reply(`*Plugin Tidak Ditemukan.*\n\nInput "${text}" tidak valid. Gunakan *.gp* tanpa argumen untuk melihat daftar plugin yang tersedia.`)
@@ -59,7 +54,26 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
 
         if (stdout && stdout.trim()) {
             const output = stdout.trim()
-            return m.reply(output)
+            
+            // --- BAGIAN YANG DIUBAH ---
+            // Mengganti m.reply biasa dengan sendButtons
+            const buttonPayload = {
+                text: output,
+                footer: `Klik tombol di bawah untuk menyalin kode plugin.`,
+                buttons: [
+                    {
+                        name: 'cta_copy',
+                        buttonParamsJson: JSON.stringify({
+                            display_text: 'Salin Kode',
+                            copy_code: output
+                        })
+                    }
+                ]
+            };
+            
+            await sendButtons(conn, m.chat, buttonPayload, { quoted: m });
+            // --- AKHIR BAGIAN YANG DIUBAH ---
+
         } else {
             return m.reply(`*GAGAL MEMPROSES*\n\nFile *plugins/${targetPlugin}.js* ditemukan namun isinya kosong atau tidak dapat dibaca.`)
         }

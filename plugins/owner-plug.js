@@ -2,7 +2,7 @@ import { readdirSync } from 'fs';
 import { join } from 'path';
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
-    const isEnable = /^(enableplugin|pon)$/i.test(command);
+    const isEnable = /^(onplugin|pon)$/i.test(command);
     const actionPast = isEnable ? 'ON' : 'OFF';
 
     if (!global.db.data.pluginSettings) {
@@ -32,9 +32,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         
         response += `*PANDUAN PENGGUNAAN*\n`;
         response += `Ketik perintah di bawah ini buat ubah status plugin:\n\n`;
-        response += `*${usedPrefix}pon nomor/nama*\n> Untuk menyalakan plugin\n\n`;
-        response += `*${usedPrefix}poff nomor/nama*\n> Untuk mematikan plugin\n\n`;
-        response += `*Contoh:*\n${usedPrefix}poff 5\n${usedPrefix}pon antilink`;
+        response += `*${usedPrefix}onplugin nomor/nama*\n> Untuk menyalakan plugin\n\n`;
+        response += `*${usedPrefix}offplugin nomor/nama*\n> Untuk mematikan plugin\n\n`;
+        response += `*Contoh:*\n${usedPrefix}offplugin 5\n${usedPrefix}onplugin antilink`;
 
         return m.reply(response);
     }
@@ -84,9 +84,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     await m.reply(`*BERHASIL DIUBAH*\n\nNama Plugin: *${targetPlugin.replace('.js', '')}*\nStatus Baru: *${actionPast}*`);
 };
 
-handler.help = ['enableplugin *plugin*', 'disableplugin *plugin*'];
+handler.help = ['onplugin *plugin*', 'offplugin *plugin*'];
 handler.tags = ['owner'];
-handler.command = /^(enableplugin|pon|disableplugin|poff)$/i;
+handler.command = /^(onplugin|pon|offplugin|poff)$/i;
 handler.owner = true;
 
 export default handler;
