@@ -55,6 +55,15 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     }
     
     const newMode = modes[selectedMode].value
+    const currentMode = settings.chatMode || ''
+    
+    // Validasi: cek apakah mode yang diminta sudah aktif
+    if (newMode === currentMode) {
+        const modeName = selectedMode === 'all' ? 'Publik' : 
+                        selectedMode === 'gconly' ? 'Group Only' : 'Private Only'
+        return m.reply(`Bot sudah dalam mode ${modeName}.\n\nTidak ada perubahan yang dilakukan.`)
+    }
+    
     settings.chatMode = newMode
     global.db.data.settings[botLid] = settings
     
