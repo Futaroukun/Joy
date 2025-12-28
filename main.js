@@ -9,11 +9,9 @@ import yargs from "yargs";
 import syntaxerror from "syntax-error";
 import { format } from "util";
 import { fileURLToPath, pathToFileURL } from "url";
-
 import { readdirSync, statSync, unlinkSync, existsSync, readFileSync, mkdirSync, watch } from "fs";
 import { spawn } from "child_process";
 import { createRequire } from "module";
-
 import { Low, JSONFile } from "lowdb";
 import { makeWASocket, protoType } from "./function/simple.js";
 import { requestPairing, connectionUpdate } from "./function/connection.js";
@@ -35,7 +33,6 @@ const __dirname = global.__dirname(import.meta.url);
 const { state, saveCreds } = await useMultiFileAuthState("./sessions");
 const { version, isLatest } = await fetchLatestWaWebVersion();
 
-// === FIXED CONNECTION OPTIONS ===
 const connectionOptions = {
     version: version,
     printQRInTerminal: false,
@@ -71,22 +68,19 @@ const connectionOptions = {
         }
         return message;
     },
-    // === FIX CONNECTION SETTINGS ===
-    defaultQueryTimeoutMs: 60000, // 60 detik (dinaikkan dari undefined)
-    connectTimeoutMs: 60000, // 60 detik
-    keepAliveIntervalMs: 30000, // 30 detik
-    qrTimeout: 60000, // 60 detik
+    defaultQueryTimeoutMs: 60000, 
+    connectTimeoutMs: 60000, 
+    keepAliveIntervalMs: 30000, 
+    qrTimeout: 60000, 
     emitOwnEvents: false,
     fireInitQueries: true,
     syncFullHistory: false,
     markOnlineOnConnect: true,
-    retryRequestDelayMs: 5000, // Delay 5 detik sebelum retry
-    maxMsgRetryCount: 5, // Max retry 5x
-    msgRetryCounterMap: {}, // Track retry counter
+    retryRequestDelayMs: 5000, 
+    maxMsgRetryCount: 5, 
+    msgRetryCounterMap: {}, 
     
-    // === HANDLE DISCONNECT LEBIH BAIK ===
     shouldIgnoreJid: (jid) => {
-        // Ignore broadcast messages
         return jid === 'status@broadcast';
     }
 };
@@ -96,8 +90,8 @@ global.conn = makeWASocket(connectionOptions, global.opts);
 
 global.prefix = new RegExp("^[" + (opts.prefix || "‎xzXZ/i!#$%+£¢€¥^°=¶∆×÷π√✓©®:;?&.\\-").replace(/[|\\{}()[\]^$+*?.\-\^]/g, "\\$&") + "]");
 
-// DATABASE
-global.db = new Low(new JSONFile("database.json"));
+const dbPath = join(__dirname, 'data', 'database.json');
+global.db = new Low(new JSONFile(dbPath));
 global.DATABASE = global.db;
 global.loadDatabase = async function loadDatabase() {
     if (global.db.READ)
@@ -119,7 +113,6 @@ global.loadDatabase = async function loadDatabase() {
     global.db.chain = lodash.chain(global.db.data);
 };
 
-// Simpan database setiap 30 detik.
 if (global.db) {
     setInterval(async () => {
         if (global.db.data) await global.db.write();
@@ -131,13 +124,12 @@ if (!existsSync(tmpFolder)) {
     mkdirSync(tmpFolder, { recursive: true });
 }
 
-// Auto Clear TMP Folder
 if (existsSync(tmpFolder)) {
     setInterval(() => {
         if (existsSync(tmpFolder)) {
             const files = readdirSync(tmpFolder);
             const now = Date.now();
-            const limit = 2 * 60 * 1000; // 2 MENIT
+            const limit = 2 * 60 * 1000; 
 
             for (const file of files) {
                 const filePath = join(tmpFolder, file);
@@ -154,10 +146,8 @@ if (existsSync(tmpFolder)) {
     }, 30 * 1000);
 }
 
-// ===== AUTO CLEAR SESSIONS SETIAP 6 JAM =====
 startAutoClearSessions(6);
 
-// Start kode pairing Jika belum ada session
 async function StartPairing() {
     if (existsSync("./sessions/creds.json") && !conn.authState.creds.registered) {
         console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold(`ERROR SESSION RUSAK`)}`);
@@ -178,11 +168,6 @@ async function StartPairing() {
 let isHandlerInit = true;
 let HandlerModule = await import("./handler.js");
 
-/**
- * Fungsi untuk restart handler.
- * @param {Boolean} restartConnection
- * @returns
- */
 global.reloadHandler = async function reloadHandler(restartConnection) {
     try {
         const NewHandler = await import(`./handler.js?update=${Date.now()}`).catch(console.error);
@@ -202,7 +187,6 @@ global.reloadHandler = async function reloadHandler(restartConnection) {
         }
         conn.ev.removeAllListeners();
         
-        // === BUAT KONEKSI BARU DENGAN OPTIONS YANG SAMA ===
         global.conn = makeWASocket(connectionOptions, { chats: lastChats });
         isHandlerInit = true;
     }
@@ -283,6 +267,8 @@ global.reloadPlugins = async (_ev, filename) => {
         }
     } else console.log(`${chalk.white.bold(" [INFO]")} ${chalk.blue.bold(`FITUR DITAMBAHKAN "${filename}"`)}`);
 
+    if (!existsSync(dir)) return;
+
     const error = syntaxerror(readFileSync(dir), filename, {
         sourceType: "module",
         allowAwaitOutsideFunction: true
@@ -309,7 +295,6 @@ await watch(pluginFolder, global.reloadPlugins);
 await global.reloadHandler();
 await StartPairing();
 
-// === IMPROVED KEEP ALIVE ===
 let keepAliveInterval;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -321,11 +306,10 @@ function startKeepAlive() {
         if (conn?.ws?.readyState === ws.OPEN) {
             try {
                 await conn.sendPresenceUpdate('available');
-                reconnectAttempts = 0; // Reset counter jika berhasil
+                reconnectAttempts = 0; 
             } catch (error) {
                 console.error('Keep-alive error:', error);
                 
-                // Jika gagal beberapa kali, restart connection
                 reconnectAttempts++;
                 if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
                     console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("Keep-alive failed multiple times, restarting...")}`);
@@ -334,7 +318,7 @@ function startKeepAlive() {
                 }
             }
         }
-    }, 60000); // Setiap 1 menit
+    }, 60000); 
 }
 
 startKeepAlive();

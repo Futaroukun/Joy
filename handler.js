@@ -166,9 +166,12 @@ export async function handler(chatUpdate) {
             // Gunakan LID untuk akses database
             let user = global.db.data.users[senderLID];
             if (typeof user !== "object") global.db.data.users[senderLID] = {};
+            const resolvedName = await m.name; 
             
             if (user) {
-                if (!("name" in user)) user.name = m.name;
+                if (!user.name || typeof user.name === 'object') {
+                    user.name = resolvedName;
+                }
                 if (!isNumber(user.age)) user.age = -1;
                 if (!isNumber(user.level)) user.level = 0;
                 if (!isNumber(user.exp)) user.exp = 0;
@@ -186,7 +189,7 @@ export async function handler(chatUpdate) {
                 if (!isNumber(user.bannedDate)) user.bannedDate = -1;
             } else {
                 global.db.data.users[senderLID] = {
-                    name: m.name,
+                    name: resolvedName,
                     age: -1,
                     level: 0,
                     exp: 0,
