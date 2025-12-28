@@ -137,13 +137,12 @@ export async function handleMessageRevocation(conn, revocationMessage) {
         
         if (!protocolMsg || protocolMsg.type !== 0) return
         
-        const targetId = protocolMsg.key.id
         const remoteJid = revocationMessage.key.remoteJid
         const isGroup = remoteJid.endsWith('@g.us')
+        const chatData = global.db.data.chats[remoteJid]
         
-        if (isGroup) {
-            const chatData = global.db.data.chats[remoteJid];
-            if (!isGroup || !chatData?.antidelete) return;
+        if (!isGroup || !chatData?.antidelete) {
+            return
         }
         
         const original = messageStore.get(targetId)

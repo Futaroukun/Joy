@@ -27,11 +27,16 @@ async function ffmpeg(buffer, args, ext, ext2) {
 		const out = tmp + '.' + ext2;
 		await writeFile(tmp, buffer);
 		const ffmpegProcess = spawn('ffmpeg', ['-y', '-i', tmp, ...args, out]);
+		let stderr = '';
+		ffmpegProcess.stderr.on('data', (data) => {
+				stderr += data.toString();
+		});
 		await new Promise((resolve, reject) => {
 			ffmpegProcess.on('error', reject);
 			ffmpegProcess.on('close', (code) => {
 				if (code !== 0) {
-					reject(new Error(`FFmpeg gagal dengan kode ${code}`));
+					// SEKARANG KITA REJECT DENGAN PESAN ERROR LENGKAP
+					reject(new Error(`FFmpeg gagal dengan kode ${code}\n\nStderr:\n${stderr}`));
 				} else {
 					resolve();
 				}
