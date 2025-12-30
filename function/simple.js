@@ -16,8 +16,9 @@ import { watchFile, unwatchFile } from "fs";
 import { fileURLToPath } from "url";
 import { toAudio } from "./converter.js";
 import { imageToWebp, videoToWebp, writeExifImg, writeExifVid } from "./exif.js";
+import tmpManager from './safe-tmp.js'
 import { randomBytes } from "crypto";
-import { tmpdir } from "os";
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -43,7 +44,7 @@ const isNumber = x => {
    const int = parseInt(x);
    return typeof int === "number" && !isNaN(int);
 };
-const tmpFile = (ext = "") => path.join(tmpdir(), Date.now() + ext);
+const tmpFile = (ext = "") => path.join(process.cwd(), 'tmp', `${Date.now()}${ext}`);
 const _isStatusJid = (id) => !id || id === "status@broadcast";
 const _isGroupJid = (id = "") => id && id.endsWith("@g.us");
 
@@ -294,9 +295,10 @@ export function makeWASocket(connectionOptions, options = {}) {
                ext: ".bin"
             };
             
-            if (data && saveToFile && !filename) 
-               (filename = path.join(__dirname, "../tmp/" + new Date() * 1 + "." + type.ext)), 
+            if (data && saveToFile && !filename) {
+            filename = path.join(process.cwd(), "tmp", `${new Date() * 1}.${type.ext}`);
                await fs.promises.writeFile(filename, data);
+            }
                
             return {
                res,
@@ -370,30 +372,45 @@ export function makeWASocket(connectionOptions, options = {}) {
       },
       
       sendStickerImage: {
-         async value(jid, path, quoted, options = {}) {
-            let buff = Buffer.isBuffer(path)
-               ? path
-               : /^data:.*?\/.*?;base64,/i.test(path)
-               ? Buffer.from(path.split`,`[1], "base64")
-               : /^https?:\/\//.test(path)
-               ? await (await fetch(path)).buffer()
-               : fs.existsSync(path)
-               ? fs.readFileSync(path)
-               : Buffer.alloc(0);
-               
-            let sticker, buffer;
+    async value(jid, path, quoted, options = {}) {
+        let buff = Buffer.isBuffer(path)
+            ? path
+            : /^data:.*?\/.*?;base64,/i.test(path)
+            ? Buffer.from(path.split`,`[1], "base64")
+            : /^https?:\/\//.test(path)
+            ? await (await fetch(path)).buffer()
+            : fs.existsSync(path)
+            ? fs.readFileSync(path)
+            : Buffer.alloc(0);
+        
+        if (!buff || buff.length === 0) {
+            throw new Error('Invalid image buffer')
+        }
+
+        console.log(`[STICKER] Processing image: ${buff.length} bytes`)
+        
+        let sticker, buffer;
+        try {
             if (options && (options.packname || options.author)) {
-               buffer = await writeExifImg(buff, options);
-               sticker = { url: buffer };
+                sticker = await writeExifImg(buff, options);
             } else {
-               buffer = await imageToWebp(buff);
-               sticker = buffer;
+                sticker = await imageToWebp(buff);
             }
 
+            if (!sticker || (Buffer.isBuffer(sticker) && sticker.length === 0)) {
+                throw new Error('Sticker conversion failed')
+            }
+
+            console.log(`[STICKER] Sending: ${sticker.length} bytes`)
             await conn.sendMessage(jid, { sticker: sticker, ...options }, { quoted });
+            
             return buffer;
-         }
-      },
+        } catch (error) {
+            console.error('[STICKER ERROR]', error.message)
+            throw error
+        }
+    }
+},
       
       sendStickerVideo: {
          async value(jid, path, quoted, options = {}) {
@@ -409,11 +426,9 @@ export function makeWASocket(connectionOptions, options = {}) {
                
             let sticker, buffer;
             if (options && (options.packname || options.author)) {
-               buffer = await writeExifVid(buff, options);
-               sticker = { url: buffer };
+               sticker = await writeExifVid(buff, options);
             } else {
-               buffer = await videoToWebp(buff);
-               sticker = buffer;
+               sticker = await videoToWebp(buff);
             }
 
             await conn.sendMessage(jid, { sticker: sticker, ...options }, { quoted });
@@ -425,45 +440,59 @@ export function makeWASocket(connectionOptions, options = {}) {
          async value(jid, path, filename = "", caption = "", quoted, ptt = false, options = {}) {
             let type = await conn.getFile(path, true);
             let { res, data: file, filename: pathFile } = type;
-            
-            if ((res && res.status !== 200) || file.length <= 65536) {
+      
+            if ((res && res.status !== 200) || !file || file.length === 0) {
+               throw new Error('Download failed or file is empty');
+            }
+      
+            if (file.length <= 65536) {
                try {
                   throw { json: JSON.parse(file.toString()) };
                } catch (e) {
                   if (e.json) throw e.json;
                }
             }
-            
+      
+            console.log(`[SENDFILE] Processing: ${filename || 'unnamed'} (${file.length} bytes)`)
+      
             let opt = { filename };
             if (quoted) opt.quoted = quoted;
             if (!type) options.asDocument = true;
-            
+      
             let mtype = "",
                mimetype = options.mimetype || type.mime,
                convert;
-               
-            if (/webp/.test(type.mime) || (/image/.test(type.mime) && options.asSticker)) 
+      
+            if (/webp/.test(type.mime) || (/image/.test(type.mime) && options.asSticker))
                mtype = "sticker";
-            else if (/image/.test(type.mime) || (/webp/.test(type.mime) && options.asImage)) 
+            else if (/image/.test(type.mime) || (/webp/.test(type.mime) && options.asImage))
                mtype = "image";
-            else if (/video/.test(type.mime)) 
+            else if (/video/.test(type.mime))
                mtype = "video";
-            else if (/audio/.test(type.mime))
-               (convert = await toAudio(file, type.ext)), 
-               (file = convert.data), 
-               (pathFile = convert.filename), 
-               (mtype = "audio"), 
-               (mimetype = options.mimetype || "audio/ogg; codecs=opus");
-            else mtype = "document";
-            
+            else if (/audio/.test(type.mime)) {
+               console.log('[SENDFILE] Converting to audio...')
+               convert = await toAudio(file, type.ext)
+         
+               if (!convert || !convert.data || convert.data.length === 0) {
+                  throw new Error('Audio conversion failed: empty result')
+               }
+         
+               file = convert.data
+               pathFile = convert.filename
+               mtype = "audio"
+               mimetype = options.mimetype || "audio/ogg; codecs=opus"
+            } else {
+               mtype = "document";
+            }
+      
             if (options.asDocument) mtype = "document";
-
+      
             delete options.asSticker;
             delete options.asLocation;
             delete options.asVideo;
             delete options.asDocument;
             delete options.asImage;
-
+      
             let message = {
                ...options,
                caption,
@@ -472,21 +501,34 @@ export function makeWASocket(connectionOptions, options = {}) {
                mimetype,
                fileName: filename || pathFile.split("/").pop()
             };
-            
+      
             let m;
             try {
+               console.log(`[SENDFILE] Sending as ${mtype}...`)
                m = await conn.sendMessage(jid, message, { ...opt, ...options });
             } catch (e) {
-               console.error(e);
-               m = null;
-            } finally {
-               if (!m) m = await conn.sendMessage(jid, { ...message, [mtype]: file }, { ...opt, ...options });
-               file = null;
-               return m;
-            }
-         },
-         enumerable: true
-      },
+               console.error('[SENDFILE] First attempt failed:', e.message);
+               console.log('[SENDFILE] Retrying with raw buffer...')
+         
+         // FALLBACK: Send dengan buffer langsung
+         m = await conn.sendMessage(jid, {
+            ...message,
+            [mtype]: file
+         }, { ...opt, ...options });
+      } finally {
+         // CLEANUP
+         if (convert && convert.delete) {
+            try { await convert.delete() } catch {}
+         }
+         if (pathFile && pathFile.includes('/tmp/')) {
+            tmpManager.deleteFile(pathFile)
+         }
+         file = null;
+         return m;
+      }
+   },
+   enumerable: true
+},
       
       reply: {
          async value(jid, text = '', quoted, options) {
@@ -650,19 +692,93 @@ export function makeWASocket(connectionOptions, options = {}) {
       },
       
       downloadM: {
-         async value(m, type, saveToFile) {
-            let filename;
-            if (!m || !(m.url || m.directPath)) return Buffer.alloc(0);
-            const stream = await downloadContentFromMessage(m, type);
-            let buffer = Buffer.from([]);
-            for await (const chunk of stream) {
-               buffer = Buffer.concat([buffer, chunk]);
+   /**
+    * Download media message
+    * @param {Object} m - The message object containing media
+    * @param {String} type - The type of media to download (e.g., 'image', 'video', 'audio', 'document')
+    * @param {fs.PathLike | fs.promises.FileHandle} saveToFile - Path to save the downloaded file (optional)
+    * @returns {Promise<fs.PathLike | fs.promises.FileHandle | Buffer>} - Returns path to file or buffer
+    */
+   async value(m, type, saveToFile) {
+      try {
+         // Validate input
+         if (!m || !(m.url || m.directPath)) {
+            throw new Error('Invalid message or media not found.');
+         }
+         
+         // Download content from message (Baileys returns an async iterable or a Web ReadableStream depending on env)
+         // Workaround: some Baileys versions choke on 'sticker' type with Node PassThrough. Use 'image' for webp stickers.
+         const dlType = type === 'sticker' ? 'image' : type;
+         let stream;
+         try {
+            stream = await downloadContentFromMessage(m, dlType);
+         } catch (e) {
+            // Fallback: if environment complains about ReadableStream vs PassThrough, temporarily patch fromWeb
+            if (/readableStream/i.test(String(e?.message)) && /PassThrough/i.test(String(e?.message))) {
+               const nodeStream = await import('stream');
+               const origFromWeb = nodeStream.Readable.fromWeb?.bind(nodeStream.Readable);
+               if (origFromWeb) {
+                  try {
+                     nodeStream.Readable.fromWeb = function(rs, opts) {
+                        // If it's not a WHATWG ReadableStream (no getReader), just return rs as-is
+                        if (rs && typeof rs.getReader !== 'function') return rs;
+                        return origFromWeb(rs, opts);
+                     };
+                     stream = await downloadContentFromMessage(m, dlType);
+                  } finally {
+                     // Restore original to avoid side effects
+                     nodeStream.Readable.fromWeb = origFromWeb;
+                  }
+               } else {
+                  throw e;
+               }
+            } else {
+               throw e;
             }
-            if (saveToFile) ({ filename } = await conn.getFile(buffer, true));
-            return saveToFile && fs.existsSync(filename) ? filename : buffer;
-         },
-         enumerable: true
-      },
+         }
+         
+         // Normalize any stream-like (AsyncIterable, Node Readable, or Web ReadableStream) to Buffer
+         const toBuffer = async (s) => {
+            // Web ReadableStream (WHATWG)
+            if (s && typeof s.getReader === 'function') {
+               const reader = s.getReader();
+               const chunks = [];
+               for (;;) {
+                  const { value, done } = await reader.read();
+                  if (done) break;
+                  if (value) chunks.push(Buffer.from(value));
+               }
+               return Buffer.concat(chunks);
+            }
+            // Async iterable (Node Readable or async generator)
+            if (s && typeof s[Symbol.asyncIterator] === 'function') {
+               const chunks = [];
+               for await (const chunk of s) {
+                  chunks.push(Buffer.from(chunk));
+               }
+               return Buffer.concat(chunks);
+            }
+            throw new Error('Unsupported stream type from downloadContentFromMessage');
+         };
+         
+         const buffer = await toBuffer(stream);
+         
+         // If saveToFile is provided, save the buffer to file
+         if (saveToFile) {
+            const fileType = await fileTypeFromBuffer(buffer);
+            const filename = saveToFile || `downloaded_media.${fileType?.ext || 'bin'}`;
+            await fs.promises.writeFile(filename, buffer);
+            return filename; // Return file path
+         }
+         
+         return buffer; // Return the buffer if not saving to a file
+      } catch (err) {
+         console.error('Error downloading media message:', err);
+         throw new Error('Failed to download media: ' + err.message);
+      }
+   },
+   enumerable: true
+},
       
       parseMention: {
          value(text = "") {
@@ -880,7 +996,7 @@ export function makeWASocket(connectionOptions, options = {}) {
  */
 export async function smsg(conn, m, hasParent) {
    if (!m) return m;
-   
+
    m = proto.WebMessageInfo.create(m);
    const messageId = generateMessageIDV2().slice(0, 4);
    const MediaType = [
@@ -913,8 +1029,8 @@ export async function smsg(conn, m, hasParent) {
       chat: {
          get() {
             const senderKeyDistributionMessage = m.message?.senderKeyDistributionMessage?.groupId;
-            return (m.key?.remoteJid || 
-               (senderKeyDistributionMessage && senderKeyDistributionMessage !== 'status@broadcast') || 
+            return (m.key?.remoteJid ||
+               (senderKeyDistributionMessage && senderKeyDistributionMessage !== 'status@broadcast') ||
                '').decodeJid();
          },
          enumerable: true
@@ -927,7 +1043,7 @@ export async function smsg(conn, m, hasParent) {
       },
       sender: {
          get() {
-            return conn?.getLid(m.key.participant || m.key.participantAlt || 
+            return conn?.getLid(m.key.participant || m.key.participantAlt ||
                m.key.remoteJid || m.key.remoteJidAlt || '');
          },
          enumerable: true
@@ -957,7 +1073,7 @@ export async function smsg(conn, m, hasParent) {
       mediaMessage: {
          get() {
             if (!m.message) return null;
-            const Message = ((m.msg?.url || m.msg?.directPath) ? 
+            const Message = ((m.msg?.url || m.msg?.directPath) ?
                { ...m.message } : extractMessageContent(m.message)) || null;
             if (!Message) return null;
             const mtype = Object.keys(Message)[0];
@@ -986,10 +1102,9 @@ export async function smsg(conn, m, hasParent) {
       text: {
          get() {
             const msg = m.msg;
-            
-            // Ekstraksi teks dari interactive message
+
             let extractedText = "";
-            
+
             if (m.mtype === 'conversation') {
                extractedText = m.message.conversation;
             } else if (m.mtype === 'extendedTextMessage') {
@@ -1013,12 +1128,12 @@ export async function smsg(conn, m, hasParent) {
             } else if (m.mtype === 'listResponseMessage') {
                extractedText = m.message.listResponseMessage.singleSelectReply?.selectedRowId || '';
             }
-            
-            const text = extractedText || (typeof msg === "string" ? msg : msg?.text) || 
+
+            const text = extractedText || (typeof msg === "string" ? msg : msg?.text) ||
                msg?.caption || msg?.contentText || "";
-            
-            return typeof m._text === "string" ? m._text : "" || 
-               (typeof text === "string" ? text : 
+
+            return typeof m._text === "string" ? m._text : "" ||
+               (typeof text === "string" ? text :
                   text?.selectedDisplayText || text?.hydratedTemplate?.hydratedContentText || text) || "";
          },
          set(str) {
@@ -1047,11 +1162,12 @@ export async function smsg(conn, m, hasParent) {
             const contextInfo = msg?.contextInfo;
             const quoted = contextInfo?.quotedMessage;
             if (!msg || !contextInfo || !quoted) return null;
-            
+
             const type = Object.keys(quoted)[0];
             let q = quoted[type];
             const text = typeof q === "string" ? q : q.text;
-            
+
+            // PERBAIKAN #1: Definisikan properti media untuk objek quoted
             return Object.defineProperties(
                JSON.parse(JSON.stringify(typeof q === "string" ? { text: q } : q)),
                {
@@ -1059,15 +1175,23 @@ export async function smsg(conn, m, hasParent) {
                      get() { return type; },
                      enumerable: true
                   },
-                  mediaMessage: {
+                  mediaMessage: { // DITAMBAHKAN
                      get() {
-                        const Message = ((q.url || q.directPath) ? 
+                        const Message = ((q.url || q.directPath) ?
                            { ...quoted } : extractMessageContent(quoted)) || null;
                         if (!Message) return null;
                         const mtype = Object.keys(Message)[0];
                         return MediaType.includes(mtype) ? Message : null;
                      },
                      enumerable: true
+                  },
+                  mediaType: { // DITAMBAHKAN
+                      get() {
+                          let message;
+                          if (!(message = this.mediaMessage)) return null;
+                          return Object.keys(message)[0];
+                      },
+                      enumerable: true
                   },
                   id: {
                      get() { return contextInfo.stanzaId; },
@@ -1089,37 +1213,20 @@ export async function smsg(conn, m, hasParent) {
                   },
                   text: {
                      get() {
-                        return text || this.caption || this.contentText || 
+                        return text || this.caption || this.contentText ||
                            this.selectedDisplayText || '';
                      },
                      enumerable: true
                   },
+                  // PERBAIKAN #2: Gunakan konteks `this` untuk download, bukan `m`
                   download: {
-                     async value(saveToFile = false) {
-                        try {
-                           const mtype = this.mediaType;
-                           if (!mtype) return null;
-                           
-                           const stream = await downloadContentFromMessage(
-                              this.mediaMessage[mtype], 
-                              mtype.replace(/Message/gi, "")
-                           );
-                           
-                           let buffer = Buffer.from([]);
-                           for await (const chunk of stream) {
-                              buffer = Buffer.concat([buffer, chunk]);
-                           }
-                           
-                           if (saveToFile) {
-                              const { filename } = await conn.getFile(buffer, true);
-                              return filename;
-                           }
-                           
-                           return buffer;
-                        } catch (e) {
-                           console.error("Error downloading quoted media:", e);
-                           return null;
-                        }
+                     value(saveToFile = false) {
+                         const mtype = this.mediaType;
+                         const mediaRoot = this.mediaMessage;
+                         if (!mtype || !mediaRoot || !mediaRoot[mtype]) {
+                             throw new Error('Media tidak ditemukan di dalam pesan yang di-reply.');
+                         }
+                         return conn.downloadM(mediaRoot[mtype], mtype.replace(/message/i, ""), saveToFile);
                      },
                      enumerable: true,
                      configurable: true
@@ -1135,35 +1242,19 @@ export async function smsg(conn, m, hasParent) {
          },
          enumerable: true
       },
+      // PERBAIKAN #3: Perbaiki `self.conn` menjadi `conn` dan pesan error
       download: {
-         async value(saveToFile = false) {
-            try {
-               const mtype = m.mediaType;
-               if (!mtype) return null;
-               
-               const stream = await downloadContentFromMessage(
-                  m.mediaMessage[mtype], 
-                  mtype.replace(/Message/gi, "")
-               );
-               
-               let buffer = Buffer.from([]);
-               for await (const chunk of stream) {
-                  buffer = Buffer.concat([buffer, chunk]);
-               }
-               
-               if (saveToFile) {
-                  const { filename } = await conn.getFile(buffer, true);
-                  return filename;
-               }
-               
-               return buffer;
-            } catch (e) {
-               console.error("Error downloading media:", e);
-               return null;
-            }
-         },
-         enumerable: true,
-         configurable: true
+          value(saveToFile = false) {
+              const mtype = this.mediaType;
+              const mediaRoot = this.mediaMessage;
+              if (!mtype || !mediaRoot || !mediaRoot[mtype]) {
+                  throw new Error('Tidak ada media yang bisa diunduh dari pesan ini.');
+              }
+              // Ganti self.conn menjadi conn
+              return conn?.downloadM(mediaRoot[mtype], mtype.replace(/message/i, ''), saveToFile);
+          },
+          enumerable: true,
+          configurable: true,
       },
       reply: {
          value(text, chatId, options) {
@@ -1172,11 +1263,11 @@ export async function smsg(conn, m, hasParent) {
       },
       react: {
          value(emoji) {
-            return conn.sendMessage(m.chat, { 
-               react: { 
-                  text: emoji, 
-                  key: m.key 
-               } 
+            return conn.sendMessage(m.chat, {
+               react: {
+                  text: emoji,
+                  key: m.key
+               }
             });
          },
          enumerable: true
@@ -1186,9 +1277,9 @@ export async function smsg(conn, m, hasParent) {
             const device = getDevice(m.key?.id);
             const platform = os.platform();
             const isUnknownDevice = device === 'unknown' && platform;
-            const res = device ? (isUnknownDevice ? 
-               (platform === 'android' ? 'Android Device' : 
-                  ['win32', 'darwin', 'linux'].includes(platform) ? 'Desktop' : 'Unknown Device') 
+            const res = device ? (isUnknownDevice ?
+               (platform === 'android' ? 'Android Device' :
+                  ['win32', 'darwin', 'linux'].includes(platform) ? 'Desktop' : 'Unknown Device')
                : device) : 'Unknown Device';
             return res;
          },

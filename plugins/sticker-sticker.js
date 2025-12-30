@@ -1,116 +1,217 @@
 let handler = async (m, { conn, command, usedPrefix }) => {
     if (m.quoted?.viewOnce) return;
     
-    let sendSticker = async (media, isImage = true) => {
-        await m.reply('*Sedang memproses...*');
-        
-        const optionsimg = {
-            packname: info.namabot,
-            author: info.namaown,
-            isAnimated: false
-        };
-        
-        const optionsvid = {
-            packname: info.namabot,
-            author: info.namaown,
-            isAnimated: true
-        };
-        
-        try {
-            if (isImage) {
-                await conn.sendStickerImage(m.chat, media, m, optionsimg);
-            } else {
-                await conn.sendStickerVideo(m.chat, media, m, optionsvid);
-            }
-        } catch (error) {
-            console.error('Error sending sticker:', error);
-            throw error;
-        }
-    };
-    
     let q = m.quoted ? m.quoted : m;
     let mime = (q.msg || q).mimetype || "";
     
-    // Validasi: Jika file adalah WebP (sticker)
+    // VALIDASI WEBP
     if (/webp/.test(mime)) {
         return m.reply(
             '*GAGAL MEMPROSES*\n\n' +
-            'File yang Anda kirim adalah *sticker* dalam format *WebP*.\n' +
-            'Silakan kirim gambar format *JPEG atau PNG*, atau video format *MP4*.\n\n' +
+            'File yang Anda kirim adalah sticker dalam format WebP.\n' +
+            'Silakan kirim gambar JPEG/PNG atau video MP4.\n\n' +
             '*Cara Penggunaan:*\n' +
-            '1. Kirim/Reply *gambar atau video*\n' +
-            '2. Ketik *' + usedPrefix + command + '*\n' +
-            '3. Tunggu proses konversi\n\n' +
-            '*Format yang didukung:*\n' +
-            '- Gambar: *JPEG, PNG*\n' +
-            '- Video: *MP4 (maksimal 15 detik)*'
+            '1. Kirim/Reply gambar atau video\n' +
+            '2. Ketik ' + usedPrefix + command + '\n\n' +
+            '*Format:*\n' +
+            '- Gambar: JPEG, PNG\n' +
+            '- Video: MP4 (max 15 detik)'
         );
     }
     
-    // Proses Gambar (JPEG/PNG)
-    if (/image\/(jpeg|png)/.test(mime)) {
-        try {
-            let media = await q.download();
-            await sendSticker(media, true);
-        } catch (error) {
-            console.error('Error processing image:', error);
-            return m.reply(
-                '*GAGAL MEMPROSES GAMBAR*\n\n' +
-                'Terjadi kesalahan saat mengkonversi gambar menjadi sticker.\n\n' +
-                '*Kemungkinan penyebab:*\n' +
-                '- File gambar *rusak* atau tidak valid\n' +
-                '- Ukuran file *terlalu besar*\n' +
-                '- Format gambar *tidak didukung*\n\n' +
-                'Silakan coba lagi dengan gambar yang berbeda.'
-            );
-        }
-    } 
-    // Proses Video (MP4)
-    else if (/video|mp4/.test(mime)) {
-        let duration = (q.msg || q).seconds || 0;
-        
-        if (duration > 15) {
-            return m.reply(
-                '*DURASI VIDEO TERLALU PANJANG*\n\n' +
-                '*Durasi video:* ' + duration + ' detik\n' +
-                '*Durasi maksimal:* 15 detik\n\n' +
-                'Silakan kirim video dengan durasi maksimal *15 detik*.'
-            );
-        }
-        
-        try {
-            let media = await q.download();
-            await sendSticker(media, false);
-        } catch (error) {
-            console.error('Error processing video:', error);
-            return m.reply(
-                '*GAGAL MEMPROSES VIDEO*\n\n' +
-                'Terjadi kesalahan saat mengkonversi video menjadi sticker.\n\n' +
-                '*Kemungkinan penyebab:*\n' +
-                '- File video *rusak* atau tidak valid\n' +
-                '- Ukuran file *terlalu besar*\n' +
-                '- Format video *tidak didukung*\n' +
-                '- Durasi video *melebihi batas*\n\n' +
-                'Silakan coba lagi dengan video yang berbeda.'
-            );
-        }
-    } 
-    // Jika bukan gambar atau video
-    else {
+    // VALIDASI MEDIA
+    if (!mime || !/image|video/.test(mime)) {
         return m.reply(
-            '*FORMAT FILE TIDAK DIDUKUNG*\n\n' +
+            '*FORMAT TIDAK DIDUKUNG*\n\n' +
             '*Cara Penggunaan:*\n' +
-            '1. Kirim/Reply *gambar (JPEG/PNG)* atau *video (MP4)*\n' +
-            '2. Ketik *' + usedPrefix + command + '*\n' +
-            '3. Bot akan mengkonversi menjadi sticker\n\n' +
-            '*Ketentuan:*\n' +
-            '- Gambar: Format *JPEG atau PNG*\n' +
-            '- Video: Format *MP4, maksimal 15 detik*\n' +
-            '- Tidak mendukung format *WebP (sticker)*\n\n' +
+            '1. Kirim/Reply gambar (JPEG/PNG) atau video (MP4)\n' +
+            '2. Ketik ' + usedPrefix + command + '\n\n' +
             '*Contoh:*\n' +
-            '- Kirim gambar lalu ketik *' + usedPrefix + command + '*\n' +
-            '- Reply gambar dengan caption *' + usedPrefix + command + '*'
+            '- Kirim gambar lalu ketik ' + usedPrefix + command + '\n' +
+            '- Reply gambar dengan caption ' + usedPrefix + command
         );
+    }
+    
+    let loadingMsg = null;
+    
+    try {
+        // PROSES GAMBAR
+        if (/image\/(jpeg|png)/.test(mime)) {
+            loadingMsg = await m.reply('*Memproses gambar...*');
+            
+            // DOWNLOAD DENGAN FIX
+            console.log('[STICKER] Downloading image...');
+            let media;
+            
+            try {
+                // Method 1: Download biasa
+                media = await q.download();
+            } catch (e1) {
+                console.log('[STICKER] Download method 1 failed, trying alternative...');
+                try {
+                    // Method 2: Download dengan options
+                    media = await q.download({ asBuffer: true });
+                } catch (e2) {
+                    console.log('[STICKER] Download method 2 failed');
+                    throw new Error('Gagal download media dari WhatsApp');
+                }
+            }
+            
+            // VALIDASI HASIL DOWNLOAD
+            if (!media) {
+                throw new Error('Download gagal: hasil null');
+            }
+            
+            // Convert ke Buffer jika bukan Buffer
+            if (!Buffer.isBuffer(media)) {
+                if (media instanceof Uint8Array) {
+                    media = Buffer.from(media);
+                } else if (typeof media === 'object' && media.data) {
+                    media = Buffer.from(media.data);
+                } else {
+                    throw new Error('Download gagal: format tidak dikenali');
+                }
+            }
+            
+            // Validasi ukuran
+            if (media.length === 0) {
+                throw new Error('Download gagal: file kosong (0 byte)');
+            }
+            
+            if (media.length < 1000) {
+                throw new Error('Download gagal: file terlalu kecil, kemungkinan corrupt');
+            }
+            
+            console.log(`[STICKER] Downloaded: ${media.length} bytes`);
+            
+            // KIRIM STICKER
+            const options = {
+                packname: global.info?.namabot || 'Sticker',
+                author: global.info?.namaowner || 'Bot'
+            };
+            
+            await conn.sendStickerImage(m.chat, media, m, options);
+            
+            // Hapus loading
+            if (loadingMsg?.key) {
+                try {
+                    await conn.sendMessage(m.chat, { delete: loadingMsg.key });
+                } catch {}
+            }
+            
+        } 
+        // PROSES VIDEO
+        else if (/video|mp4/.test(mime)) {
+            let duration = (q.msg || q).seconds || 0;
+            
+            // VALIDASI DURASI
+            if (duration > 15) {
+                return m.reply(
+                    '*DURASI TERLALU PANJANG*\n\n' +
+                    'Durasi video: ' + duration + ' detik\n' +
+                    'Maksimal: 15 detik\n\n' +
+                    'Silakan kirim video dengan durasi max 15 detik.'
+                );
+            }
+            
+            loadingMsg = await m.reply('*Memproses video...*');
+            
+            // DOWNLOAD DENGAN FIX
+            console.log('[STICKER] Downloading video...');
+            let media;
+            
+            try {
+                media = await q.download();
+            } catch (e1) {
+                console.log('[STICKER] Download method 1 failed, trying alternative...');
+                try {
+                    media = await q.download({ asBuffer: true });
+                } catch (e2) {
+                    console.log('[STICKER] Download method 2 failed');
+                    throw new Error('Gagal download media dari WhatsApp');
+                }
+            }
+            
+            // VALIDASI HASIL DOWNLOAD
+            if (!media) {
+                throw new Error('Download gagal: hasil null');
+            }
+            
+            // Convert ke Buffer
+            if (!Buffer.isBuffer(media)) {
+                if (media instanceof Uint8Array) {
+                    media = Buffer.from(media);
+                } else if (typeof media === 'object' && media.data) {
+                    media = Buffer.from(media.data);
+                } else {
+                    throw new Error('Download gagal: format tidak dikenali');
+                }
+            }
+            
+            // Validasi ukuran
+            if (media.length === 0) {
+                throw new Error('Download gagal: file kosong (0 byte)');
+            }
+            
+            if (media.length < 10000) {
+                throw new Error('Download gagal: file terlalu kecil');
+            }
+            
+            console.log(`[STICKER] Downloaded: ${media.length} bytes`);
+            
+            // KIRIM STICKER
+            const options = {
+                packname: global.info?.namabot || 'Sticker',
+                author: global.info?.namaowner || 'Bot'
+            };
+            
+            await conn.sendStickerVideo(m.chat, media, m, options);
+            
+            // Hapus loading
+            if (loadingMsg?.key) {
+                try {
+                    await conn.sendMessage(m.chat, { delete: loadingMsg.key });
+                } catch {}
+            }
+        }
+        
+    } catch (error) {
+        console.error('[STICKER ERROR]', error);
+        
+        // Hapus loading
+        if (loadingMsg?.key) {
+            try {
+                await conn.sendMessage(m.chat, { delete: loadingMsg.key });
+            } catch {}
+        }
+        
+        // ERROR MESSAGE
+        let errorMsg = '*TERJADI KESALAHAN*\n\n';
+        
+        if (error.message.includes('Download gagal')) {
+            errorMsg += '*Masalah Download*\n' + error.message + '\n\n';
+            errorMsg += '*Solusi:*\n';
+            errorMsg += '- Coba kirim ulang media\n';
+            errorMsg += '- Pastikan file tidak rusak\n';
+            errorMsg += '- Compress file terlebih dahulu';
+        } else if (error.message.includes('conversion') || error.message.includes('WebP')) {
+            errorMsg += '*Masalah Konversi*\n' + error.message + '\n\n';
+            errorMsg += '*Solusi:*\n';
+            errorMsg += '- Gunakan format JPG/PNG/MP4\n';
+            errorMsg += '- Kurangi ukuran/durasi file\n';
+            errorMsg += '- Pastikan file tidak corrupt';
+        } else if (error.message.includes('0 byte') || error.message.includes('kosong')) {
+            errorMsg += '*File Corrupt*\nFile ukurannya 0 byte.\n\n';
+            errorMsg += '*Solusi:*\n';
+            errorMsg += '- Kirim ulang file\n';
+            errorMsg += '- Compress dulu\n';
+            errorMsg += '- Gunakan file berbeda';
+        } else {
+            errorMsg += 'Error: ' + error.message + '\n\n';
+            errorMsg += 'Coba kirim ulang atau gunakan file lain.';
+        }
+        
+        return m.reply(errorMsg);
     }
 };
 
