@@ -1,7 +1,6 @@
 import "./settings.js";
 import { smsg } from "./function/simple.js";
 import { storeMessage, handleMessageRevocation } from "./function/antidelete.js";
-import { handleExpGain, validateUserData } from "./lib/leveling.js";
 import { fileURLToPath } from "url";
 import path from "path";
 import { format } from "util";
@@ -428,18 +427,6 @@ export async function handler(chatUpdate) {
                 if (plugin.restrict) {
                     global.dFail("restrict", m, this);
                     continue;
-                }
-
-                if (!m.fromMe && !senderLID.endsWith('@g.us')) {
-                    const expUser = global.db.data.users[senderLID];
-                    if (expUser && !expUser.banned) {
-                        try {
-                            const oldExp = expUser.exp;
-                            await handleExpGain(this, m, expUser);
-                        } catch (e) {
-                            console.error('EXP giving error:', e);
-                        }
-                    }
                 }
 
                 m.isCommand = true;
