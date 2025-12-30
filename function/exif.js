@@ -68,14 +68,13 @@ async function videoToWebp(mediaBuffer) {
             .addOutputOptions([
                '-vcodec', 'libwebp',
                '-sws_flags', 'lanczos',
-               '-vf', "scale=512:512:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0.0,fps=15",
+               '-vf', "scale=320:320:force_original_aspect_ratio=decrease,format=rgba,pad=320:320:(ow-iw)/2:(oh-ih)/2:color=white@0.0,fps=15",
                '-loop', '0',
                '-ss', '00:00:00',
                '-t', '00:00:10', // <-- Durasi lebih panjang dari kode baru
                '-preset', 'default',
                '-an',
                '-vsync', '0',
-               '-quality', '75'
             ])
             .toFormat('webp')
             .save(tmpOutput)
