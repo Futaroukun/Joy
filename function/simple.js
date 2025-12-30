@@ -510,7 +510,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                file = convert.data
                pathFile = convert.filename
                mtype = "audio"
-               mimetype = options.mimetype || "audio/ogg; codecs=opus"
+               mimetype = options.mimetype || "audio/mpeg"
             } else {
                mtype = "document";
             }

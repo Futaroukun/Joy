@@ -390,7 +390,7 @@
       "antilink": false,
       "antidelete": false,
       "antivirtex": false,
-      "mute": true,
+      "mute": false,
       "detect": true,
       "sambutan": true,
       "sewa": false,
