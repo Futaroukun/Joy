@@ -6,9 +6,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             `*YOUTUBE PLAY*\n\n` +
             `Gua puterin lagu dari YouTube buat lu.\n\n` +
             `*Cara Pakai:*\n` +
-            `${usedPrefix + command} <judul lagu>\n\n` +
+            `*${usedPrefix + command} <judul lagu>*\n\n` +
             `*Contoh:*\n` +
-            `${usedPrefix + command} guyonwaton pelanggaran`
+            `*${usedPrefix + command} dj pet polipet*`
         )
     }
 
@@ -31,12 +31,10 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
         const { metadata, downloadUrl } = json.result
 
-        // Hapus pesan loading
         if (loadingMsg?.key) {
             try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
         }
 
-        // Kirim info lagu dengan thumbnail
         let caption = `*YOUTUBE PLAY*\n\n` +
                       `*Judul:* ${metadata.title}\n` +
                       `*Channel:* ${metadata.channel}\n` +
@@ -56,7 +54,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }, { quoted: m })
 
-        // Kirim file audio
         await conn.sendMessage(m.chat, {
             audio: { url: downloadUrl },
             mimetype: 'audio/mpeg'
@@ -71,9 +68,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     }
 }
 
-handler.help = ['play <judul>']
+handler.help = ['play *judul*']
 handler.tags = ['downloader']
 handler.command = /^(play)$/i
-handler.limit = true // Bisa di set ke false kalau mau gratis
+handler.limit = false
 
 export default handler

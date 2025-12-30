@@ -6,9 +6,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             `*YOUTUBE SEARCH*\n\n` +
             `Cari video YouTube langsung dari WhatsApp.\n\n` +
             `*Cara Pakai:*\n` +
-            `${usedPrefix + command} <judul video>\n\n` +
+            `*${usedPrefix + command} <judul video>*\n\n` +
             `*Contoh:*\n` +
-            `${usedPrefix + command} guyonwaton pelanggaran`
+            `*${usedPrefix + command} guyonwaton pelanggaran*`
         );
     }
 
@@ -35,35 +35,32 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
         const results = json.data;
 
-        // [DITAMBAHKAN] Acak hasil pencarian (Fisher-Yates shuffle)
-        // Ini bakal ngacak urutan semua video yang didapet dari API
         for (let i = results.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [results[i], results[j]] = [results[j], results[i]];
         }
         
-        // Setelah diacak, video pertama di array jadi random, bagus buat thumbnail
         const firstResult = results[0]; 
 
-        let replyText = `*HASIL PENCARIAN YOUTUBE (RANDOM)*\n\n` +
-                        `*Query:* ${text}\n` +
+        let replyText = `*HASIL PENCARIAN YOUTUBE*\n\n` +
+                        `*Query:* ${text.trim()}\n` +
                         `*Total Ditemukan:* ${results.length} video\n\n` +
-                        `==============================\n\n`;
+                        `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-        // [DIUBAH] Ambil 7 hasil acak, bukan 5 hasil pertama
         results.slice(0, 7).forEach((item, index) => {
-            replyText += `*${index + 1}. ${item.title}*\n` +
-                         `   - *Channel:* ${item.author.name}\n` +
-                         `   - *Durasi:* ${item.duration}\n` +
-                         `   - *Views:* ${item.views}\n` +
-                         `   - *Link:* ${item.url}\n\n`;
+            let cleanTitle = (item.title || '').trim();
+            replyText += `*${index + 1}. ${cleanTitle}*\n` +
+                         `* Channel: ${item.author.name}\n` +
+                         `* Durasi: ${item.duration}\n` +
+                         `* Views: ${item.views}\n` +
+                         `* Link: ${item.url}\n\n`;
         });
 
         await conn.sendMessage(m.chat, {
             text: replyText.trim(),
             contextInfo: {
                 externalAdReply: {
-                    title: firstResult.title,
+                    title: (firstResult.title || '').trim(),
                     body: `Channel: ${firstResult.author.name} | Duration: ${firstResult.duration}`,
                     thumbnailUrl: firstResult.thumbnail,
                     sourceUrl: firstResult.url,
@@ -78,13 +75,13 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         if (loadingMsg?.key) {
             try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }); } catch {}
         }
-        m.reply(`*TERJADI KESALAHAN*\n\nError pas nyari video. Coba lagi nanti atau cek log di konsol.`);
+        m.reply(`*TERJADI KESALAHAN*\n\nAda masalah pas nyari video. Coba lagi nanti ya.`);
     }
 };
 
-handler.help = ['ytsearch <query>'];
-handler.tags = ['internet'];
+handler.help = ['ytsearch *query*'];
+handler.tags = ['downloader'];
 handler.command = /^(ytsearch|yts|youtubesearch)$/i;
-handler.limit = true;
+handler.limit = false;
 
 export default handler;
