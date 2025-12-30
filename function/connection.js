@@ -80,7 +80,10 @@ export async function connectionUpdate(update, conn) {
 
     if (connection === "close") {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
-        const reason = new DisconnectReason(lastDisconnect?.error)?.toString();
+        
+        // PERBAIKAN DI SINI:
+        // Hapus 'new DisconnectReason(...)'. Kita ambil pesan errornya langsung.
+        const reason = lastDisconnect?.error?.toString() || "Unknown Reason";
         
         console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold(`KONEKSI TERPUTUS`)}`);
         console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold(`Penyebab: ${reason} (Code: ${statusCode})`)}`);
