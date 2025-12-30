@@ -2,11 +2,24 @@ import moment from 'moment-timezone'
 import { getCacheStats, clearCache } from '../function/antidelete.js'
 
 let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isROwner }) => {
-    let isEnable = /true|enable|(turn)?on|1/i.test(command)
+    let type = (args[0] || '').toLowerCase()
+    let isEnable
     let chat = global.db.data.chats[m.chat]
     let user = global.db.data.users[m.sender]
     let name = `${user.registered ? user.name : await conn.getName(m.sender)}`
-    let type = (args[0] || '').toLowerCase()
+
+    // ===== LOGIKA BARU UNTUK MUTE/UNMUTE =====
+    if (/^mute/i.test(command)) {
+        type = 'mute'
+        isEnable = true
+    } else if (/^unmute/i.test(command)) {
+        type = 'mute'
+        isEnable = false
+    } else {
+        // Logika lama untuk enable/disable
+        isEnable = /true|enable|(turn)?on|1/i.test(command)
+    }
+    // ========================================
     
     const getStatus = (value) => value ? 'AKTIF' : 'NONAKTIF'
     
@@ -46,6 +59,15 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
             access: 'admin',
             scope: 'group'
         },
+        // ===== FITUR MUTE DITAMBAHKAN DI SINI =====
+        mute: {
+            name: 'Mute Group',
+            description: 'Bot tidak akan merespons command di grup',
+            dbProperty: 'mute',
+            access: 'admin',
+            scope: 'group'
+        },
+        // ===========================================
         autoread: {
             name: 'Auto Read',
             description: 'Otomatis membaca pesan masuk',
@@ -107,8 +129,9 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
         
         menu += `
 *CARA PENGGUNAAN:*
-* ${usedPrefix}enable <fitur> (Aktifkan)
-* ${usedPrefix}disable <fitur> (Nonaktifkan)
+- ${usedPrefix}enable <fitur>
+- ${usedPrefix}disable <fitur>
+- ${usedPrefix}mute / ${usedPrefix}unmute
 
 *Daftar Fitur:* ${availableFeatures.map(([k]) => k).join(', ')}`.trim()
         
@@ -167,6 +190,12 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
             global.autoRead = isEnable
         }
     }
+
+    if (type === 'mute') {
+        const statusText = isEnable ? 'dinonaktifkan sementara' : 'diaktifkan kembali';
+        const actionText = isEnable ? `Gunakan *${usedPrefix}unmute* untuk menyalakan.` : `Gunakan *${usedPrefix}mute* untuk mematikan.`;
+        return m.reply(`*MODE GRUP DIUBAH*\n\nBot telah *${statusText}* di grup ini.\n${actionText}`);
+    }
     
     if (type === 'antidelete') {
         const stats = getCacheStats()
@@ -198,9 +227,11 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
     await m.reply(`*${feature.name}* berhasil di *${isEnable ? 'Aktifkan' : 'Nonaktifkan'}*`)
 }
 
-handler.help = ['enable <fitur>', 'disable <fitur>']
+// ===== UPDATE HANDLER =====
+handler.help = ['settings', 'enable <fitur>', 'disable <fitur>', 'mute', 'unmute']
 handler.tags = ['group', 'owner']
-handler.command = /^((en|dis)able|(tru|fals)e|(turn)?o(n|ff)|settings?|seting)$/i
+handler.command = /^((en|dis)able|(tru|fals)e|(turn)?o(n|ff)|mute(group)?|unmute(group)?|settings?|seting)$/i
+// ==========================
 
 export default handler
 

@@ -390,7 +390,7 @@
       "antilink": false,
       "antidelete": false,
       "antivirtex": false,
-      "mute": false,
+      "mute": true,
       "detect": true,
       "sambutan": true,
       "sewa": false,
@@ -438,6 +438,9 @@
       "autoread": true,
       "autobackup": true,
       "backupDate": -1
+    },
+    "274062534299882:27@lid": {
+      "autoread": true
     }
   },
   "pluginSettings": {
@@ -448,7 +451,7 @@
       "disabled": false
     },
     "group-kick.js": {
-      "disabled": true
+      "disabled": false
     }
   }
 }
