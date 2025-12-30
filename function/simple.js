@@ -1,4 +1,3 @@
-// simple.js - Enhanced Version with d.txt Features Integration
 import store from "./store.js";
 import fs from "fs";
 import os from "os";
@@ -270,6 +269,37 @@ export function makeWASocket(connectionOptions, options = {}) {
                }
             }
          }
+      },
+      
+      // gatau buatan Rafli
+      getAndVerifyUsername: {
+         async value(jid) {
+            if (!jid) return 'Unknown';
+            const cleanJid = jid.decodeJid();
+            let name = await this.getName(cleanJid);
+            const isNameJustJid = /@s\.whatsapp\.net|@lid$/.test(name);
+            const userInDb = global.db?.data?.users[cleanJid];
+            const isDbNameJustJid = userInDb && /@s\.whatsapp\.net|@lid$/.test(userInDb.name);
+            if (isNameJustJid || (userInDb && isDbNameJustJid)) {
+               try {
+                  const profile = await this.getProfileInfo(cleanJid);
+                  if (profile.pushname && profile.pushname.trim() !== '') {
+                     name = profile.pushname;
+                  }
+               } catch (e) {
+                  console.log(`[getAndVerifyUsername] Gagal fetch profile untuk ${cleanJid}`);
+               }
+            }
+            if (userInDb && userInDb.name !== name && !/@s\.whatsapp\.net|@lid$/.test(name)) {
+               console.log(`[DB-HEAL] Updating name for ${cleanJid}: "${userInDb.name}" -> "${name}"`);
+               userInDb.name = name;
+            }
+            if (/@s\.whatsapp\.net|@lid$/.test(name)) {
+               return name.split('@')[0];
+            }
+            return name;
+         },
+         enumerable: true
       },
       
       getFile: {

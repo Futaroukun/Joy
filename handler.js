@@ -144,7 +144,7 @@ export async function handler(chatUpdate) {
         
         if (m.isBaileys) return;
         
-        const decodedBotLid = jidNormalizedUser(conn?.user?.lid);
+        const botLid = jidNormalizedUser(this?.user?.lid);
         
         let isROwner = false;
         let isOwner = false;
@@ -165,7 +165,7 @@ export async function handler(chatUpdate) {
             // Gunakan LID untuk akses database
             let user = global.db.data.users[senderLID];
             if (typeof user !== "object") global.db.data.users[senderLID] = {};
-            const resolvedName = await m.name; 
+            const resolvedName = await conn.getAndVerifyUsername(senderLID); 
             
             if (user) {
                 if (!user.name || typeof user.name === 'object') {
@@ -217,7 +217,7 @@ export async function handler(chatUpdate) {
             );
             
             userDb = global.db.data.users[senderLID] || {};
-            isROwner = ([...decodedOwnLid] || decodedBotLid).includes(senderLID);
+            isROwner = ([...decodedOwnLid] || botLid).includes(senderLID);
             isOwner = isROwner || m.fromMe || false;
             isPremium = userDb.premium === true;
 
@@ -261,8 +261,8 @@ export async function handler(chatUpdate) {
                 }
             }
 
-            let setting = global.db.data.settings[decodedBotLid];
-            if (typeof setting !== "object") global.db.data.settings[decodedBotLid] = {};
+            let setting = global.db.data.settings[botLid];
+            if (typeof setting !== "object") global.db.data.settings[botLid] = {};
             if (setting) {
                 if (!("chatMode" in setting)) setting.chatMode = "";
                 if (!("antispam" in setting)) setting.antispam = true;
@@ -270,7 +270,7 @@ export async function handler(chatUpdate) {
                 if (!("autobackup" in setting)) setting.autobackup = true;
                 if (!isNumber(setting.backupDate)) setting.backupDate = -1;
             } else {
-                global.db.data.settings[decodedBotLid] = {
+                global.db.data.settings[botLid] = {
                     chatMode: "",
                     antispam: true,
                     autoread: true,
@@ -291,7 +291,7 @@ export async function handler(chatUpdate) {
         
         // ===== KONVERSI PARTICIPANT IDS KE LID =====
         const user = m.isGroup ? participants.find(u => u.id === senderLID) : {};
-        const bot = m.isGroup ? participants.find(u => u.id === decodedBotLid) : {};
+        const bot = m.isGroup ? participants.find(u => u.id === botLid) : {};
         
         const isRAdmin = user?.admin === "superadmin" || false;
         const isAdmin = isRAdmin || user?.admin === "admin" || false;
@@ -301,7 +301,7 @@ export async function handler(chatUpdate) {
         const isBannned = global.db.data?.users[senderLID]?.banned === true;
         const isMuted = m.isGroup && global.db.data?.chats[m.chat]?.mute === true;
         const isSewa = m.isGroup && global.db.data?.chats[m.chat]?.sewa === true;
-        const chatMode = global.db.data?.settings[decodedBotLid]?.chatMode;
+        const chatMode = global.db.data?.settings[botLid]?.chatMode;
 
         if ((chatMode === "pconly" || opts["pconly"]) && !isPremium && !isOwner && m.isGroup) return;
         if ((chatMode === "gconly" || opts["gconly"]) && !isPremium && !isOwner && !m.isGroup) return;

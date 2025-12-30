@@ -1,5 +1,6 @@
 import moment from 'moment-timezone'
 import { getCacheStats, clearCache } from '../function/antidelete.js'
+import { jidNormalizedUser } from '@whiskeysockets/baileys'
 
 let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isROwner }) => {
     let type = (args[0] || '').toLowerCase()
@@ -7,7 +8,7 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
     let chat = global.db.data.chats[m.chat]
     let user = global.db.data.users[m.sender]
     let name = `${user.registered ? user.name : await conn.getName(m.sender)}`
-
+    
     // ===== LOGIKA BARU UNTUK MUTE/UNMUTE =====
     if (/^mute/i.test(command)) {
         type = 'mute'
@@ -109,7 +110,7 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
         if (isOwner && globalFeatures.length > 0) {
             menu += '\n*PENGATURAN OWNER:*\n'
             globalFeatures.forEach(([key, feature]) => {
-                const botLid = conn.user.lid
+                const botLid = jidNormalizedUser(conn.user.lid)
                 const settings = global.db.data.settings[botLid] || {}
                 let status = getStatus(settings[feature.dbProperty])
                 menu += `*Status:* ${status}\n*Fitur:* ${feature.name}\n*Ket:* ${feature.description}\n\n`
@@ -190,7 +191,7 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
             global.autoRead = isEnable
         }
     }
-
+    
     if (type === 'mute') {
         const statusText = isEnable ? 'dinonaktifkan sementara' : 'diaktifkan kembali';
         const actionText = isEnable ? `Gunakan *${usedPrefix}unmute* untuk menyalakan.` : `Gunakan *${usedPrefix}mute* untuk mematikan.`;
@@ -228,7 +229,7 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
 }
 
 // ===== UPDATE HANDLER =====
-handler.help = ['settings', 'enable <fitur>', 'disable <fitur>', 'mute', 'unmute']
+handler.help = ['settings']
 handler.tags = ['group', 'owner']
 handler.command = /^((en|dis)able|(tru|fals)e|(turn)?o(n|ff)|mute(group)?|unmute(group)?|settings?|seting)$/i
 // ==========================
