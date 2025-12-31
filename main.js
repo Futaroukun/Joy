@@ -124,28 +124,6 @@ if (!existsSync(tmpFolder)) {
     mkdirSync(tmpFolder, { recursive: true });
 }
 
-if (existsSync(tmpFolder)) {
-    setInterval(() => {
-        if (existsSync(tmpFolder)) {
-            const files = readdirSync(tmpFolder);
-            const now = Date.now();
-            const limit = 2 * 60 * 1000; 
-
-            for (const file of files) {
-                const filePath = join(tmpFolder, file);
-                try {
-                    const stats = statSync(filePath);
-                    if (now - stats.mtimeMs >= limit) {
-                        unlinkSync(filePath);
-                    }
-                } catch (error) {
-                    console.log(error);
-                }
-            }
-        }
-    }, 30 * 1000);
-}
-
 startAutoClearSessions(6);
 
 async function StartPairing() {

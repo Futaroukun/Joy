@@ -383,7 +383,7 @@
       "sPromote": "",
       "sDemote": "",
       "sewaDate": -1,
-      "antidelete": true
+      "antidelete": false
     },
     "120363405327714929@g.us": {
       "antispam": false,
