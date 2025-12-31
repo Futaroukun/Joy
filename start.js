@@ -1,8 +1,3 @@
-/* XRDHZ-MD
-  Script ini tidak untuk diperjual-belikan atau gratis.
-  Script masih dalam tahap pengembangan mungkin akan ada bug, error dan lain sebagainya.
-*/
-
 import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
