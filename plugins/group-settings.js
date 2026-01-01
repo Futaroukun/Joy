@@ -2,6 +2,20 @@ import moment from 'moment-timezone'
 import { getCacheStats, clearCache } from '../function/antidelete.js'
 import { jidNormalizedUser } from '@whiskeysockets/baileys'
 
+function cleanLID(jid) {
+    if (!jid) return null;
+    
+    const decoded = jidNormalizedUser(jid);
+    
+    if (decoded.includes(':') && decoded.endsWith('@lid')) {
+        const parts = decoded.split(':');
+        const mainId = parts[0];
+        return `${mainId}@lid`;
+    }
+    
+    return decoded;
+}
+
 let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isROwner }) => {
     let type = (args[0] || '').toLowerCase()
     let isEnable
@@ -110,7 +124,7 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
         if (isOwner && globalFeatures.length > 0) {
             menu += '\n*PENGATURAN OWNER:*\n'
             globalFeatures.forEach(([key, feature]) => {
-                const botLid = jidNormalizedUser(conn.user.lid)
+                const botLid = cleanLID(conn.user.lid)
                 const settings = global.db.data.settings[botLid] || {}
                 let status = getStatus(settings[feature.dbProperty])
                 menu += `*Status:* ${status}\n*Fitur:* ${feature.name}\n*Ket:* ${feature.description}\n\n`

@@ -7,75 +7,117 @@ const formatDuration = (seconds) => {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
-const formatViews = (views) => {
-    if (isNaN(views)) return 'N/A';
-    if (views >= 1000000) return (views / 1000000).toFixed(1) + 'M';
-    if (views >= 1000) return (views / 1000).toFixed(1) + 'K';
-    return views.toString();
-}
-
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!text) {
         return m.reply(
             `*MASUKKAN LINK YOUTUBE*\n\n` +
-            `Yuk, masukin link video YouTube yang mau kamu ambil audionya.\n\n` +
+            `Gunakan fitur ini buat download audio kualitas paling bagus.\n\n` +
             `*Cara Pakai:*\n` +
             `\`${usedPrefix + command}\` \`url\`\n\n` +
             `*Contoh:*\n` +
-            `\`${usedPrefix + command}\` *https://www.youtube.com/watch?v=g2xhes9AF2w*`
+            `\`${usedPrefix + command}\` \`https://youtu.be/GEsaP891k90\``
         )
     }
 
     const ytRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}.*$/
     if (!ytRegex.test(text)) {
-        return m.reply(
-            `*LINK TIDAK VALID*\n\n` +
-            `Kayaknya link yang kamu kasih salah deh. Pastikan itu link YouTube yang benar ya.\n\n` +
-            `*Contoh:* \`${usedPrefix + command}\` *https://www.youtube.com/watch?v=dQw4w9WgXcQ*`
-        )
+        return m.reply('*Link gak valid!* Pastiin link YouTube kamu bener.')
     }
 
     let loadingMsg = null
     try {
-        loadingMsg = await m.reply('*Sabar ya, lagi diproses dulu audionya...*')
+        loadingMsg = await m.reply('*Sabar, lagi nyari kualitas audio paling bagus...*')
 
-        const apiUrl = `https://api.vreden.my.id/api/v1/download/youtube/audio?url=${encodeURIComponent(text)}&quality=320`
-        const response = await fetch(apiUrl)
+        let data = null;
+        let buffer = null;
 
-        if (!response.ok) {
-            throw new Error(`Server sedang gangguan, status: ${response.status}`)
+        try {
+            const infoUrl = `https://api.gimita.id/api/downloader/ytinfo?url=${encodeURIComponent(text)}`;
+            const infoResp = await fetch(infoUrl);
+            const infoJson = await infoResp.json();
+
+            if (!infoJson.success || !infoJson.audio_formats) throw new Error('Gimita Info Failed');
+
+            const formats = infoJson.audio_formats.sort((a, b) => b.abr - a.abr);
+            const bestFormat = formats[0]; 
+            const formatId = bestFormat.format_id;
+
+            const downUrl = `https://api.gimita.id/api/downloader/ytdown?format_id=${formatId}&type=audio&url=${encodeURIComponent(text)}`;
+            const downResp = await fetch(downUrl);
+            const downJson = await downResp.json();
+
+            if (!downJson.success || !downJson.download_url) throw new Error('Gimita Download Failed');
+
+            let fileUrl = downJson.download_url;
+            if (!fileUrl.startsWith('http')) {
+                fileUrl = 'https://api.gimita.id' + fileUrl;
+            }
+
+            const buffResp = await fetch(fileUrl);
+            if (!buffResp.ok) throw new Error('Gagal download audio Gimita');
+            buffer = await buffResp.buffer();
+
+            data = {
+                title: downJson.title || infoJson.title,
+                channel: infoJson.uploader,
+                thumbnail: infoJson.thumbnail,
+                durationStr: formatDuration(infoJson.duration),
+                views: '-',
+                quality: `\`${Math.round(bestFormat.abr)}kbps (${bestFormat.ext})\``,
+                server: 'Gimita'
+            };
+
+        } catch (e) {
+            const vredenUrl = `https://api.vreden.my.id/api/v1/download/youtube/audio?url=${encodeURIComponent(text)}&quality=320`;
+            const vredenResp = await fetch(vredenUrl);
+            const vredenJson = await vredenResp.json();
+
+            if (vredenJson.status && vredenJson.result) {
+                const meta = vredenJson.result.metadata;
+                const dl = vredenJson.result.download;
+
+                const buffResp = await fetch(dl.url);
+                if (!buffResp.ok) throw new Error('Vreden download gagal');
+                buffer = await buffResp.buffer();
+
+                data = {
+                    title: meta.title,
+                    channel: meta.author.name,
+                    thumbnail: meta.thumbnail,
+                    durationStr: formatDuration(meta.seconds),
+                    views: meta.views.toString(),
+                    quality: `\`${dl.quality}\``,
+                    server: 'Vreden (Backup)'
+                };
+            } else {
+                throw new Error('Semua server lagi gangguan.');
+            }
         }
-
-        const json = await response.json()
-
-        if (!json.status || !json.result?.status) {
-            throw new Error(json.message || 'Gagal mengambil data dari server.')
-        }
-        
-        const { metadata, download } = json.result;
-        const { title, author, seconds, thumbnail, url: videoUrl, views, ago } = metadata;
-        const { url: downloadUrl, quality: audioQuality } = download;
 
         if (loadingMsg?.key) {
-            try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
+            try { 
+                await conn.sendMessage(m.chat, { 
+                    text: `*Berhasil diunduh!*\n\nLagi ngirim audio:\n*${data.title}* (${data.quality})\n\nTunggu sebentar ya...`, 
+                    edit: loadingMsg.key 
+                }) 
+            } catch (e) {}
         }
 
-        let caption = `*YOUTUBE AUDIO BERHASIL*\n\n` +
-                      `*Judul:* ${title}\n` +
-                      `*Channel:* ${author.name}\n` +
-                      `*Durasi:* ${formatDuration(seconds)}\n` +
-                      `*Views:* ${formatViews(views)}\n` +
-                      `*Upload:* ${ago}\n` +
-                      `*Kualitas:* \`${audioQuality}\``
+        let caption = `*YOUTUBE AUDIO DOWNLOADER*\n\n` +
+                      `*Judul:* ${data.title}\n` +
+                      `*Channel:* ${data.channel}\n` +
+                      `*Durasi:* ${data.durationStr}\n` +
+                      `*Kualitas:* ${data.quality}\n` +
+                      `*Server:* ${data.server}`
 
         await conn.sendMessage(m.chat, {
             text: caption,
             contextInfo: {
                 externalAdReply: {
-                    title: title,
-                    body: `Channel: ${author.name}`,
-                    thumbnailUrl: thumbnail,
-                    sourceUrl: videoUrl,
+                    title: data.title,
+                    body: `Channel: ${data.channel}`,
+                    thumbnailUrl: data.thumbnail,
+                    sourceUrl: text,
                     mediaType: 1,
                     renderLargerThumbnail: true
                 }
@@ -83,16 +125,23 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }, { quoted: m })
 
         await conn.sendMessage(m.chat, {
-            audio: { url: downloadUrl },
-            mimetype: 'audio/mpeg'
+            audio: buffer,
+            mimetype: 'audio/mpeg',
+            fileName: `${data.title}.mp3`
         }, { quoted: m })
 
     } catch (error) {
-        console.error('Ytmp3 Error:', error)
+        console.error('YTMP3 Error:', error)
         if (loadingMsg?.key) {
-            try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
+            try { 
+                await conn.sendMessage(m.chat, { 
+                    text: `*PENGUNDUHAN GAGAL*\n\nAda masalah pas proses permintaan kamu.\n*Error:* ${error.message}`, 
+                    edit: loadingMsg.key 
+                }) 
+            } catch {}
+        } else {
+            m.reply(`*PENGUNDUHAN GAGAL*\n\nAda masalah pas proses permintaan kamu.\n*Error:* ${error.message}`)
         }
-        m.reply(`*PENGUNDUHAN GAGAL*\n\n*Pesan:* ${error.message}\n\nCoba lagi beberapa saat lagi atau pakai link lain ya.`)
     }
 }
 

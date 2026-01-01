@@ -11,6 +11,21 @@ import { jidNormalizedUser } from '@whiskeysockets/baileys';
 const isNumber = x => typeof x === "number" && !isNaN(x);
 const printMessages = (await import("./function/print.js")).default;
 
+// ===== CLEAN LID =====
+function cleanLID(jid) {
+    if (!jid) return null;
+    
+    const decoded = jidNormalizedUser(jid);
+    
+    if (decoded.includes(':') && decoded.endsWith('@lid')) {
+        const parts = decoded.split(':');
+        const mainId = parts[0];
+        return `${mainId}@lid`;
+    }
+    
+    return decoded;
+}
+
 // ===== FUNGSI HELPER UNTUK KONVERSI LID =====
 /**
  * Konversi JID ke LID dengan fallback
@@ -144,7 +159,7 @@ export async function handler(chatUpdate) {
         
         if (m.isBaileys) return;
         
-        const botLid = jidNormalizedUser(this?.user?.lid);
+        const botLid = cleanLID(this?.user?.lid);
         
         let isROwner = false;
         let isOwner = false;
