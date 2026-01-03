@@ -43,7 +43,7 @@ let handler = async (m, { conn, participants }) => {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 handler.help = ['kick'].map(v => v + ' @user')
-handler.tags = ['group', 'admin']
+handler.tags = ['group']
 handler.command = /^(kick|keluarkan)$/i
 handler.admin = true
 handler.group = true

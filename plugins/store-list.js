@@ -1,0 +1,114 @@
+import fs from 'fs'
+import path from 'path'
+
+const dbPath = path.join(process.cwd(), 'data', 'store.json')
+
+function loadStore() {
+    if (!fs.existsSync(dbPath)) {
+        fs.writeFileSync(dbPath, '{}')
+        return {}
+    }
+    return JSON.parse(fs.readFileSync(dbPath, 'utf8'))
+}
+
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+    const store = loadStore()
+    const keys = Object.keys(store)
+
+    if (keys.length === 0) {
+        return m.reply(`*STORE KOSONG*\n\nBelum ada item yang disimpan di sini. Pake perintah \`${usedPrefix}addlist\` buat nambahin item baru.`)
+    }
+
+    try {
+        let header = `*STORE LIST RESULT*\n`
+        header += `Total Item: ${keys.length}\n\n`
+        header += `Balas pesan ini pake angka (1-${keys.length}) buat ambil itemnya.\n\n`
+
+        let listText = '';
+        keys.forEach((key, i) => {
+            listText += `*${i + 1}.* ${key}\n`
+        });
+
+        conn.storeList = conn.storeList || {};
+        conn.storeList[m.chat] = keys;
+
+        await conn.sendMessage(m.chat, {
+            text: header + listText,
+            contextInfo: {
+                externalAdReply: {
+                    title: `DAFTAR MENU STORE`,
+                    body: "Pilih angka buat ambil item",
+                    thumbnailUrl: 'https://api.cloudsky.biz.id/file?key=kurumi-bot/1766671505860.jpg',
+                    sourceUrl: '',
+                    mediaType: 1,
+                    renderLargerThumbnail: true
+                }
+            }
+        }, { quoted: m })
+
+    } catch (error) {
+        console.error('Store List Error:', error)
+        m.reply(`*GAGAL TAMPILIN LIST*\n\n*Error:* ${error.message}`)
+    }
+}
+
+handler.before = async (m, { conn }) => {
+    conn.storeList = conn.storeList || {};
+    const keys = conn.storeList[m.chat];
+
+    if (m.text && keys && !isNaN(m.text)) {
+        let index = parseInt(m.text) - 1;
+        
+        if (index >= 0 && index < keys.length) {
+            let keyName = keys[index];
+            
+            delete conn.storeList[m.chat];
+
+            try {
+                const store = loadStore()
+                const item = store[keyName]
+
+                if (!item) throw new Error(`Item *${keyName}* gak ada di database.`)
+
+                if (typeof item === 'string') {
+                    await conn.sendMessage(m.chat, { text: item }, { quoted: m });
+                    return true;
+                }
+
+                if (item.mtype === 'conversation' || item.mtype === 'extendedTextMessage') {
+                    const textContent = item.text || item.mediaMessage?.extendedTextMessage?.text || item.mediaMessage?.conversation || item.message?.conversation;
+                    
+                    if (textContent) {
+                        await conn.sendMessage(m.chat, { text: textContent }, { quoted: m });
+                        return true;
+                    }
+                }
+
+                let msgContent = item.mediaMessage || item.message;
+
+                if (!msgContent) {
+                    throw new Error('Data pesan gak ketemu di database.');
+                }
+
+                let generateId = (Math.random() + 1).toString(36).substring(7);
+
+                await conn.relayMessage(m.chat, msgContent, { 
+                    messageId: generateId
+                });
+
+            } catch (e) {
+                console.error('Handler Store Error:', e)
+                m.reply(`*Gagal ambil item:* ${e.message}`)
+            }
+            
+            return true;
+        }
+    }
+    return false; 
+}
+
+handler.help = ['list']
+handler.tags = ['store']
+handler.command = /^list(store)?$/i
+
+export default handler

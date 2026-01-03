@@ -161,11 +161,11 @@
       "bannedDate": -1
     },
     "2061584318613@lid": {
-      "name": "628551000185",
+      "name": "Joy",
       "age": -1,
       "level": 0,
       "exp": 0,
-      "limit": 10,
+      "limit": null,
       "afk": false,
       "afkReason": "",
       "register": false,
