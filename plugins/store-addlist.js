@@ -23,23 +23,23 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!text) {
         return m.reply(`*KASIH NAMA ITEMNYA*\n\nJangan lupa kasih nama buat item yang mau kamu simpen:\n\`${usedPrefix + command}\` *nama*`)
     }
-
+    
     const key = text.trim()
     const store = loadStore()
-
+    
     if (store[key]) {
         return m.reply(`*NAMA UDAH DIPAKE*\n\nNama *${key}* udah ada di list. Pake nama lain aja atau hapus dulu yang lama pake dellist.`)
     }
     
     let dataToSave = {}
-
+    
     try {
         let q = m.quoted
-
+        
         if (q.mediaMessage || q.isMedia) {
             dataToSave = {
                 mtype: q.mtype,
-                mediaMessage: q.mediaMessage || q.msg, 
+                mediaMessage: q.mediaMessage || q.msg,
                 text: q.text || q.caption || '',
                 key: {
                     remoteJid: m.chat,
@@ -48,7 +48,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                     participant: q.sender
                 }
             }
-        } 
+        }
         else {
             dataToSave = {
                 mtype: q.mtype || 'conversation',
@@ -58,10 +58,10 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                 }
             }
         }
-
+        
         store[key] = dataToSave
         saveStore(store)
-
+        
         await conn.sendMessage(m.chat, {
             text: `*BERHASIL DISIMPEN*\n\nItem dengan nama *${key}* udah masuk ke database.\n\nCek itemnya pake perintah \`.list\` ya.`,
             contextInfo: {
@@ -75,7 +75,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                 }
             }
         }, { quoted: m })
-
+        
     } catch (e) {
         console.error(e)
         m.reply(`*Gagal nyimpen:* ${e.message}`)
@@ -85,5 +85,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 handler.help = ['addlist *nama*']
 handler.tags = ['store']
 handler.command = /^addlist$/i
+handler.owner = true
 
 export default handler
