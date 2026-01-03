@@ -55,7 +55,7 @@ export async function requestPairing(conn) {
 
 
 /**
-- Fungsi untuk update koneksi dengan LOGIKA RECONNECT YANG LEBIH BAIK
+- Fungsi untuk update koneksi dengan LOGIKA RECONNECT YANG AGRESIF (FIX ERROR 428)
 - @param {*} update
 - @param {ReturnType<typeof makeWASocket>} conn
  */
@@ -80,15 +80,12 @@ export async function connectionUpdate(update, conn) {
 
     if (connection === "close") {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
-        
-        // PERBAIKAN DI SINI:
-        // Hapus 'new DisconnectReason(...)'. Kita ambil pesan errornya langsung.
         const reason = lastDisconnect?.error?.toString() || "Unknown Reason";
         
         console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold(`KONEKSI TERPUTUS`)}`);
         console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold(`Penyebab: ${reason} (Code: ${statusCode})`)}`);
 
-        // === LOGIKA BARU: MEMBEDAKAN ERROR FATAL DAN SEMENTARA ===
+        // === LOGIKA PERBAIKAN DI SINI ===
 
         switch (statusCode) {
             // 1. FATAL: Logged Out -> Hapus semua session & matikan bot
@@ -96,7 +93,8 @@ export async function connectionUpdate(update, conn) {
                 console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("❌ BOT LOGGED OUT! Sesi tidak valid.")}`);
                 console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Menghapus semua file sessions...")}`);
                 
-                const sessionsPath = './sessions';
+                // Pastikan folder ini sesuai dengan settingan bot kamu
+                const sessionsPath = './sessions'; 
                 if (existsSync(sessionsPath)) {
                     readdirSync(sessionsPath).forEach(file => {
                         try { unlinkSync(join(sessionsPath, file)); } catch {}
@@ -110,26 +108,29 @@ export async function connectionUpdate(update, conn) {
             // 2. FATAL: Sesi Buruk / Error Auth -> Bersihkan session & hard restart
             case DisconnectReason.badSession:
             case DisconnectReason.connectionReplaced:
-            case DisconnectReason.multideviceMismatch: // Penting untuk Baileys v6+
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("⚠️  Sesi tidak valid atau digantikan. Membersihkan file session...")}`);
+            case DisconnectReason.multideviceMismatch:
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.red.bold("⚠️  Sesi tidak valid atau digantikan. Resetting...")}`);
                 await clearSessionFiles();
                 console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Melakukan hard restart...")}`);
                 await global.reloadHandler(true);
                 break;
 
-            // 3. SEMENTARA: Masalah Jaringan -> Biarkan Baileys reconnect otomatis
+            // 3. SEMENTARA: Masalah Jaringan (TERMASUK FIX 428 DISINI)
+            // KITA PAKSA RESTART SUPAYA TIDAK STUCK
+            case 428: // <-- Code Error yang kamu alami
             case DisconnectReason.connectionClosed:
             case DisconnectReason.connectionLost:
             case DisconnectReason.timedOut:
             case DisconnectReason.restartRequired:
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Masalah jaringan terdeteksi. Menunggu Baileys reconnect otomatis...")}`);
-                // KITA TIDAK MELAKUKAN APA-APA DI SINI.
-                // JANGAN PANGGIL reloadHandler(true).
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.yellow.bold("Masalah jaringan (428/Timeout). Memaksa restart koneksi...")}`);
+                
+                // FIX: Memanggil reloadHandler agar bot nyambung lagi
+                await global.reloadHandler(true); 
                 break;
 
             // 4. DEFAULT: Untuk error lain yang tidak terduga
             default:
-                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.magenta.bold("Menjalankan hard restart untuk error tidak dikenal...")}`);
+                console.log(`${chalk.white.bold(" [SISTEM]")} ${chalk.magenta.bold("Error tidak dikenal. Memaksa restart...")}`);
                 await global.reloadHandler(true);
                 break;
         }
