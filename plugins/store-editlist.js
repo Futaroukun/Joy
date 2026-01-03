@@ -18,35 +18,29 @@ function saveStore(data) {
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     conn.editListSession = conn.editListSession || {}
 
-    // --- [BARU] VALIDASI ANTI DOUBLE SESI ---
-    // Jika sesi edit di chat ini sudah ada, tolak perintah baru
     if (conn.editListSession[m.chat]) {
         return m.reply(
-            `⚠️ *SESI SEDANG AKTIF*\n\n` +
-            `Kamu masih dalam mode edit list.\n` +
-            `Silakan selesaikan prosesnya atau ketik *batal* (sambil reply pesan bot) untuk membatalkan sesi sebelumnya.`
+            `*SESI MASIH AKTIF*\n\n` +
+            `Kamu lagi dalam mode edit. Selesaikan dulu atau ketik *batal* sambil reply pesan bot buat nyudahin sesinya.`
         )
     }
-    // ----------------------------------------
 
     const store = loadStore()
     const keys = Object.keys(store)
 
     if (keys.length === 0) {
-        return m.reply(`*STORE KOSONG*\n\nBelum ada item yang bisa diedit.`)
+        return m.reply(`*STORE KOSONG*\n\nGak ada item yang bisa diedit di sini.`)
     }
 
     let listText = `*EDIT LIST MODE*\n\n`
-    listText += `Silakan *Reply pesan ini* dengan angka dari item yang ingin diedit:\n\n`
+    listText += `Silakan *Reply pesan ini* pake angka item yang mau kamu edit:\n\n`
     keys.forEach((key, i) => {
         listText += `*${i + 1}.* ${key}\n`
     })
-    listText += `\n_Ketik 'batal' (sambil reply pesan ini) untuk membatalkan._`
+    listText += `\nKetik *batal* sambil reply pesan ini kalau mau batal.`
 
-    // Kirim pesan instruksi
     let msg = await m.reply(listText)
 
-    // Mulai Sesi
     conn.editListSession[m.chat] = {
         stage: 'select_item',
         keys: keys,
@@ -54,7 +48,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         timeout: setTimeout(() => {
             if (conn.editListSession[m.chat]) {
                 delete conn.editListSession[m.chat]
-                conn.sendMessage(m.chat, { text: '⏳ Waktu edit habis. Sesi dibatalkan.' })
+                conn.sendMessage(m.chat, { text: '*Waktu edit abis. Sesi otomatis batal.*' })
             }
         }, 120000)
     }
@@ -66,32 +60,29 @@ handler.before = async (m, { conn }) => {
 
     if (!session || m.isBaileys) return false
 
-    // WAJIB REPLY PESAN BOT YANG SESUAI
     if (!m.quoted || m.quoted.id !== session.currentMsgId) {
         return false 
     }
 
-    // Fitur Batal
     if (m.text.toLowerCase() === 'batal') {
         clearTimeout(session.timeout)
         delete conn.editListSession[m.chat]
-        await m.reply('✅ Sesi edit dibatalkan.')
+        await m.reply('*Sesi edit udah dibatalin.*')
         return true
     }
 
     const store = loadStore()
 
-    // --- TAHAP 1: PILIH NOMOR ---
     if (session.stage === 'select_item') {
         if (isNaN(m.text)) {
-            let errMsg = await m.reply('❌ Harap balas dengan *ANGKA* saja.')
+            let errMsg = await m.reply('*Kirim angka aja bos, jangan yang lain.*')
             session.currentMsgId = errMsg.key.id 
             return true
         }
         
         let index = parseInt(m.text) - 1
         if (index < 0 || index >= session.keys.length) {
-            let errMsg = await m.reply('❌ Nomor tidak valid. Reply pesan ini dengan angka yang benar.')
+            let errMsg = await m.reply('*Nomornya salah. Reply lagi pake angka yang bener.*')
             session.currentMsgId = errMsg.key.id
             return true
         }
@@ -102,15 +93,14 @@ handler.before = async (m, { conn }) => {
         
         let msg = await m.reply(
             `*EDIT JUDUL*\n\n` +
-            `Judul saat ini: *${oldKey}*\n\n` +
-            `• Silakan Reply pesan ini dengan *Judul Baru*.\n` +
-            `• Atau Reply *skip* untuk membiarkan judul tetap sama.`
+            `Judul sekarang: *${oldKey}*\n\n` +
+            `• Balas pesan ini pake *Judul Baru*.\n` +
+            `• Atau balas *skip* kalau gak mau ganti judul.`
         )
         session.currentMsgId = msg.key.id 
         return true
     }
 
-    // --- TAHAP 2: EDIT JUDUL ---
     if (session.stage === 'edit_title') {
         let newTitle = m.text.trim()
 
@@ -118,7 +108,7 @@ handler.before = async (m, { conn }) => {
             session.newKey = session.oldKey
         } else {
             if (store[newTitle] && newTitle !== session.oldKey) {
-                let errMsg = await m.reply(`❌ Nama *${newTitle}* sudah ada. Reply pesan ini dengan nama lain atau ketik 'skip'.`)
+                let errMsg = await m.reply(`*Nama ${newTitle} udah ada. Pake nama lain atau ketik skip.*`)
                 session.currentMsgId = errMsg.key.id
                 return true
             }
@@ -127,19 +117,18 @@ handler.before = async (m, { conn }) => {
 
         session.stage = 'edit_content'
         
-        let infoTitle = session.newKey === session.oldKey ? 'Judul tidak diubah.' : `Judul diubah jadi: *${session.newKey}*`
+        let infoTitle = session.newKey === session.oldKey ? 'Judul gak diganti.' : `Judul diganti jadi: *${session.newKey}*`
         
         let msg = await m.reply(
-            `✅ ${infoTitle}\n\n` +
+            `${infoTitle}\n\n` +
             `*EDIT ISI PESAN*\n\n` +
-            `• Silakan Reply pesan ini dengan konten baru (Teks/Gambar/Stiker/Video).\n` +
-            `• Atau Reply *skip* untuk membiarkan isi pesan tetap sama.`
+            `• Balas pesan ini pake konten baru (Teks/Gambar/Stiker/Video).\n` +
+            `• Atau balas *skip* kalau isinya gak mau diganti.`
         )
         session.currentMsgId = msg.key.id 
         return true
     }
 
-    // --- TAHAP 3: EDIT ISI PESAN ---
     if (session.stage === 'edit_content') {
         try {
             let finalData = null
@@ -149,14 +138,9 @@ handler.before = async (m, { conn }) => {
             } else {
                 let q = m 
                 let msgContent = q.message 
-                
                 let type = q.mtype
-                // Normalisasi ephemeral/viewonce
-                if (type === 'ephemeralMessage') {
-                     type = Object.keys(q.message)[0]
-                     msgContent = q.message[type]
-                }
-                if (type === 'viewOnceMessage') {
+                
+                if (type === 'ephemeralMessage' || type === 'viewOnceMessage') {
                      type = Object.keys(q.message)[0]
                      msgContent = q.message[type]
                 }
@@ -183,26 +167,21 @@ handler.before = async (m, { conn }) => {
                 }
             }
 
-            // Simpan Perubahan
             if (session.newKey !== session.oldKey) {
                 delete store[session.oldKey]
             }
             store[session.newKey] = finalData
             saveStore(store)
 
-            // Bersihkan sesi
             clearTimeout(session.timeout)
             delete conn.editListSession[m.chat]
 
             await conn.sendMessage(m.chat, {
-                text: `*EDIT SUKSES!* ✅\n\n` +
-                      `Nama: *${session.newKey}*\n` +
-                      `Status: Berhasil diperbarui.\n\n` +
-                      `Gunakan *.list* untuk melihat hasilnya.`,
+                text: `*EDIT BERHASIL*\n\nNama: *${session.newKey}*\nStatus: Udah diperbarui.\n\nCek hasilnya pake perintah \`.list\` ya.`,
                 contextInfo: {
                     externalAdReply: {
                         title: `DATABASE UPDATED`,
-                        body: `Item ${session.oldKey} telah diedit.`,
+                        body: `Item ${session.oldKey} udah berhasil diedit.`,
                         thumbnailUrl: 'https://api.cloudsky.biz.id/file?key=kurumi-bot/1766671505860.jpg',
                         sourceUrl: '',
                         mediaType: 1,
@@ -213,7 +192,7 @@ handler.before = async (m, { conn }) => {
 
         } catch (e) {
             console.error(e)
-            let errMsg = await m.reply(`❌ Error saat menyimpan: ${e.message}\nSilakan coba reply pesan ini lagi.`)
+            let errMsg = await m.reply(`*Gagal nyimpen:* ${e.message}\nCoba reply lagi pesannya.`)
             session.currentMsgId = errMsg.key.id
         }
         return true
