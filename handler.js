@@ -673,34 +673,71 @@ export async function participantsUpdate({ id, participants, action }) {
     }
 }
 
+function formatDuration(seconds) {
+    if (isNaN(seconds) || seconds === 0) return 'Nonaktif';
+    const d = Math.floor(seconds / (3600 * 24));
+    const h = Math.floor(seconds % (3600 * 24) / 3600);
+    const m = Math.floor(seconds % 3600 / 60);
+    
+    let parts = [];
+    if (d > 0) parts.push(`${d} hari`);
+    if (h > 0) parts.push(`${h} jam`);
+    if (m > 0) parts.push(`${m} menit`);
+    
+    return parts.length > 0 ? parts.join(', ') : 'kurang dari semenit';
+}
+
 export async function groupsUpdate(groupsUpdate) {
     try {
         if (!groupsUpdate) return;
+        
         for (const groupUpdate of groupsUpdate) {
             const id = groupUpdate.id;
             if (!id) continue;
 
-            let text = "";
             const chat = global.db.data?.chats[id];
             if (!chat?.detect) continue;
+            const author = groupUpdate?.author;
+            if (!author) continue;
 
-            if (groupUpdate?.author) {
-                let user = (groupUpdate?.author).decodeJid();
-                if (user?.endsWith("@s.whatsapp.net")) {
-                    user = await ensureLID(conn, user);
-                }
-
-                if (groupUpdate.desc && user) text = (chat?.sDesc || "*Deskripsi group diganti oleh* @user\n\n@desc").replace("@user", `@${user.split("@")[0]}`).replace("@desc", groupUpdate.desc);
-                if (groupUpdate.subject && user)
-                    text = (chat?.sSubject || "*Judul group diganti oleh* @user\n\n@subject").replace("@user", `@${user.split("@")[0]}`).replace("@subject", groupUpdate.subject);
-                if (groupUpdate.inviteCode && user) text = "*Link group diganti oleh* @user".replace("@user", `@${user.split("@")[0]}`);
-                if (!text) continue;
-                await this.sendMessage(id, {
-                    text,
-                    mentions: [user]
-                });
+            const userLid = await ensureLID(this, author.decodeJid());
+            const userName = await this.getName(userLid);
+            const mentions = [userLid];
+            
+            let message = '';
+            
+            if (groupUpdate.subject) {
+                message = `*INFO GRUP DIUBAH*\n\n*JUDUL GRUP* diganti oleh *@${userLid.split('@')[0]}*\n\n*Judul Baru:*\n${groupUpdate.subject}`;
             }
-            if (groupUpdate.icon) conn.reply(id, "*Ikon group telah diganti*");
+            else if (groupUpdate.desc) {
+                message = `*INFO GRUP DIUBAH*\n\n*DESKRIPSI GRUP* diganti oleh *@${userLid.split('@')[0]}*`;
+            }
+            else if (groupUpdate.inviteCode) {
+                const newLink = await this.groupInviteCode(id);
+                message = `*INFO GRUP DIUBAH*\n\n*LINK GRUP* direset oleh *@${userLid.split('@')[0]}*\n\n*Link Baru:*\nhttps://chat.whatsapp.com/${newLink}`;
+            }
+            else if ('announcement' in groupUpdate) {
+                const action = groupUpdate.announcement ? 'DITUTUP' : 'DIBUKA';
+                const detail = groupUpdate.announcement ? 'Hanya admin yang dapat mengirim pesan.' : 'Semua member dapat mengirim pesan.';
+                message = `*PENGATURAN GRUP DIUBAH*\n\n*GRUP TELAH ${action}* oleh *@${userLid.split('@')[0]}*.\n\n${detail}`;
+            }
+            else if ('restrict' in groupUpdate) {
+                const action = groupUpdate.restrict ? 'DIBATASI HANYA UNTUK ADMIN' : 'DIBUKA UNTUK SEMUA MEMBER';
+                message = `*PENGATURAN GRUP DIUBAH*\n\n*IZIN EDIT INFO GRUP* sekarang *${action}*.\n\nDiubah oleh *@${userLid.split('@')[0]}*.`;
+            }
+            else if ('ephemeral' in groupUpdate) {
+                const duration = groupUpdate.ephemeral;
+                const action = duration > 0 ? `DIAKTIFKAN dengan durasi *${formatDuration(duration)}*` : 'DINONAKTIFKAN';
+                message = `*PENGATURAN GRUP DIUBAH*\n\n*PESAN SEMENTARA* telah *${action}*.\n\nDiubah oleh *@${userLid.split('@')[0]}*.`;
+            }
+
+            if (message) {
+                await this.sendMessage(id, { text: message, mentions });
+            }
+            
+            if (groupUpdate.icon) {
+                await this.reply(id, "*Ikon grup telah diganti.*");
+            }
         }
     } catch (e) {
         console.error('Groups update error:', e);

@@ -383,6 +383,22 @@
       "regTime": -1,
       "premiumDate": -1,
       "bannedDate": -1
+    },
+    "153184957952196@lid": {
+      "name": "153184957952196@lid",
+      "age": -1,
+      "level": 0,
+      "exp": 0,
+      "limit": 10,
+      "afk": false,
+      "afkReason": "",
+      "register": false,
+      "premium": false,
+      "banned": false,
+      "afkTime": -1,
+      "regTime": -1,
+      "premiumDate": -1,
+      "bannedDate": -1
     }
   },
   "chats": {
