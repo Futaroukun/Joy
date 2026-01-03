@@ -1,1 +1,42 @@
-{}
+{
+  "Ahhhh": {
+    "mtype": "stickerMessage",
+    "mediaMessage": {
+      "stickerMessage": {
+        "url": "https://mmg.whatsapp.net/v/t62.15575-24/609597065_868998262285161_3479937981664484397_n.enc?ccb=11-4&oh=01_Q5Aa3QFS497bpOxKQFlAeBUsI2maNJZYva2CvKF7bew7f3cE-g&oe=6980C303&_nc_sid=5e03e0&mms3=true",
+        "fileSha256": "pKemIqj7SsifBfQLql8a3GlZSlrOtiEJ4jBJBZqDVbk=",
+        "fileEncSha256": "IF9ZBm6j0Hqy2NBrVCWbcXQUpYpMvERtir3hBSDPr94=",
+        "mediaKey": "f2QCbgvbRO01crT6w07yxUqSi3WR/bOMdVEe71lb3lI=",
+        "mimetype": "image/webp",
+        "height": 64,
+        "width": 64,
+        "directPath": "/v/t62.15575-24/609597065_868998262285161_3479937981664484397_n.enc?ccb=11-4&oh=01_Q5Aa3QFS497bpOxKQFlAeBUsI2maNJZYva2CvKF7bew7f3cE-g&oe=6980C303&_nc_sid=5e03e0",
+        "fileLength": "9202",
+        "mediaKeyTimestamp": "1767277438",
+        "isAnimated": false,
+        "contextInfo": {
+          "stanzaId": "3EB06E04A75CA1B5B387DA",
+          "participant": "274062534299882@lid",
+          "quotedMessage": {
+            "extendedTextMessage": {
+              "text": "✅ Judul diubah jadi: *Ahhhh*\n\n*EDIT ISI PESAN*\n\n• Silakan Reply pesan ini dengan konten baru (Teks/Gambar/Stiker/Video).\n• Atau Reply *skip* untuk membiarkan isi pesan tetap sama.",
+              "contextInfo": {}
+            }
+          },
+          "quotedType": "EXPLICIT"
+        },
+        "stickerSentTs": "1767461607772",
+        "isAvatar": false,
+        "isAiSticker": false,
+        "isLottie": false
+      }
+    },
+    "text": "",
+    "key": {
+      "remoteJid": "210650966061175@lid",
+      "fromMe": false,
+      "id": "ACCC910A53996A7BF4ACF95DACD51E1D",
+      "participant": "210650966061175@lid"
+    }
+  }
+}
