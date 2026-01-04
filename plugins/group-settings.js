@@ -201,7 +201,7 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
     if (feature.scope === 'group') {
         chat[feature.dbProperty] = isEnable
     } else {
-        const botLid = conn.user.lid
+        const botLid = cleanLID(conn.user.lid)
         if (!global.db.data.settings[botLid]) {
             global.db.data.settings[botLid] = {}
         }
