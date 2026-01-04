@@ -404,7 +404,7 @@
   "chats": {
     "120363278432732866@g.us": {
       "antispam": false,
-      "antilink": true,
+      "antilink": false,
       "antivirtex": false,
       "mute": false,
       "detect": true,

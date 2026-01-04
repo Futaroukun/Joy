@@ -193,7 +193,7 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
     
     if (feature.scope === 'group' && feature.access === 'admin') {
         if (!(isAdmin || isOwner)) {
-            global.dfail('admin', m, conn)
+            global.dFail('admin', m, conn)
             throw false
         }
     }
