@@ -25,22 +25,20 @@ let tags = {
 };
 
 const defaultMenu = {
-    before: `Hallo %name! 👋
+    before: `Hallo %namatag! 👋
 Saya adalah Bot Otomatis yang siap membantu Anda 24/7!
  
 「  I N F O  B O T  」
- •  Mode : %mode
  •  Nama : %me
+ •  Mode : %mode
+ •  Platform : %platform
  •  Versi : %version
- •  Limits : %limit
  •  Uptime : %uptime
  
-「  I N F O  S E R V E R  」
- •  Platform : %platform
- •  OS : %serverOS
- •  Arch : %serverArch
- •  CPU : %cpuModel
- •  RAM : %freeMem / %totalMem
+「  I N F O  U S E R  」
+ •  Nama : %name
+ •  Status : %status
+ •  Limits : %limit
 %readmore
 `.trimStart(),
     header: '╭─「 *%category* 」',
@@ -49,12 +47,22 @@ Saya adalah Bot Otomatis yang siap membantu Anda 24/7!
     after: `Powered By Rafli`,
 };
 
-let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
+let handler = async (m, { conn, usedPrefix, command, __dirname, text, isOwner }) => {
     try {
         let user = global.db.data.users[m.sender];
         if (!user) return;
 
-        let name = `@${m.sender.split('@')[0]}`;
+        let name = user.name || 'Pengguna Baru';
+        let namatag = `@${m.sender.split('@')[0]}`;
+        let status = 'Standard User';
+        if (user.banned) {
+            status = 'Banned';
+        } else if (isOwner) {
+            status = 'Developer';
+        } else if (user.premium) {
+            status = 'Premium User';
+        }
+        
         let botname = global.info?.namabot || conn.user?.name || 'WhatsApp Bot';
         let limit = (user.limit === Infinity) ? 'Unlimited' : (user.limit || 0);
 
@@ -118,6 +126,8 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text }) => {
             me: botname, version: _package.version || '1.0.0',
             cpuModel, totalMem, freeMem, serverArch, serverOS,
             readmore: readMore,
+            status: status,
+            namatag: namatag
         };
 
         let menuType = text ? text.toLowerCase().trim() : '';
