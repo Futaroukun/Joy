@@ -1,33 +1,19 @@
 import axios from "axios";
 import { fileTypeFromBuffer } from "file-type";
 
-// ⚠️ GANTI DENGAN API KEY GEMINI ANDA
-const API_KEY = "AIzaSyD6QwvrvnjU7j-R6fkOghfIVKwtvc7SmLk"; 
-const API_URL = "https://firebasevertexai.googleapis.com/v1beta";
-const MODEL_URL = "projects/gemmy-ai-bdc03/locations/us-central1/publishers/google/models";
-const MODEL = "gemini-2.5-pro"; // Atau gemini-1.5-pro
+const API_KEY = "AIzaSyBsJHBvXaY5CP9cirZ8IhUT6FUdh-KHFBA"; 
+const MODEL = "gemini-1.5-pro";
 
-const HEADERS = {
-    "content-type": "application/json",
-    "x-goog-api-client": "gl-kotlin/2.1.0-ai fire/16.5.0",
-    "x-goog-api-key": API_KEY 
-};
-
-/**
- * Chat Gemini dengan dukungan System Instruction & Gambar
- */
 async function chat(messages = [], fileBuffer = null, systemPrompt = "") {
     if (!Array.isArray(messages) || messages.length === 0) {
         throw new Error("Messages array is required");
     }
 
-    // 1. Format Pesan
     const contents = messages.map(msg => ({
         role: msg.role === "system" ? "user" : (msg.role === "assistant" ? "model" : "user"),
         parts: [{ text: msg.content }]
     }));
 
-    // 2. Handle Gambar (Vision)
     if (fileBuffer) {
         const type = await fileTypeFromBuffer(fileBuffer);
         if (type) {
@@ -37,7 +23,6 @@ async function chat(messages = [], fileBuffer = null, systemPrompt = "") {
                     data: fileBuffer.toString("base64")
                 }
             };
-            // Masukkan data gambar ke giliran user terakhir
             const lastUserIndex = contents.map(m => m.role).lastIndexOf("user");
             if (lastUserIndex !== -1) {
                 contents[lastUserIndex].parts.unshift(inlinePart);
@@ -47,9 +32,7 @@ async function chat(messages = [], fileBuffer = null, systemPrompt = "") {
         }
     }
 
-    // 3. Susun Payload
     const payload = {
-        model: `${MODEL_URL}/${MODEL}`,
         contents,
         safetySettings: [
             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -59,7 +42,6 @@ async function chat(messages = [], fileBuffer = null, systemPrompt = "") {
         ]
     };
 
-    // 4. Tambahkan System Instruction (Prompt Ahli)
     if (systemPrompt) {
         payload.systemInstruction = {
             parts: [{ text: systemPrompt }]
@@ -68,9 +50,13 @@ async function chat(messages = [], fileBuffer = null, systemPrompt = "") {
 
     try {
         const r = await axios.post(
-            `${API_URL}/${MODEL_URL}/${MODEL}:generateContent`,
+            `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`,
             payload,
-            { headers: HEADERS }
+            { 
+                headers: {
+                    "Content-Type": "application/json"
+                } 
+            }
         );
 
         if (r.status !== 200) throw new Error("No result found");
