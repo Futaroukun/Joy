@@ -5,7 +5,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     const botName = global.info?.namabot || 'Joy Bot';
 
     if (!ownerNumber) {
-        return m.reply('*SISTEM ERROR*\n\nData kontak pengembang tidak ditemukan dalam konfigurasi server.');
+        return m.reply('*SISTEM ERROR*\n\nData kontak owner gak ketemu di konfigurasi.');
     }
 
     const vcard = `BEGIN:VCARD\n` +
@@ -24,7 +24,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
     await conn.sendMessage(m.chat, contactMessage, { quoted: m });
 
-    await conn.reply(m.chat, `*INFORMASI KONTAK*\n\nTerlampir adalah kartu kontak resmi *${ownerName}*. Harap hubungi hanya untuk kepentingan mendesak atau pelaporan kendala sistem.`, m);
+    await conn.reply(m.chat, `*INFORMASI KONTAK*\n\nNih kartu kontak resmi *${ownerName}*. Chat seperlunya aja ya, jangan spam apalagi cuma nanya hal gak jelas.`, m);
 };
 
 handler.help = ['owner'];

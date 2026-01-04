@@ -47,7 +47,7 @@ Saya adalah Bot Otomatis yang siap membantu Anda 24/7!
     after: `Powered By Rafli`,
 };
 
-let handler = async (m, { conn, usedPrefix, command, __dirname, text, isOwner }) => {
+let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
     try {
         let user = global.db.data.users[m.sender];
         if (!user) return;
@@ -73,13 +73,6 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text, isOwner })
 
         let uptime = clockString(process.uptime() * 1000);
         let platform = os.platform();
-
-        const cpus = os.cpus();
-        const cpuModel = cpus && cpus.length > 0 ? cpus[0].model.trim() : 'N/A';
-        const totalMem = formatBytes(os.totalmem());
-        const freeMem = formatBytes(os.freemem());
-        const serverArch = os.arch();
-        const serverOS = os.release();
 
         const botLid = jidNormalizedUser(conn.user.lid);
         const settings = global.db.data.settings[botLid] || {};
@@ -124,7 +117,6 @@ let handler = async (m, { conn, usedPrefix, command, __dirname, text, isOwner })
             '%': '%', p: usedPrefix, name, limit,
             date, year, uptime, platform, mode,
             me: botname, version: _package.version || '1.0.0',
-            cpuModel, totalMem, freeMem, serverArch, serverOS,
             readmore: readMore,
             status: status,
             namatag: namatag
@@ -243,13 +235,4 @@ function clockString(ms) {
     let m = Math.floor(ms / 60000) % 60;
     let s = Math.floor(ms / 1000) % 60;
     return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
-}
-
-function formatBytes(bytes, decimals = 2) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
