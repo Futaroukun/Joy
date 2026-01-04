@@ -174,6 +174,7 @@ global.reloadHandler = async function reloadHandler(restartConnection) {
         conn.ev.off("group-participants.update", conn.participantsUpdate);
         conn.ev.off("groups.update", conn.groupsUpdate);
         conn.ev.off("message.delete", conn.onDelete);
+        conn.ev.off("call", conn.onCall)
         conn.ev.off("connection.update", conn.connectionUpdate);
         conn.ev.off("creds.update", conn.credsUpdate);
     }
@@ -189,6 +190,7 @@ global.reloadHandler = async function reloadHandler(restartConnection) {
     conn.participantsUpdate = HandlerModule.participantsUpdate.bind(global.conn);
     conn.groupsUpdate = HandlerModule.groupsUpdate.bind(global.conn);
     conn.onDelete = HandlerModule.catchDeleted.bind(global.conn);
+    conn.onCall = HandlerModule.handleCall.bind(global.conn)
     conn.connectionUpdate = async update => await connectionUpdate(update, conn);
     conn.credsUpdate = saveCreds.bind(global.conn);
 
@@ -196,6 +198,7 @@ global.reloadHandler = async function reloadHandler(restartConnection) {
     conn.ev.on("group-participants.update", conn.participantsUpdate);
     conn.ev.on("groups.update", conn.groupsUpdate);
     conn.ev.on("message.delete", conn.onDelete);
+    conn.ev.on("call", conn.onCall)
     conn.ev.on("connection.update", conn.connectionUpdate);
     conn.ev.on("creds.update", conn.credsUpdate);
 

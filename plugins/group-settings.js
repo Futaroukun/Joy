@@ -74,7 +74,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
             access: 'admin',
             scope: 'group'
         },
-        // ===== FITUR MUTE DITAMBAHKAN DI SINI =====
         mute: {
             name: 'Mute Group',
             description: 'Bot tidak akan merespons command di grup',
@@ -87,6 +86,13 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, isR
             name: 'Auto Read',
             description: 'Otomatis membaca pesan masuk',
             dbProperty: 'autoread',
+            access: 'owner',
+            scope: 'global'
+        },
+        anticall: {
+            name: 'Anti Call',
+            description: 'Otomatis reject panggilan masuk',
+            dbProperty: 'antiCall',
             access: 'owner',
             scope: 'global'
         }

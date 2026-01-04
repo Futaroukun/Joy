@@ -469,7 +469,8 @@
       "antispam": true,
       "autoread": true,
       "autobackup": true,
-      "backupDate": -1
+      "backupDate": -1,
+      "antiCall": true
     },
     "274062534299882:27@lid": {
       "autoread": true

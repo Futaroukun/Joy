@@ -1,6 +1,7 @@
 import "./settings.js";
 import { smsg } from "./function/simple.js";
 import { storeMessage, handleMessageRevocation } from "./function/antidelete.js";
+import { handleCall as antiCallHandler } from "./function/anticall.js";
 import { fileURLToPath } from "url";
 import path from "path";
 import { format } from "util";
@@ -93,6 +94,11 @@ function migrateUserData(db, oldJid, newLid) {
     const lidNum = newLid.split('@')[0].slice(-8);
     console.log(chalk.green(`[MIGRATE] SUCCESS: ${phone} -> ...${lidNum}. Data merged.`));
     return true;
+}
+
+// Function Anti Call
+export async function handleCall(json) {
+    await antiCallHandler.call(this, json)
 }
 
 export async function handler(chatUpdate) {
@@ -281,6 +287,7 @@ export async function handler(chatUpdate) {
             if (setting) {
                 if (!("chatMode" in setting)) setting.chatMode = "";
                 if (!("antispam" in setting)) setting.antispam = true;
+                if (!("antiCall" in setting)) setting.antiCall = true;
                 if (!("autoread" in setting)) setting.autoread = true;
                 if (!("autobackup" in setting)) setting.autobackup = true;
                 if (!isNumber(setting.backupDate)) setting.backupDate = -1;
@@ -288,6 +295,7 @@ export async function handler(chatUpdate) {
                 global.db.data.settings[botLid] = {
                     chatMode: "",
                     antispam: true,
+                    antiCall: true,
                     autoread: true,
                     autobackup: true,
                     backupDate: -1
