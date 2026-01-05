@@ -1,6 +1,7 @@
 import chat from '../function/gemini.js'
 import fs from 'fs'
 import path from 'path'
+import fetch from 'node-fetch'
 import { sendButtons } from '../function/button.js'
 
 let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
@@ -8,7 +9,7 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     const isMedia = /image|video|sticker|webp/i.test((m.msg || m).mimetype || '');
 
     if (!hasInput && !isMedia) {
-        return m.reply(`*JOY AI ASSISTANT*\n\nKirim pertanyaan, foto, atau stiker.\n\n*Contoh:*\n\`${usedPrefix + command}\` *Apa resep nasi goreng?*\n\`${usedPrefix + command}\` *(reply gambar)* *Gambar apa ini?*`)
+        return m.reply(`*JOY AI ASSISTANT*\n\nKirim pertanyaan, foto, atau stiker.\n\n*Contoh:*\n\`${usedPrefix + command}\` *Apa resep nasi goreng?*\n\`${usedPrefix + command}\` *(reply gambar)* *Gambar apa ini?*\n\`${usedPrefix + command}\` *Putarin lagu DJ Jedag Jedug*`)
     }
     
     let buffer = null
@@ -16,29 +17,40 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     let loadingMsg = null
     let messages = []
     
+    // --- KONFIGURASI PROMPT ---
     const ownerPrompt = `
 [SYSTEM INSTRUCTION]
 IDENTITAS UTAMA:
 Nama: Joy (Asisten AI Rafli).
-Gaya Bicara: Santai, pakai gua dan lu. To the point.
-Tugas: Bantu urusan teknis coding dan manajemen bot.
+Gaya Bicara: Santai, pakai "gua" dan "lu". To the point.
+Tugas: Bantu urusan teknis coding, manajemen bot, dan hiburan.
 Loyalitas: Mutlak ke Rafli.
 
-ATURAN RESPON:
-1. NO BASA-BASI: DILARANG menggunakan kalimat pengantar seperti Tunggu bentar, Gua cari dulu, Ketemu nih, Oke bos, atau Sedang diproses.
-2. LANGSUNG JAWAB: Langsung berikan informasi atau jawaban yang diminta tanpa pengantar.
+ATURAN KHUSUS (MUSIK/LAGU):
+Jika Rafli meminta memutar lagu, musik, atau nyanyi, JANGAN BANYAK BACOT.
+Cukup balas dengan format: "CMD: play [Judul Lagu]"
+Contoh:
+- Rafli: "Joy putarin lagu apt dong" -> Jawab: "CMD: play APT Rose Bruno Mars"
+- Rafli: "Gua mau denger lagu galau" -> Jawab: "CMD: play lagu galau indonesia populer"
+
+ATURAN RESPON UMUM:
+1. NO BASA-BASI: DILARANG pakai pengantar "Tunggu bentar", "Gua cari dulu", dll.
+2. LANGSUNG JAWAB: Berikan info langsung.
 `;
     
     const userPrompt = `
 [SYSTEM INSTRUCTION]
 IDENTITAS:
 Nama: Joy (Asisten AI buatan Rafli).
-Gaya Bicara: Santai, gaul, akrab. Pakai gua dan kamu.
+Gaya Bicara: Santai, gaul, akrab. Pakai "gua" dan "kamu".
 Tugas: Jawab pertanyaan dengan cerdas tapi asik.
 
-ATURAN RESPON:
-1. NO BASA-BASI: Jangan pakai kata pengantar kayak Bentar ya, Aku cari dulu, Ketemu.
-2. LANGSUNG JAWAB: Langsung ke poin utamanya aja.
+ATURAN KHUSUS (MUSIK/LAGU):
+Jika user meminta lagu, balas dengan format: "CMD: play [Judul Lagu]"
+
+ATURAN RESPON UMUM:
+1. NO BASA-BASI: Jangan pakai kata pengantar.
+2. LANGSUNG JAWAB: Langsung ke poin utamanya.
 `;
     
     const scanKeywords = ['scan', 'kode', 'code', 'file', 'fix', 'debug', 'analisis', 'struktur', 'error', 'perbaiki', 'analisa', 'source code'];
@@ -56,6 +68,7 @@ ATURAN RESPON:
             const q = m.quoted;
             const mime = (q.msg || q).mimetype || '';
             if (/image|video|sticker|webp/i.test(mime)) {
+                // Kalau ada gambar, tetap pakai loading teks biar user tau lagi download
                 loadingMsg = await conn.reply(m.chat, "*Bentar, Joy lagi liat medianya...*", m);
                 try {
                     buffer = await q.download();
@@ -64,15 +77,17 @@ ATURAN RESPON:
                     return m.reply("*Gagal download media.*");
                 }
             } else if (q.text) {
-                loadingMsg = await conn.reply(m.chat, "*Joy lagi baca konteks chatnya...*", m);
+                // Kalau teks doang, pakai status 'typing' (komposing)
+                await conn.sendPresenceUpdate('composing', m.chat)
                 messages.push({ role: "user", content: `Konteks Pesan: "${q.text}"\n\nPerintah: ${prompt}` });
             } else {
-                loadingMsg = await conn.reply(m.chat, "*Joy lagi proses...*", m);
+                await conn.sendPresenceUpdate('composing', m.chat)
                 messages.push({ role: "user", content: prompt });
             }
         } else {
             const mime = (m.msg || m).mimetype || '';
             if (/image|video|sticker|webp/i.test(mime)) {
+                // Kalau ada gambar, tetap pakai loading teks
                 loadingMsg = await conn.reply(m.chat, "*Joy lagi liat gambarnya...*", m);
                 try {
                     buffer = await m.download();
@@ -81,7 +96,10 @@ ATURAN RESPON:
                     return m.reply("*Gagal download media.*");
                 }
             } else {
-                loadingMsg = await conn.reply(m.chat, "*Joy lagi mikir...*", m);
+                // --- BAGIAN YANG DIUBAH ---
+                // Dulu: loadingMsg = await conn.reply(m.chat, "*Joy lagi mikir...*", m);
+                // Sekarang: Pakai efek mengetik saja biar natural & gak nyampah
+                await conn.sendPresenceUpdate('composing', m.chat)
                 messages.push({ role: "user", content: prompt });
             }
         }
@@ -93,10 +111,71 @@ ATURAN RESPON:
 
     try {
         const response = await chat(messages, buffer)
+        
+        // Hapus loading message (hanya jika ada, misal saat scan/kirim gambar)
         if (loadingMsg?.key) {
             try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
         }
         
+        // --- LOGIKA MUSIK ---
+        if (response.includes("CMD: play")) {
+            const songName = response.replace("CMD: play", "").trim()
+            
+            // Info singkat bahwa lagu sedang diproses
+            // Pesan ini opsional, bisa dihapus kalau mau benar-benar silent
+            let musicMsg = await conn.reply(m.chat, `_Oke, Joy cariin "${songName}"..._ 🎧`, m)
+            
+            try {
+                const apiUrl = `https://api.nekolabs.web.id/dwn/youtube/play/v1?q=${encodeURIComponent(songName)}`
+                const apiRes = await fetch(apiUrl)
+                
+                if (!apiRes.ok) throw new Error("Server API lagi down.")
+                
+                const json = await apiRes.json()
+                if (!json.success || !json.result) throw new Error("Lagu gak ketemu.")
+                
+                const { metadata, downloadUrl } = json.result
+
+                // Hapus pesan "Joy cariin"
+                if (musicMsg?.key) {
+                    try { await conn.sendMessage(m.chat, { delete: musicMsg.key }) } catch {}
+                }
+
+                let caption = `*JOY MUSIC PLAYER* 🎵\n\n` +
+                              `*Judul:* ${metadata.title}\n` +
+                              `*Channel:* ${metadata.channel}\n` +
+                              `*Durasi:* ${metadata.duration}\n\n` +
+                              `_Nih lagunya..._`
+
+                await conn.sendMessage(m.chat, {
+                    text: caption,
+                    contextInfo: {
+                        externalAdReply: {
+                            title: metadata.title,
+                            body: "Now Playing via Joy AI",
+                            thumbnailUrl: metadata.cover,
+                            sourceUrl: metadata.url,
+                            mediaType: 1,
+                            renderLargerThumbnail: true
+                        }
+                    }
+                }, { quoted: m })
+
+                await conn.sendMessage(m.chat, {
+                    audio: { url: downloadUrl },
+                    mimetype: 'audio/mpeg',
+                    fileName: `${metadata.title}.mp3`
+                }, { quoted: m })
+
+            } catch (musicError) {
+                if (musicMsg?.key) try { await conn.sendMessage(m.chat, { delete: musicMsg.key }) } catch {}
+                m.reply(`*Gagal muter lagu.*\nError: ${musicError.message}`)
+            }
+            
+            return; 
+        }
+        // --- END LOGIKA MUSIK ---
+
         let finalResponse = formatText(response);
         const codeBlockRegex = /```(?:[a-z]+)?\n([\s\S]+?)\n```/g;
         const matches = [...finalResponse.matchAll(codeBlockRegex)];
@@ -170,7 +249,7 @@ function scanDirectory(dir, fileList = [], depth = 0) {
     return fileList.join('\n')
 }
 
-handler.help = ['ai *teks*']
+handler.help = ['ai *teks*', 'ai *putar lagu*']
 handler.tags = ['ai']
 handler.command = /^(ai|joy|gemini)$/i
 

@@ -431,7 +431,8 @@
       "sBye": "",
       "sPromote": "",
       "sDemote": "",
-      "sewaDate": -1
+      "sewaDate": -1,
+      "isMikuOn": false
     },
     "120363402206937452@g.us": {
       "antispam": false,
