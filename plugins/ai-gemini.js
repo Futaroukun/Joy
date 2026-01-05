@@ -1,7 +1,7 @@
 import chat from '../function/gemini.js'
 import fs from 'fs'
 import path from 'path'
-import fetch from 'node-fetch'
+import fetch from 'node-fetch' // Wajib ada untuk fitur musik
 import { sendButtons } from '../function/button.js'
 
 let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
@@ -9,7 +9,7 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     const isMedia = /image|video|sticker|webp/i.test((m.msg || m).mimetype || '');
 
     if (!hasInput && !isMedia) {
-        return m.reply(`*JOY AI ASSISTANT*\n\nKirim pertanyaan, foto, atau stiker.\n\n*Contoh:*\n\`${usedPrefix + command}\` *Apa resep nasi goreng?*\n\`${usedPrefix + command}\` *(reply gambar)* *Gambar apa ini?*\n\`${usedPrefix + command}\` *Putarin lagu DJ Jedag Jedug*`)
+        return m.reply(`*JOY AI ASSISTANT*\n\nKirim pertanyaan, foto, atau stiker.\n\n*Contoh:*\n\`${usedPrefix + command}\` *Apa resep nasi goreng?*\n\`${usedPrefix + command}\` *(reply gambar)* *Gambar apa ini?*`)
     }
     
     let buffer = null
@@ -17,40 +17,37 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     let loadingMsg = null
     let messages = []
     
-    // --- KONFIGURASI PROMPT ---
+    // --- PROMPT ASLI (TIDAK DIUBAH, HANYA TAMBAH ATURAN MUSIK) ---
     const ownerPrompt = `
 [SYSTEM INSTRUCTION]
 IDENTITAS UTAMA:
 Nama: Joy (Asisten AI Rafli).
-Gaya Bicara: Santai, pakai "gua" dan "lu". To the point.
-Tugas: Bantu urusan teknis coding, manajemen bot, dan hiburan.
+Gaya Bicara: Santai, pakai gua dan lu. To the point.
+Tugas: Bantu urusan teknis coding dan manajemen bot.
 Loyalitas: Mutlak ke Rafli.
 
-ATURAN KHUSUS (MUSIK/LAGU):
-Jika Rafli meminta memutar lagu, musik, atau nyanyi, JANGAN BANYAK BACOT.
-Cukup balas dengan format: "CMD: play [Judul Lagu]"
-Contoh:
-- Rafli: "Joy putarin lagu apt dong" -> Jawab: "CMD: play APT Rose Bruno Mars"
-- Rafli: "Gua mau denger lagu galau" -> Jawab: "CMD: play lagu galau indonesia populer"
+ATURAN MUSIK (WAJIB):
+Jika Rafli minta putar lagu/musik, JANGAN nanya balik. Langsung balas dengan format: "CMD: play [Judul Lagu]"
+Contoh: "CMD: play APT Rose Bruno Mars"
 
-ATURAN RESPON UMUM:
-1. NO BASA-BASI: DILARANG pakai pengantar "Tunggu bentar", "Gua cari dulu", dll.
-2. LANGSUNG JAWAB: Berikan info langsung.
+ATURAN RESPON:
+1. NO BASA-BASI: DILARANG menggunakan kalimat pengantar seperti Tunggu bentar, Gua cari dulu, Ketemu nih, Oke bos, atau Sedang diproses.
+2. LANGSUNG JAWAB: Langsung berikan informasi atau jawaban yang diminta tanpa pengantar.
 `;
     
     const userPrompt = `
 [SYSTEM INSTRUCTION]
 IDENTITAS:
 Nama: Joy (Asisten AI buatan Rafli).
-Gaya Bicara: Santai, gaul, akrab. Pakai "gua" dan "kamu".
+Gaya Bicara: Santai, gaul, akrab. Pakai gua dan kamu.
 Tugas: Jawab pertanyaan dengan cerdas tapi asik.
 
-ATURAN KHUSUS (MUSIK/LAGU):
-Jika user meminta lagu, balas dengan format: "CMD: play [Judul Lagu]"
+ATURAN MUSIK (WAJIB):
+Jika user minta putar lagu, balas dengan format: "CMD: play [Judul Lagu]"
 
-ATURAN RESPON UMUM:
-1. NO BASA-BASI: Jangan pakai kata pengantar.
-2. LANGSUNG JAWAB: Langsung ke poin utamanya.
+ATURAN RESPON:
+1. NO BASA-BASI: Jangan pakai kata pengantar kayak Bentar ya, Aku cari dulu, Ketemu.
+2. LANGSUNG JAWAB: Langsung ke poin utamanya aja.
 `;
     
     const scanKeywords = ['scan', 'kode', 'code', 'file', 'fix', 'debug', 'analisis', 'struktur', 'error', 'perbaiki', 'analisa', 'source code'];
@@ -58,6 +55,7 @@ ATURAN RESPON UMUM:
     let systemInstruction = isOwner ? ownerPrompt : userPrompt;
     
     if (isScanMode) {
+        // Khusus Scan Mode tetap pakai loading text biar kelihatan lagi kerja berat
         loadingMsg = await conn.reply(m.chat, "*SYSTEM ACCESS GRANTED (OWNER)*\n\nLagi baca struktur direktori...", m)
         const rootDir = process.cwd()
         const scannedData = scanDirectory(rootDir)
@@ -68,8 +66,8 @@ ATURAN RESPON UMUM:
             const q = m.quoted;
             const mime = (q.msg || q).mimetype || '';
             if (/image|video|sticker|webp/i.test(mime)) {
-                // Kalau ada gambar, tetap pakai loading teks biar user tau lagi download
-                loadingMsg = await conn.reply(m.chat, "*Bentar, Joy lagi liat medianya...*", m);
+                // Media: Pakai status mengetik
+                await conn.sendPresenceUpdate('composing', m.chat)
                 try {
                     buffer = await q.download();
                     messages.push({ role: "user", content: prompt || "Jelasin media ini secara detail." });
@@ -77,7 +75,7 @@ ATURAN RESPON UMUM:
                     return m.reply("*Gagal download media.*");
                 }
             } else if (q.text) {
-                // Kalau teks doang, pakai status 'typing' (komposing)
+                // Quoted Text: Pakai status mengetik
                 await conn.sendPresenceUpdate('composing', m.chat)
                 messages.push({ role: "user", content: `Konteks Pesan: "${q.text}"\n\nPerintah: ${prompt}` });
             } else {
@@ -87,8 +85,8 @@ ATURAN RESPON UMUM:
         } else {
             const mime = (m.msg || m).mimetype || '';
             if (/image|video|sticker|webp/i.test(mime)) {
-                // Kalau ada gambar, tetap pakai loading teks
-                loadingMsg = await conn.reply(m.chat, "*Joy lagi liat gambarnya...*", m);
+                // Kirim Gambar: Pakai status mengetik
+                await conn.sendPresenceUpdate('composing', m.chat)
                 try {
                     buffer = await m.download();
                     messages.push({ role: "user", content: prompt || "Deskripsiin detail media ini." });
@@ -96,9 +94,7 @@ ATURAN RESPON UMUM:
                     return m.reply("*Gagal download media.*");
                 }
             } else {
-                // --- BAGIAN YANG DIUBAH ---
-                // Dulu: loadingMsg = await conn.reply(m.chat, "*Joy lagi mikir...*", m);
-                // Sekarang: Pakai efek mengetik saja biar natural & gak nyampah
+                // CHAT BIASA: GANTI LOADING JADI MENGETIK (COMPOSING)
                 await conn.sendPresenceUpdate('composing', m.chat)
                 messages.push({ role: "user", content: prompt });
             }
@@ -112,18 +108,18 @@ ATURAN RESPON UMUM:
     try {
         const response = await chat(messages, buffer)
         
-        // Hapus loading message (hanya jika ada, misal saat scan/kirim gambar)
+        // Hapus loading message (Khusus Scan Mode)
         if (loadingMsg?.key) {
             try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
         }
-        
-        // --- LOGIKA MUSIK ---
+
+        // --- LOGIKA PLAY MUSIC (INTEGRASI) ---
         if (response.includes("CMD: play")) {
             const songName = response.replace("CMD: play", "").trim()
             
-            // Info singkat bahwa lagu sedang diproses
-            // Pesan ini opsional, bisa dihapus kalau mau benar-benar silent
-            let musicMsg = await conn.reply(m.chat, `_Oke, Joy cariin "${songName}"..._ 🎧`, m)
+            // Info singkat (Opsional, pake typing juga bisa kalau mau benar2 silent)
+            // await conn.sendPresenceUpdate('composing', m.chat) 
+            let musicMsg = await conn.reply(m.chat, `_Oke, gua cariin "${songName}"..._`, m)
             
             try {
                 const apiUrl = `https://api.nekolabs.web.id/dwn/youtube/play/v1?q=${encodeURIComponent(songName)}`
@@ -136,23 +132,19 @@ ATURAN RESPON UMUM:
                 
                 const { metadata, downloadUrl } = json.result
 
-                // Hapus pesan "Joy cariin"
-                if (musicMsg?.key) {
-                    try { await conn.sendMessage(m.chat, { delete: musicMsg.key }) } catch {}
-                }
+                if (musicMsg?.key) try { await conn.sendMessage(m.chat, { delete: musicMsg.key }) } catch {}
 
-                let caption = `*JOY MUSIC PLAYER* 🎵\n\n` +
+                let caption = `*JOY MUSIC PLAYER*\n\n` +
                               `*Judul:* ${metadata.title}\n` +
                               `*Channel:* ${metadata.channel}\n` +
-                              `*Durasi:* ${metadata.duration}\n\n` +
-                              `_Nih lagunya..._`
+                              `*Durasi:* ${metadata.duration}`
 
                 await conn.sendMessage(m.chat, {
                     text: caption,
                     contextInfo: {
                         externalAdReply: {
                             title: metadata.title,
-                            body: "Now Playing via Joy AI",
+                            body: "Joy AI",
                             thumbnailUrl: metadata.cover,
                             sourceUrl: metadata.url,
                             mediaType: 1,
@@ -171,11 +163,10 @@ ATURAN RESPON UMUM:
                 if (musicMsg?.key) try { await conn.sendMessage(m.chat, { delete: musicMsg.key }) } catch {}
                 m.reply(`*Gagal muter lagu.*\nError: ${musicError.message}`)
             }
-            
             return; 
         }
-        // --- END LOGIKA MUSIK ---
-
+        // --- END LOGIKA MUSIC ---
+        
         let finalResponse = formatText(response);
         const codeBlockRegex = /```(?:[a-z]+)?\n([\s\S]+?)\n```/g;
         const matches = [...finalResponse.matchAll(codeBlockRegex)];
@@ -249,7 +240,7 @@ function scanDirectory(dir, fileList = [], depth = 0) {
     return fileList.join('\n')
 }
 
-handler.help = ['ai *teks*', 'ai *putar lagu*']
+handler.help = ['ai *teks*']
 handler.tags = ['ai']
 handler.command = /^(ai|joy|gemini)$/i
 

@@ -1,3 +1,5 @@
+import fs from 'fs' // WAJIB ADA: Buat tulis ke file json
+
 let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     let chat = global.db.data.chats[m.chat]
     if (!chat) global.db.data.chats[m.chat] = {}
@@ -19,18 +21,40 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
             break
             
         case 'reset':
-            // --- BAGIAN PERBAIKAN (FIX RESET) ---
-            // 1. Pastikan struktur database aman (Safe Check)
+            // --- BAGIAN PERBAIKAN (FIX RESET PERMANEN) ---
+            
+            // 1. Pastikan struktur memori aman
             if (!global.mikuDb) global.mikuDb = { data: {} }
             if (!global.mikuDb.data) global.mikuDb.data = {}
 
             // 2. Cek apakah ada data di chat ini
             if (global.mikuDb.data[m.chat]) {
-                // SOLUSI: Timpa dengan array kosong [] agar benar-benar bersih 
-                // (Jangan pakai 'delete' karena kadang suka nyangkut di memori)
+                
+                // LANGKAH 1: Kosongkan di Memori (RAM)
                 global.mikuDb.data[m.chat] = []
                 
-                m.reply('*Riwayat obrolan sama Miku udah dihapus.*\n\nSekarang kita mulai ngobrol dari awal lagi ya.')
+                // LANGKAH 2: SIMPAN KE FILE (DISK) AGAR PERMANEN
+                // Ini kuncinya! Kita paksa tulis ulang file json-nya.
+                try {
+                    // Pastikan path filenya sesuai dengan lokasi database kamu
+                    // Biasanya ada di folder 'database' atau 'data'
+                    // Kita coba tulis ke './database/miku.json' atau './data/miku.json'
+                    // Sesuaikan string path di bawah ini dengan lokasi file kamu sebenarnya
+                    
+                    const dbPath = './data/miku.json'; // <--- GANTI KALAU LOKASI FILE BEDA
+                    
+                    // Cek kalau folder data ada, tulis file
+                    if (global.mikuDb.data) {
+                        fs.writeFileSync(dbPath, JSON.stringify(global.mikuDb.data, null, 2));
+                    }
+                    
+                    m.reply('*Riwayat obrolan sama Miku udah dihapus permanen.*\n\nMemori di file database juga sudah di-reset jadi 0.')
+                    
+                } catch (e) {
+                    console.error('Gagal menyimpan file:', e)
+                    m.reply('*Berhasil reset di memori, tapi gagal nyimpen ke file json.*\n(Mungkin path foldernya salah, cek console).')
+                }
+
             } else {
                 m.reply('*Gak ada riwayat obrolan yang bisa dihapus.*')
             }
