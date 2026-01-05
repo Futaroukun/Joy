@@ -1,7 +1,3 @@
-/* XRDHZ-MD
-  Script ini tidak untuk diperjual-belikan atau gratis.
-  Script masih dalam tahap pengembangan mungkin akan ada bug, error dan lain sebagainya.
-*/
 import "../settings.js";
 import os from "os";
 import chalk from "chalk";
@@ -28,20 +24,20 @@ export async function headerLog() {
         gradient: ["green", "blue"]
     });
 
+    const baileysVersion = dependencies["@whiskeysockets/baileys"] || dependencies.baileys || "Unknown";
+
     console.log(chalk.bold.white("━".repeat(50)));
     console.log(chalk.bold.yellow(" • SCRIPT INFO"));
     console.log(chalk.gray("-".repeat(50)));
     console.log(chalk.white(` ◉ Author: ${chalk.green.bold(author)}`));
     console.log(chalk.white(` ◉ Github: ${chalk.blue(global.lgh)}`));
     console.log(chalk.white(` ◉ Whatsapp: ${chalk.blue(global.lwa)}`));
-    console.log(chalk.white(` ◉ Baileys: ${chalk.cyan(dependencies.baileys.replace("^", "v"))}`));
+    console.log(chalk.white(` ◉ Baileys: ${chalk.cyan(baileysVersion.replace("^", "v"))}`));
     console.log(chalk.gray("━".repeat(50)));
     console.log(chalk.bold.blue(" • SERVER INFO"));
     console.log(chalk.gray("-".repeat(50)));
     console.log(chalk.white(` ➢ 🖥  Platform: ${chalk.green(os.platform())}`));
-    console.log(
-        chalk.white(` ➢ 🖥  CPU Model: ${chalk.blue(os.cpus() ? os.cpus()[0].model.trim() : "N/A")}`)
-    );
+    console.log(chalk.white(` ➢ 🖥  CPU Model: ${chalk.blue(os.cpus() ? os.cpus()[0].model.trim() : "N/A")}`));
     console.log(chalk.white(` ➢ 🖥  Total Memori: ${formatBytes(os.totalmem())}`));
     console.log(chalk.white(` ➢ 🖥  Free Memori: ${formatBytes(os.freemem())}`));
     console.log(chalk.gray("━".repeat(50)));
