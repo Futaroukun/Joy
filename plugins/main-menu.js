@@ -49,6 +49,9 @@ Saya adalah Bot Otomatis yang siap membantu Anda 24/7!
 
 let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
     try {
+        
+        await conn.sendPresenceUpdate('composing', m.chat);
+        
         let user = global.db.data.users[m.sender];
         if (!user) return;
 
