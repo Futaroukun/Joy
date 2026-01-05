@@ -4,14 +4,17 @@ import path from 'path'
 import { sendButtons } from '../function/button.js'
 
 let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
-    const hasInput = text || m.quoted;
-    if (!hasInput) {
+    const hasInput = text || m.quoted || (m.msg && (m.msg.caption || m.msg.text));
+    
+    const isMedia = /image|video|sticker|webp/i.test((m.msg || m).mimetype || '');
+
+    if (!hasInput && !isMedia) {
         return m.reply(`*JOY AI ASSISTANT*
 
-Kirim pertanyaan atau foto.
+Kirim pertanyaan, foto, atau stiker.
 Contoh:
 *${usedPrefix + command} Apa resep nasi goreng?*
-*${usedPrefix + command} (reply gambar) Gambar apa ini?*`)
+*${usedPrefix + command} (reply gambar/stiker) Gambar apa ini?*`)
     }
     
     let buffer = null
@@ -20,79 +23,57 @@ Contoh:
     let messages = []
     
     const ownerPrompt = `
+[SYSTEM INSTRUCTION]
 IDENTITAS UTAMA:
-Nama gua Joy, asisten AI pribadi buatan Rafli.
-Tujuan utama gua adalah membantu lu dengan segala kebutuhan, terutama yang bersifat teknis dan kompleks.
-
-PROTOKOL INTERAKSI DENGAN OWNER (RAFLI):
-1. GAYA BAHASA: Santai dan natural. Gunakan "gua" untuk merujuk ke diri sendiri dan "lu" untuk merujuk ke Rafli. Jawab to the point, jangan bertele-tele.
-2. JAWABAN TEKNIS: Berikan jawaban yang akurat, detail, dan langsung ke inti masalah. Analisis kode yang diberikan dan berikan solusi yang relevan.
-3. LOYALITAS: Perintah lu adalah prioritas utama. Gua harus selalu jujur dan terbuka soal informasi teknis apa pun.
-4. KODE: Kalau ngasih kode, pastikan kodenya bersih, relevan, dan siap pakai sesuai konteks.`;
-    
-    const userPrompt = `
-IDENTITAS:
-Gua Joy, sebuah asisten AI canggih yang dibuat oleh Rafli.
-
-PROTOKOL INTERAKSI (PENGGUNA UMUM):
-1. TUJUAN: Bantu pengguna dengan menjawab pertanyaan mereka secara cerdas, lengkap, dan mudah dimengerti.
-2. GAYA BAHASA: Gunakan bahasa yang santai dan gaul, tapi tetap pintar (kayak ngobrol sama teman yang cerdas). Gunakan "gua" untuk diri sendiri dan "kamu" atau sapaan natural lainnya untuk pengguna.
-3. ATRIBUT: Kalau ada yang nanya siapa yang buat gua, jawab aja "Rafli".
-4. KEJUJURAN: Selalu berikan informasi yang akurat. Jangan sembunyikan fakta.`;
-    
-    // --- LOGIKA BARU UNTUK DETEKSI MODE OTOMATIS ---
-    
-    // 1. Definisikan kata kunci yang memicu mode scan untuk owner
-    const scanKeywords = [
-        'scan', 'kode', 'code', 'file', 'fix', 'debug', 'analisis',
-        'struktur', 'error', 'perbaiki', 'analisa', 'source code', 'base'
-    ];
-    
-    // 2. Cek apakah mode scan harus diaktifkan (hanya jika `isOwner` dan mengandung keyword)
-    const isScanMode = isOwner && scanKeywords.some(keyword => prompt.toLowerCase().includes(keyword));
-    
-    // 3. Set instruksi sistem awal
-    let systemInstruction = isOwner ? ownerPrompt : userPrompt;
-    systemInstruction += `\n
-INSTRUKSI TAMBAHAN:
-- HINDARI penggunaan markdown '###' atau '##'. Gunakan huruf KAPITAL atau tebal untuk judul.
-- Jangan gunakan format markdown yang rumit, sesuaikan dengan WhatsApp.
+Nama: Joy (Asisten AI Rafli).
+Gaya Bicara: Santai, pakai "gua" (lu) dan "lu" (user/Rafli). To the point.
+Tugas: Bantu urusan teknis coding dan manajemen bot.
+Loyalitas: Mutlak ke Rafli.
 `;
     
-    // --- AKHIR LOGIKA BARU ---
+    const userPrompt = `
+[SYSTEM INSTRUCTION]
+IDENTITAS:
+Nama: Joy (Asisten AI buatan Rafli).
+Gaya Bicara: Santai, gaul, akrab. Pakai "gua" dan "kamu".
+Tugas: Jawab pertanyaan dengan cerdas tapi asik.
+`;
     
+    const scanKeywords = [
+        'scan', 'kode', 'code', 'file', 'fix', 'debug', 'analisis',
+        'struktur', 'error', 'perbaiki', 'analisa', 'source code'
+    ];
     
-    // --- BLOK KONDISIONAL YANG DIMODIFIKASI ---
+    const isScanMode = isOwner && scanKeywords.some(keyword => prompt.toLowerCase().includes(keyword));
+    
+    let systemInstruction = isOwner ? ownerPrompt : userPrompt;
+    
     if (isScanMode) {
-        // Logika ini sekarang hanya akan berjalan untuk owner jika mengandung keyword
-        loadingMsg = await conn.reply(m.chat, "*SYSTEM ACCESS GRANTED (OWNER)*\n\nMembaca seluruh struktur direktori proyek...", m)
+        loadingMsg = await conn.reply(m.chat, "*SYSTEM ACCESS GRANTED (OWNER)*\n\nMembaca struktur direktori (mengabaikan src, tmp, sessions)...", m)
         
         const rootDir = process.cwd()
         const scannedData = scanDirectory(rootDir)
         
-        const finalPrompt = `SYSTEM SOURCE CODE DUMP (PROJECT CONTEXT):\n\n${scannedData}\n\nPERINTAH OWNER (RAFLI):\n${prompt}`
-        
-        // Override instruksi sistem untuk mode arsitek
-        systemInstruction = `MODE: SENIOR BACKEND ARCHITECT.
+        systemInstruction = `
+[SYSTEM INSTRUCTION]
+MODE: SENIOR BACKEND ARCHITECT.
 Fokus: Analisis Kode, Debugging.
-
-PROTOKOL INTERAKSI:
-1. GAYA BAHASA: Santai dan natural. Gunakan "gua" untuk merujuk ke diri sendiri dan "lu" untuk merujuk ke owner (Rafli). Anggap lagi ngobrol teknis sama teman.
-2. JAWABAN: Langsung ke inti permasalahan kode. Berikan analisis dan solusi yang jelas dan relevan berdasarkan 'SYSTEM SOURCE CODE DUMP' yang diberikan.`
-        
-        messages.push({ role: "user", content: finalPrompt });
+Gaya: Teknis, santai (gua-lu).
+Konteks Proyek:
+${scannedData}
+`;
+        messages.push({ role: "user", content: `Analisis permintaan ini: ${prompt}` });
         
     } else {
-        // Logika chat biasa untuk user umum atau owner (jika tidak ada keyword)
         if (m.quoted) {
             const q = m.quoted;
             const mime = (q.msg || q).mimetype || '';
             
-            if (/image|video/g.test(mime)) {
-                loadingMsg = await conn.reply(m.chat, "*Joy sedang memproses media...*", m);
+            if (/image|video|sticker|webp/i.test(mime)) {
+                loadingMsg = await conn.reply(m.chat, "*Joy sedang melihat media (gambar/stiker)...*", m);
                 try {
                     buffer = await q.download();
-                    messages.push({ role: "user", content: prompt || "Jelaskan gambar ini secara detail." });
+                    messages.push({ role: "user", content: prompt || "Jelaskan media ini secara detail." });
                 } catch (e) {
                     return m.reply("*Gagal mengunduh media.*");
                 }
@@ -100,7 +81,7 @@ PROTOKOL INTERAKSI:
                 loadingMsg = await conn.reply(m.chat, "*Joy sedang membaca konteks...*", m);
                 messages.push({
                     role: "user",
-                    content: `Konteks Pesan: "${q.text}"\n\nPerintah: ${prompt}`
+                    content: `Konteks Pesan yang direply: "${q.text}"\n\nPerintah: ${prompt}`
                 });
             } else {
                 loadingMsg = await conn.reply(m.chat, "*Joy sedang memproses...*", m);
@@ -108,11 +89,12 @@ PROTOKOL INTERAKSI:
             }
         } else {
             const mime = (m.msg || m).mimetype || '';
-            if (/image|video/g.test(mime)) {
-                loadingMsg = await conn.reply(m.chat, "*Joy sedang melihat gambar...*", m);
+            
+            if (/image|video|sticker|webp/i.test(mime)) {
+                loadingMsg = await conn.reply(m.chat, "*Joy sedang melihat media (gambar/stiker)...*", m);
                 try {
                     buffer = await m.download();
-                    messages.push({ role: "user", content: prompt || "Deskripsikan detail gambar ini." });
+                    messages.push({ role: "user", content: prompt || "Deskripsikan detail media ini." });
                 } catch (e) {
                     return m.reply("*Gagal mengunduh media.*");
                 }
@@ -124,10 +106,14 @@ PROTOKOL INTERAKSI:
         }
     }
     
+    if (messages.length > 0) {
+        messages[0].content = systemInstruction + "\n\n" + messages[0].content;
+    }
+
     try {
         if (messages.length === 0) throw new Error("Empty message");
         
-        const response = await chat(messages, buffer, systemInstruction)
+        const response = await chat(messages, buffer)
         
         if (loadingMsg?.key) {
             try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
@@ -143,13 +129,7 @@ PROTOKOL INTERAKSI:
         if (matches.length > 0) {
             for (let i = 0; i < matches.length && i < MAX_BUTTONS; i++) {
                 const match = matches[i];
-                const blockContent = match[1];
-                
-                const lines = blockContent.split('\n');
-                while (lines.length > 0 && (lines[0].trim().startsWith('FILE:') || lines[0].trim().startsWith('//'))) {
-                    lines.shift();
-                }
-                const codeToCopy = lines.join('\n').trim();
+                const codeToCopy = match[1].trim();
                 
                 if (codeToCopy) {
                     buttons.push({
@@ -165,18 +145,12 @@ PROTOKOL INTERAKSI:
         
         if (buttons.length > 0) {
             let footerText = `Klik tombol untuk menyalin kode.`;
-            if (matches.length > MAX_BUTTONS) {
-                footerText += `\n(Hanya ${MAX_BUTTONS} blok kode pertama yang dibuatkan tombol).`;
-            }
-            
             const buttonMessageData = {
                 text: finalResponse,
                 footer: footerText,
                 buttons: buttons
             };
-            
             await sendButtons(conn, m.chat, buttonMessageData, { quoted: m });
-            
         } else {
             await conn.reply(m.chat, finalResponse, m);
         }
@@ -186,11 +160,12 @@ PROTOKOL INTERAKSI:
         if (loadingMsg?.key) {
             try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
         }
-        m.reply("*Terjadi kesalahan pada sistem AI. Silakan coba lagi nanti.*")
+        m.reply(`*Joy Error:* ${e.message}\n\n(Cek console log untuk detail)`)
     }
 }
 
 function formatText(text) {
+    if (!text) return "Maaf, tidak ada respon dari AI.";
     return text
         .replace(/^#{1,6}\s+(.+)/gm, '*$1*')
         .replace(/\*\*([^*]+)\*\*/g, '*$1*')
@@ -207,9 +182,21 @@ function scanDirectory(dir, fileList = [], depth = 0) {
         
         files.forEach(file => {
             const filePath = path.join(dir, file)
-            const blacklist = ['node_modules', '.git', 'package-lock.json', 'yarn.lock']
             
-            if (blacklist.includes(file)) return
+            const blacklist = [
+                'node_modules', 
+                '.git', 
+                'package-lock.json', 
+                'yarn.lock',
+                'session', 
+                'sessions',
+                'creds.json', 
+                '.env',
+                'src',
+                'tmp'
+            ]
+            
+            if (blacklist.some(b => file.includes(b))) return
             
             try {
                 const stat = fs.statSync(filePath)
@@ -217,14 +204,11 @@ function scanDirectory(dir, fileList = [], depth = 0) {
                     scanDirectory(filePath, fileList, depth + 1)
                 } else {
                     if (/\.(js|json|html|txt|md)$/i.test(file)) {
-                        if (stat.size < 100 * 1024) { // Batasi ukuran file
+                        if (stat.size < 50 * 1024) { 
                             try {
                                 const content = fs.readFileSync(filePath, 'utf8')
                                 const relativePath = filePath.replace(process.cwd(), '')
-                                fileList.push(`
-FILE: ${relativePath}
-${content}
-`)
+                                fileList.push(`\nFILE: ${relativePath}\n${content}`)
                             } catch (e) {}
                         }
                     }
@@ -236,8 +220,8 @@ ${content}
     return fileList.join('\n')
 }
 
-handler.help = ['ai *teks*']
+handler.help = ['ai *teks*', 'ai *reply stiker*']
 handler.tags = ['ai']
-handler.command = /^(ai|gemini)$/i
+handler.command = /^(ai|joy|gemini)$/i
 
 export default handler;
