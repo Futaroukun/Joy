@@ -422,7 +422,7 @@
       "antilink": false,
       "antidelete": false,
       "antivirtex": false,
-      "mute": false,
+      "mute": true,
       "detect": true,
       "sambutan": true,
       "sewa": false,

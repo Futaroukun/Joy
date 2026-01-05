@@ -124,7 +124,7 @@ if (!existsSync(tmpFolder)) {
     mkdirSync(tmpFolder, { recursive: true });
 }
 
-startAutoClearSessions(6);
+startAutoClearSessions(8);
 
 async function StartPairing() {
     if (existsSync("./sessions/creds.json") && !conn.authState.creds.registered) {
