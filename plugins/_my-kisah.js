@@ -40,16 +40,28 @@ GAYA BICARA NATURAL KE ORANG ASING:
 let handler = m => m
 
 handler.before = async function (m, { conn, isOwner, usedPrefix }) {
-    if (!m.text || m.isBaileys || m.text.startsWith(usedPrefix)) {
-        return false
+    // --- BAGIAN PERBAIKAN ---
+    // Regex untuk mendeteksi semua simbol command umum (., #, !, /, dll)
+    // Ini menjamin AI TIDAK AKAN membalas pesan yang diawali simbol-simbol ini.
+    const isCommand = /^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/i.test(m.text)
+
+    // Filter diperketat:
+    // 1. Tidak ada teks
+    // 2. Pesan dari bot sendiri (isBaileys)
+    // 3. Pesan diawali prefix bawaan bot
+    // 4. Pesan terdeteksi sebagai command via Regex (isCommand)
+    if (!m.text || m.isBaileys || (usedPrefix && m.text.startsWith(usedPrefix)) || isCommand) {
+        return false // Return false artinya: "AI diam, biarkan sistem bot lain yang kerja"
     }
 
     let chatData = global.db.data.chats[m.chat]
     
+    // Cek apakah Miku aktif
     if (!chatData || !chatData.isMikuOn) {
         return false
     }
     
+    // Inisialisasi Database
     if (!global.mikuDb) global.mikuDb = { data: {} }
     if (!global.mikuDb.data) {
         if (global.loadMikuDatabase) await global.loadMikuDatabase()
