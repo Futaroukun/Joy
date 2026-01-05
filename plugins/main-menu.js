@@ -139,7 +139,7 @@ let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
                 `╭─「 *DAFTAR MENU* 」`,
                 `│ • \`${usedPrefix + command} all\``,
                 tagList,
-                `╰────\n`,
+                footer,
                 `Ketik \`${usedPrefix + command} <nama_menu>\` untuk melihat fiturnya.`,
                 `*Contoh:* \`${usedPrefix + command} sticker\``,
                 `\n\n` + after

@@ -165,7 +165,7 @@
       "age": -1,
       "level": 0,
       "exp": 0,
-      "limit": null,
+      "limit": 10,
       "afk": false,
       "afkReason": "",
       "register": false,
@@ -415,7 +415,8 @@
       "sPromote": "",
       "sDemote": "",
       "sewaDate": -1,
-      "antidelete": false
+      "antidelete": false,
+      "isMikuOn": true
     },
     "120363405327714929@g.us": {
       "antispam": false,
@@ -461,6 +462,9 @@
       "sPromote": "",
       "sDemote": "",
       "sewaDate": -1
+    },
+    "210650966061175@lid": {
+      "isMikuOn": false
     }
   },
   "settings": {

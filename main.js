@@ -92,6 +92,10 @@ global.prefix = new RegExp("^[" + (opts.prefix || "‎xzXZ/i!#$%+£¢€¥^°=¶
 
 const dbPath = join(__dirname, 'data', 'database.json');
 global.db = new Low(new JSONFile(dbPath));
+
+const mikuDbPath = join(__dirname, 'data', 'miku.json');
+global.mikuDb = new Low(new JSONFile(mikuDbPath));
+
 global.DATABASE = global.db;
 global.loadDatabase = async function loadDatabase() {
     if (global.db.READ)
@@ -113,9 +117,26 @@ global.loadDatabase = async function loadDatabase() {
     global.db.chain = lodash.chain(global.db.data);
 };
 
+// Load Database My Kisah
+global.loadMikuDatabase = async function loadMikuDatabase() {
+    if (global.mikuDb.READ)
+        return new Promise(resolve =>
+            setInterval(function () {
+                !global.mikuDb.READ ? (clearInterval(this), resolve(global.mikuDb.data == null ? global.loadMikuDatabase() : global.mikuDb.data)) : null;
+            }, 1 * 1000)
+        );
+    if (global.mikuDb.data !== null) return;
+    global.mikuDb.READ = true;
+    await global.mikuDb.read();
+    global.mikuDb.READ = false;
+    global.mikuDb.data = { ...(global.mikuDb.data || {}) };
+    global.mikuDb.chain = lodash.chain(global.mikuDb.data);
+};
+
 if (global.db) {
     setInterval(async () => {
         if (global.db.data) await global.db.write();
+        if (global.mikuDb && global.mikuDb.data) await global.mikuDb.write();
     }, 30 * 1000);
 }
 
@@ -212,6 +233,7 @@ const pluginFilter = filename => /\.js$/.test(filename);
 
 async function featuresInit() {
     if (global.db.data === null) await global.loadDatabase();
+    if (global.mikuDb.data === null) await global.loadMikuDatabase();
     for (let filename of readdirSync(pluginFolder).filter(pluginFilter)) {
         try {
             let files = global.__filename(join(pluginFolder, filename));

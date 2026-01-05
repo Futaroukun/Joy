@@ -197,4 +197,4 @@ async function writeExifVid(media, metadata) {
     }
 }
 
-export { imageToWebp, videoToWebp, writeExifImg, writeExifVid }
+export { imageToWebp, videoToWebp, writeExifImg, writeExifVid, writeExif }
