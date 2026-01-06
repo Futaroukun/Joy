@@ -1,247 +1,213 @@
-import chat from '../function/gemini.js'
-import fs from 'fs'
-import path from 'path'
-import fetch from 'node-fetch' // Wajib ada untuk fitur musik
-import { sendButtons } from '../function/button.js'
+import axios from 'axios'
+import crypto from 'crypto'
+import { URL } from 'url'
+import FormData from 'form-data'
 
-let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
-    const hasInput = text || m.quoted || (m.msg && (m.msg.caption || m.msg.text));
-    const isMedia = /image|video|sticker|webp/i.test((m.msg || m).mimetype || '');
+const TEMPMAIL_API = Buffer.from(
+  'aHR0cHM6Ly9hcGkubmVrb2xhYnMud2ViLmlkL3Rvb2xzL3RlbXBtYWlsL3Yx',
+  'base64'
+).toString()
 
-    if (!hasInput && !isMedia) {
-        return m.reply(`*JOY AI ASSISTANT*\n\nKirim pertanyaan, foto, atau stiker.\n\n*Contoh:*\n\`${usedPrefix + command}\` *Apa resep nasi goreng?*\n\`${usedPrefix + command}\` *(reply gambar)* *Gambar apa ini?*`)
+const SUPABASE_URL = 'https://urrxpnraqkaiickvdtfl.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVycnhwbnJhcWthaWlja3ZkdGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwNDMzNjMsImV4cCI6MjA3NDYxOTM2M30.JFp8mnLQRuHAh7oYTGXFGP9K9hShl_MxMFZAesNjtcE'
+
+async function uploadImage(buffer) {
+  const form = new FormData()
+  form.append('file', buffer, 'image.jpg')
+
+  const res = await axios.post('https://tmpfiles.org/api/v1/upload', form, {
+    headers: form.getHeaders(),
+    timeout: 30000
+  })
+
+  if (!res.data || !res.data.data || !res.data.data.url) {
+    throw 'Gagal upload gambar ke server tmpfiles.'
+  }
+
+  const originalUrl = res.data.data.url
+  const fileUrl = originalUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/')
+  
+  return fileUrl
+}
+
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+  let q = m.quoted ? m.quoted : m
+  let mime = (q.msg || q).mimetype || ''
+
+  if (!mime) return m.reply(`Kirim atau reply gambar terus kasih caption \`${usedPrefix + command}\` *prompt*`)
+  if (!text) return m.reply(`Masukin prompt mau diubah gaya kayak gimana.\n\nContoh: \`${usedPrefix + command}\` *ubah jadi anime*`)
+
+  m.reply('*Bentar ya, lagi diproses...*')
+
+  try {
+    let media = await q.download()
+    let imageUrl = await uploadImage(media)
+
+    const { code_verifier, code_challenge } = generatePKCE()
+
+    const mailData = await axios.get(`${TEMPMAIL_API}/create`).then(r => r.data)
+    
+    if (!mailData.success) return m.reply('*Gagal bikin email sementara.*')
+
+    const { email, sessionId } = mailData.result
+    const redirectUrl = 'http://localhost:3000/callback'
+
+    const headers = {
+      'content-type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36'
     }
-    
-    let buffer = null
-    let prompt = text || ''
-    let loadingMsg = null
-    let messages = []
-    
-    // --- PROMPT ASLI (TIDAK DIUBAH, HANYA TAMBAH ATURAN MUSIK) ---
-    const ownerPrompt = `
-[SYSTEM INSTRUCTION]
-IDENTITAS UTAMA:
-Nama: Joy (Asisten AI Rafli).
-Gaya Bicara: Santai, pakai gua dan lu. To the point.
-Tugas: Bantu urusan teknis coding dan manajemen bot.
-Loyalitas: Mutlak ke Rafli.
 
-ATURAN MUSIK (WAJIB):
-Jika Rafli minta putar lagu/musik, JANGAN nanya balik. Langsung balas dengan format: "CMD: play [Judul Lagu]"
-Contoh: "CMD: play APT Rose Bruno Mars"
+    await axios.post(
+      `${SUPABASE_URL}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectUrl)}`,
+      {
+        email,
+        create_user: true,
+        gotrue_meta_security: {},
+        code_challenge,
+        code_challenge_method: 's256'
+      },
+      { headers }
+    )
 
-ATURAN RESPON:
-1. NO BASA-BASI: DILARANG menggunakan kalimat pengantar seperti Tunggu bentar, Gua cari dulu, Ketemu nih, Oke bos, atau Sedang diproses.
-2. LANGSUNG JAWAB: Langsung berikan informasi atau jawaban yang diminta tanpa pengantar.
-`;
-    
-    const userPrompt = `
-[SYSTEM INSTRUCTION]
-IDENTITAS:
-Nama: Joy (Asisten AI buatan Rafli).
-Gaya Bicara: Santai, gaul, akrab. Pakai gua dan kamu.
-Tugas: Jawab pertanyaan dengan cerdas tapi asik.
+    let authCode = null
+    let attempts = 0
 
-ATURAN MUSIK (WAJIB):
-Jika user minta putar lagu, balas dengan format: "CMD: play [Judul Lagu]"
+    while (attempts < 20 && !authCode) {
+      await new Promise(r => setTimeout(r, 2000))
 
-ATURAN RESPON:
-1. NO BASA-BASI: Jangan pakai kata pengantar kayak Bentar ya, Aku cari dulu, Ketemu.
-2. LANGSUNG JAWAB: Langsung ke poin utamanya aja.
-`;
-    
-    const scanKeywords = ['scan', 'kode', 'code', 'file', 'fix', 'debug', 'analisis', 'struktur', 'error', 'perbaiki', 'analisa', 'source code'];
-    const isScanMode = isOwner && scanKeywords.some(keyword => prompt.toLowerCase().includes(keyword));
-    let systemInstruction = isOwner ? ownerPrompt : userPrompt;
-    
-    if (isScanMode) {
-        // Khusus Scan Mode tetap pakai loading text biar kelihatan lagi kerja berat
-        loadingMsg = await conn.reply(m.chat, "*SYSTEM ACCESS GRANTED (OWNER)*\n\nLagi baca struktur direktori...", m)
-        const rootDir = process.cwd()
-        const scannedData = scanDirectory(rootDir)
-        systemInstruction = `[SYSTEM INSTRUCTION]\nMODE: SENIOR BACKEND ARCHITECT.\nFokus: Analisis Kode, Debugging.\nGaya: Teknis, santai (gua-lu).\nATURAN: Langsung analisis masalah tanpa basa-basi pembuka.\nKonteks Proyek:\n${scannedData}`;
-        messages.push({ role: "user", content: `Analisis permintaan ini: ${prompt}` });
+      const inbox = await axios.get(`${TEMPMAIL_API}/inbox`, {
+        params: { id: sessionId }
+      }).then(r => r.data)
+
+      if (inbox.success && inbox.result.emails?.length) {
+        const mail = inbox.result.emails[0]
+        const content = mail.text || mail.html || ''
+        const match = content.match(/https:\/\/urrxpnraqkaiickvdtfl\.supabase\.co\/auth\/v1\/verify\?token=[^\s"&]+&type=signup&redirect_to=[^\s"&]+/)
+
+        if (match) {
+          const verifyUrl = match[0].replace(/&amp;/g, '&')
+
+          const verifyRes = await axios.get(verifyUrl, {
+            maxRedirects: 0,
+            validateStatus: s => s >= 200 && s < 400
+          })
+
+          const location = verifyRes.headers.location
+          if (location) {
+            const u = new URL(location)
+            authCode = u.searchParams.get('code')
+          }
+        }
+      }
+      attempts++
+    }
+
+    if (!authCode) return m.reply('*Gagal dapetin kode verifikasi, coba lagi aja.*')
+
+    const exchangeRes = await axios.post(
+      `${SUPABASE_URL}/auth/v1/token?grant_type=pkce`,
+      {
+        auth_code: authCode,
+        code_verifier
+      },
+      { headers }
+    )
+
+    const { access_token, refresh_token } = exchangeRes.data
+    if (!access_token) return m.reply('*Gagal tuker kode jadi token.*')
+
+    const authCookie = `sb-urrxpnraqkaiickvdtfl-auth-token=${encodeURIComponent(JSON.stringify([access_token, refresh_token, null, null, null]))}`
+
+    const creditHeaders = {
+      'user-agent': headers['user-agent'],
+      'content-type': 'application/json',
+      'cookie': authCookie,
+      'authority': 'www.artany.ai',
+      'origin': 'https://www.artany.ai',
+      'referer': 'https://www.artany.ai/'
+    }
+
+    const creditRes = await axios.post('https://www.artany.ai/api/credits', {}, { headers: creditHeaders })
+    if (creditRes.data?.credits < 1) return m.reply('*Akun berhasil dibuat tapi saldo kreditnya kosong. Coba lagi nanti ya.*')
+
+    const genPayload = {
+      prompt: text,
+      model: 'nano-banana-pro-image-editor',
+      enable_safety_checker: false,
+      num_images: 1,
+      aspect_ratio: '1:1',
+      quality: '1k',
+      image_urls: [imageUrl]
+    }
+
+    const genHeaders = {
+      ...creditHeaders,
+      referer: 'https://www.artany.ai/ai-image-editor'
+    }
+
+    const genRes = await axios.post(
+      'https://www.artany.ai/api/image-generator/nano-banana-pro',
+      genPayload,
+      { headers: genHeaders }
+    )
+
+    const taskId = genRes.data?.data?.task_id
+    if (!taskId) return m.reply('*Gagal mulai proses edit gambar.*')
+
+    let finalImageUrl = null
+    let status = 'PENDING'
+    let checks = 0
+
+    while (!['SUCCEEDED', 'FAILED'].includes(status) && checks < 30) {
+      await new Promise(r => setTimeout(r, 2000))
+
+      const s = await axios.get(
+        `https://www.artany.ai/api/image-task-status?task_id=${taskId}`,
+        { headers: genHeaders }
+      )
+
+      status = s.data?.data?.status
+      if (status === 'SUCCEEDED') {
+        finalImageUrl = s.data?.data?.result_images?.[0]?.url
+      }
+      checks++
+    }
+
+    if (!finalImageUrl) return m.reply('*Gagal ganti gaya gambar atau waktu tunggu abis.*')
+
+    await conn.sendMessage(
+      m.chat,
+      {
+        image: { url: finalImageUrl },
+        caption: `*BERHASIL DIUBAH*\n\nPrompt: *${text}*`
+      },
+      { quoted: m }
+    )
+
+  } catch (e) {
+    if (e.response) {
+      m.reply(`*Error API:* ${e.response.status}`)
     } else {
-        if (m.quoted) {
-            const q = m.quoted;
-            const mime = (q.msg || q).mimetype || '';
-            if (/image|video|sticker|webp/i.test(mime)) {
-                // Media: Pakai status mengetik
-                await conn.sendPresenceUpdate('composing', m.chat)
-                try {
-                    buffer = await q.download();
-                    messages.push({ role: "user", content: prompt || "Jelasin media ini secara detail." });
-                } catch (e) {
-                    return m.reply("*Gagal download media.*");
-                }
-            } else if (q.text) {
-                // Quoted Text: Pakai status mengetik
-                await conn.sendPresenceUpdate('composing', m.chat)
-                messages.push({ role: "user", content: `Konteks Pesan: "${q.text}"\n\nPerintah: ${prompt}` });
-            } else {
-                await conn.sendPresenceUpdate('composing', m.chat)
-                messages.push({ role: "user", content: prompt });
-            }
-        } else {
-            const mime = (m.msg || m).mimetype || '';
-            if (/image|video|sticker|webp/i.test(mime)) {
-                // Kirim Gambar: Pakai status mengetik
-                await conn.sendPresenceUpdate('composing', m.chat)
-                try {
-                    buffer = await m.download();
-                    messages.push({ role: "user", content: prompt || "Deskripsiin detail media ini." });
-                } catch (e) {
-                    return m.reply("*Gagal download media.*");
-                }
-            } else {
-                // CHAT BIASA: GANTI LOADING JADI MENGETIK (COMPOSING)
-                await conn.sendPresenceUpdate('composing', m.chat)
-                messages.push({ role: "user", content: prompt });
-            }
-        }
+      m.reply(`*Ada masalah:* ${e}`)
     }
-    
-    if (messages.length > 0) {
-        messages[0].content = systemInstruction + "\n\n" + messages[0].content;
-    }
-
-    try {
-        const response = await chat(messages, buffer)
-        
-        // Hapus loading message (Khusus Scan Mode)
-        if (loadingMsg?.key) {
-            try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
-        }
-
-        // --- LOGIKA PLAY MUSIC (INTEGRASI) ---
-        if (response.includes("CMD: play")) {
-            const songName = response.replace("CMD: play", "").trim()
-            
-            // Info singkat (Opsional, pake typing juga bisa kalau mau benar2 silent)
-            // await conn.sendPresenceUpdate('composing', m.chat) 
-            let musicMsg = await conn.reply(m.chat, `_Oke, gua cariin "${songName}"..._`, m)
-            
-            try {
-                const apiUrl = `https://api.nekolabs.web.id/dwn/youtube/play/v1?q=${encodeURIComponent(songName)}`
-                const apiRes = await fetch(apiUrl)
-                
-                if (!apiRes.ok) throw new Error("Server API lagi down.")
-                
-                const json = await apiRes.json()
-                if (!json.success || !json.result) throw new Error("Lagu gak ketemu.")
-                
-                const { metadata, downloadUrl } = json.result
-
-                if (musicMsg?.key) try { await conn.sendMessage(m.chat, { delete: musicMsg.key }) } catch {}
-
-                let caption = `*JOY MUSIC PLAYER*\n\n` +
-                              `*Judul:* ${metadata.title}\n` +
-                              `*Channel:* ${metadata.channel}\n` +
-                              `*Durasi:* ${metadata.duration}`
-
-                await conn.sendMessage(m.chat, {
-                    text: caption,
-                    contextInfo: {
-                        externalAdReply: {
-                            title: metadata.title,
-                            body: "Joy AI",
-                            thumbnailUrl: metadata.cover,
-                            sourceUrl: metadata.url,
-                            mediaType: 1,
-                            renderLargerThumbnail: true
-                        }
-                    }
-                }, { quoted: m })
-
-                await conn.sendMessage(m.chat, {
-                    audio: { url: downloadUrl },
-                    mimetype: 'audio/mpeg',
-                    fileName: `${metadata.title}.mp3`
-                }, { quoted: m })
-
-            } catch (musicError) {
-                if (musicMsg?.key) try { await conn.sendMessage(m.chat, { delete: musicMsg.key }) } catch {}
-                m.reply(`*Gagal muter lagu.*\nError: ${musicError.message}`)
-            }
-            return; 
-        }
-        // --- END LOGIKA MUSIC ---
-        
-        let finalResponse = formatText(response);
-        const codeBlockRegex = /```(?:[a-z]+)?\n([\s\S]+?)\n```/g;
-        const matches = [...finalResponse.matchAll(codeBlockRegex)];
-        const buttons = [];
-        
-        if (matches.length > 0) {
-            for (let i = 0; i < matches.length && i < 3; i++) {
-                const codeToCopy = matches[i][1].trim();
-                if (codeToCopy) {
-                    buttons.push({
-                        name: 'cta_copy',
-                        buttonParamsJson: JSON.stringify({
-                            display_text: `Salin Kode ${i + 1}`,
-                            copy_code: codeToCopy
-                        })
-                    });
-                }
-            }
-        }
-        
-        if (buttons.length > 0) {
-            await sendButtons(conn, m.chat, {
-                text: finalResponse,
-                footer: "Klik tombol buat salin kode.",
-                buttons: buttons
-            }, { quoted: m });
-        } else {
-            await conn.reply(m.chat, finalResponse, m);
-        }
-        
-    } catch (e) {
-        if (loadingMsg?.key) {
-            try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
-        }
-        m.reply(`*Joy Error:* ${e.message}`)
-    }
+  }
 }
 
-function formatText(text) {
-    if (!text) return "Gak ada respon dari AI.";
-    return text
-        .replace(/^#{1,6}\s+(.+)/gm, '*$1*')
-        .replace(/\*\*([^*]+)\*\*/g, '*$1*')
-        .replace(/__([^_]+)__/g, '*$1*')
-        .replace(/~~([^~]+)~~/g, '~$1~')
-        .replace(/^\s*\*\s+/gm, '- ');
-}
-
-function scanDirectory(dir, fileList = [], depth = 0) {
-    if (depth > 5) return fileList
-    try {
-        const files = fs.readdirSync(dir)
-        files.forEach(file => {
-            const filePath = path.join(dir, file)
-            const blacklist = ['node_modules', '.git', 'package-lock.json', 'yarn.lock', 'session', 'sessions', 'creds.json', '.env', 'src', 'tmp']
-            if (blacklist.some(b => file.includes(b))) return
-            try {
-                const stat = fs.statSync(filePath)
-                if (stat.isDirectory()) {
-                    scanDirectory(filePath, fileList, depth + 1)
-                } else {
-                    if (/\.(js|json|html|txt|md)$/i.test(file) && stat.size < 50 * 1024) {
-                        const content = fs.readFileSync(filePath, 'utf8')
-                        const relativePath = filePath.replace(process.cwd(), '')
-                        fileList.push(`\nFILE: ${relativePath}\n${content}`)
-                    }
-                }
-            } catch (e) {}
-        })
-    } catch (e) {}
-    return fileList.join('\n')
-}
-
-handler.help = ['ai *teks*']
+handler.help = ['aiimage *prompt*']
 handler.tags = ['ai']
-handler.command = /^(ai|joy|gemini)$/i
+handler.command = ['aiimage']
 
-export default handler;
+export default handler
+
+function generatePKCE() {
+  const verifier = base64URLEncode(crypto.randomBytes(32))
+  const challenge = base64URLEncode(
+    crypto.createHash('sha256').update(verifier).digest()
+  )
+  return { code_verifier: verifier, code_challenge: challenge }
+}
+
+function base64URLEncode(buf) {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}

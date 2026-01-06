@@ -1,129 +1,213 @@
-import { editImage } from '../function/gemini-image.js'
+import axios from 'axios'
+import crypto from 'crypto'
+import { URL } from 'url'
+import FormData from 'form-data'
 
-let handler = async (m, { conn, text, usedPrefix, command }) => {
-    // Validasi input
-    const q = m.quoted ? m.quoted : m
-    const mime = (q.msg || q).mimetype || q.mediaType || ''
+const TEMPMAIL_API = Buffer.from(
+  'aHR0cHM6Ly9hcGkubmVrb2xhYnMud2ViLmlkL3Rvb2xzL3RlbXBtYWlsL3Yx',
+  'base64'
+).toString()
 
-    if (!/image/g.test(mime)) {
-        return m.reply(`*IMAGE TO IMAGE AI*
+const SUPABASE_URL = 'https://urrxpnraqkaiickvdtfl.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVycnhwbnJhcWthaWlja3ZkdGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwNDMzNjMsImV4cCI6MjA3NDYxOTM2M30.JFp8mnLQRuHAh7oYTGXFGP9K9hShl_MxMFZAesNjtcE'
 
-Modifikasi gambar menggunakan teknologi Gemini AI.
+async function uploadImage(buffer) {
+  const form = new FormData()
+  form.append('file', buffer, 'image.jpg')
 
-*Cara Penggunaan:*
-*Reply* gambar lalu ketik *${usedPrefix + command} <instruksi>*
+  const res = await axios.post('https://tmpfiles.org/api/v1/upload', form, {
+    headers: form.getHeaders(),
+    timeout: 30000
+  })
 
-*Contoh Instruksi:*
-- *${usedPrefix + command}* ubah background jadi pantai
-- *${usedPrefix + command}* ganti warna mobil jadi merah
-- *${usedPrefix + command}* ubah menjadi gaya anime
-- *${usedPrefix + command}* hapus background
-- *${usedPrefix + command}* konversi ke hitam putih
+  if (!res.data || !res.data.data || !res.data.data.url) {
+    throw 'Gagal upload gambar ke server tmpfiles.'
+  }
 
-*Tips:*
-- Gunakan instruksi yang *spesifik* untuk hasil maksimal.
-- Anda bisa melakukan *multi-edit* secara bertahap pada hasil sebelumnya.
-
-*Pengaturan Aspect Ratio:*
-Tambahkan kode berikut di akhir instruksi:
-*--1:1, --16:9, --9:16, --4:3*
-
-Contoh: *${usedPrefix + command}* jadi anime *--16:9*`)
-    }
-
-    if (!text) {
-        return m.reply(`*INSTRUKSI DIPERLUKAN*
-
-Silakan masukkan instruksi perubahan yang diinginkan.
-Contoh: *${usedPrefix + command}* ganti background jadi gunung`)
-    }
-
-    let loadingMsg = null
-    try {
-        // Parse aspect ratio
-        let aspectRatio = "1:1"
-        let editPrompt = text
-
-        const ratioMatch = text.match(/--(\d+:\d+)$/i)
-        if (ratioMatch) {
-            aspectRatio = ratioMatch[1]
-            editPrompt = text.replace(/--\d+:\d+$/i, '').trim()
-        }
-
-        // Validasi aspect ratio
-        const validRatios = ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "4:5", "5:4", "21:9"]
-        if (!validRatios.includes(aspectRatio)) {
-            return m.reply(`*ASPECT RATIO TIDAK VALID*
-
-Pilihan yang tersedia: *${validRatios.join(', ')}*`)
-        }
-
-        loadingMsg = await conn.reply(m.chat,
-            `*PROSES EDIT SEDANG BERJALAN*
-
-*Instruksi:* ${editPrompt}
-*Rasio:* ${aspectRatio}
-
-Mohon tunggu sekitar *10-30 detik*...`,
-            m
-        )
-
-        // Download gambar
-        const imageBuffer = await q.download()
-
-        // Edit image dengan Gemini AI
-        const editedImageBuffer = await editImage(imageBuffer, editPrompt, aspectRatio)
-
-        // Hapus loading
-        if (loadingMsg?.key) {
-            try {
-                await conn.sendMessage(m.chat, { delete: loadingMsg.key })
-            } catch (e) {
-                console.error('Error deleting loading msg:', e)
-            }
-        }
-
-        // Kirim hasil
-        await conn.sendMessage(m.chat, {
-            image: editedImageBuffer,
-            caption: `*PROSES SELESAI*
-
-*Instruksi:* ${editPrompt}
-*Rasio:* ${aspectRatio}
-*Engine:* Gemini AI
-
-*Catatan:* Balas gambar ini untuk melakukan edit lebih lanjut.`,
-            mimetype: 'image/jpeg'
-        }, { quoted: m })
-
-    } catch (error) {
-        console.error('Image2Image Error:', error)
-
-        if (loadingMsg?.key) {
-            try {
-                await conn.sendMessage(m.chat, { delete: loadingMsg.key })
-            } catch {}
-        }
-
-        let errorMsg = "*GAGAL MEMPROSES GAMBAR*\n\n"
-
-        if (error.message.includes('API')) {
-            errorMsg += "*Masalah API:* Key tidak valid, kuota habis, atau server sibuk."
-        } else if (error.message.includes('Invalid image')) {
-            errorMsg += "*File Rusak:* Pastikan file yang dikirim adalah gambar JPG atau PNG."
-        } else if (error.message.includes('safety')) {
-            errorMsg += "*Pelanggaran Konten:* Instruksi ditolak karena melanggar aturan keamanan (NSFW/Kekerasan)."
-        } else {
-            errorMsg += `*Error:* ${error.message}`
-        }
-
-        m.reply(errorMsg)
-    }
+  const originalUrl = res.data.data.url
+  const fileUrl = originalUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/')
+  
+  return fileUrl
 }
 
-handler.help = ['editimg *prompt*']
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+  let q = m.quoted ? m.quoted : m
+  let mime = (q.msg || q).mimetype || ''
+
+  if (!mime) return m.reply(`Kirim atau reply gambar terus kasih caption \`${usedPrefix + command}\` *prompt*`)
+  if (!text) return m.reply(`Masukin prompt mau diubah gaya kayak gimana.\n\nContoh: \`${usedPrefix + command}\` *ubah jadi anime*`)
+
+  m.reply('*Bentar ya, lagi diproses...*')
+
+  try {
+    let media = await q.download()
+    let imageUrl = await uploadImage(media)
+
+    const { code_verifier, code_challenge } = generatePKCE()
+
+    const mailData = await axios.get(`${TEMPMAIL_API}/create`).then(r => r.data)
+    
+    if (!mailData.success) return m.reply('*Gagal bikin email sementara.*')
+
+    const { email, sessionId } = mailData.result
+    const redirectUrl = 'http://localhost:3000/callback'
+
+    const headers = {
+      'content-type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36'
+    }
+
+    await axios.post(
+      `${SUPABASE_URL}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectUrl)}`,
+      {
+        email,
+        create_user: true,
+        gotrue_meta_security: {},
+        code_challenge,
+        code_challenge_method: 's256'
+      },
+      { headers }
+    )
+
+    let authCode = null
+    let attempts = 0
+
+    while (attempts < 20 && !authCode) {
+      await new Promise(r => setTimeout(r, 2000))
+
+      const inbox = await axios.get(`${TEMPMAIL_API}/inbox`, {
+        params: { id: sessionId }
+      }).then(r => r.data)
+
+      if (inbox.success && inbox.result.emails?.length) {
+        const mail = inbox.result.emails[0]
+        const content = mail.text || mail.html || ''
+        const match = content.match(/https:\/\/urrxpnraqkaiickvdtfl\.supabase\.co\/auth\/v1\/verify\?token=[^\s"&]+&type=signup&redirect_to=[^\s"&]+/)
+
+        if (match) {
+          const verifyUrl = match[0].replace(/&amp;/g, '&')
+
+          const verifyRes = await axios.get(verifyUrl, {
+            maxRedirects: 0,
+            validateStatus: s => s >= 200 && s < 400
+          })
+
+          const location = verifyRes.headers.location
+          if (location) {
+            const u = new URL(location)
+            authCode = u.searchParams.get('code')
+          }
+        }
+      }
+      attempts++
+    }
+
+    if (!authCode) return m.reply('*Gagal dapetin kode verifikasi, coba lagi aja.*')
+
+    const exchangeRes = await axios.post(
+      `${SUPABASE_URL}/auth/v1/token?grant_type=pkce`,
+      {
+        auth_code: authCode,
+        code_verifier
+      },
+      { headers }
+    )
+
+    const { access_token, refresh_token } = exchangeRes.data
+    if (!access_token) return m.reply('*Gagal tuker kode jadi token.*')
+
+    const authCookie = `sb-urrxpnraqkaiickvdtfl-auth-token=${encodeURIComponent(JSON.stringify([access_token, refresh_token, null, null, null]))}`
+
+    const creditHeaders = {
+      'user-agent': headers['user-agent'],
+      'content-type': 'application/json',
+      'cookie': authCookie,
+      'authority': 'www.artany.ai',
+      'origin': 'https://www.artany.ai',
+      'referer': 'https://www.artany.ai/'
+    }
+
+    const creditRes = await axios.post('https://www.artany.ai/api/credits', {}, { headers: creditHeaders })
+    if (creditRes.data?.credits < 1) return m.reply('*Akun berhasil dibuat tapi saldo kreditnya kosong. Coba lagi nanti ya.*')
+
+    const genPayload = {
+      prompt: text,
+      model: 'nano-banana-pro-image-editor',
+      enable_safety_checker: false,
+      num_images: 1,
+      aspect_ratio: '1:1',
+      quality: '1k',
+      image_urls: [imageUrl]
+    }
+
+    const genHeaders = {
+      ...creditHeaders,
+      referer: 'https://www.artany.ai/ai-image-editor'
+    }
+
+    const genRes = await axios.post(
+      'https://www.artany.ai/api/image-generator/nano-banana-pro',
+      genPayload,
+      { headers: genHeaders }
+    )
+
+    const taskId = genRes.data?.data?.task_id
+    if (!taskId) return m.reply('*Gagal mulai proses edit gambar.*')
+
+    let finalImageUrl = null
+    let status = 'PENDING'
+    let checks = 0
+
+    while (!['SUCCEEDED', 'FAILED'].includes(status) && checks < 30) {
+      await new Promise(r => setTimeout(r, 2000))
+
+      const s = await axios.get(
+        `https://www.artany.ai/api/image-task-status?task_id=${taskId}`,
+        { headers: genHeaders }
+      )
+
+      status = s.data?.data?.status
+      if (status === 'SUCCEEDED') {
+        finalImageUrl = s.data?.data?.result_images?.[0]?.url
+      }
+      checks++
+    }
+
+    if (!finalImageUrl) return m.reply('*Gagal ganti gaya gambar atau waktu tunggu abis.*')
+
+    await conn.sendMessage(
+      m.chat,
+      {
+        image: { url: finalImageUrl },
+        caption: `*BERHASIL DIUBAH*\n\nPrompt: *${text}*`
+      },
+      { quoted: m }
+    )
+
+  } catch (e) {
+    if (e.response) {
+      m.reply(`*Error API:* ${e.response.status}`)
+    } else {
+      m.reply(`*Ada masalah:* ${e}`)
+    }
+  }
+}
+
+handler.help = ['aiimage *prompt*']
 handler.tags = ['ai']
-handler.command = /^(img2img|editimg|ubahgambar)$/i
-handler.limit = false
+handler.command = /^(aiimage|image)$/i
 
 export default handler
+
+function generatePKCE() {
+  const verifier = base64URLEncode(crypto.randomBytes(32))
+  const challenge = base64URLEncode(
+    crypto.createHash('sha256').update(verifier).digest()
+  )
+  return { code_verifier: verifier, code_challenge: challenge }
+}
+
+function base64URLEncode(buf) {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
