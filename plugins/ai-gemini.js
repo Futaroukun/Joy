@@ -2,85 +2,101 @@ import axios from 'axios'
 import fetch from 'node-fetch'
 import { sendButtons } from '../function/button.js'
 
-// Penyimpanan sesi (Memory) agar bot ingat konteks
 let sessions = {};
 
 let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
-    // 1. Validasi Input
     const hasInput = text || m.quoted || (m.msg && (m.msg.caption || m.msg.text));
     if (!hasInput) return m.reply(`*JOY AI ASSISTANT*\n\nKirim pertanyaan atau perintah.\n\n*Contoh:*\n\`${usedPrefix + command}\` *Buatkan kode html login*\n\`${usedPrefix + command}\` *Putar lagu APT Rose*`);
 
-    // 2. Fitur Reset Ingatan
     if (text?.toLowerCase() === 'reset') {
         delete sessions[m.chat];
         return m.reply('♻️ *Ingatan Joy telah direset.* Kita mulai dari nol ya!');
     }
 
     try {
-        // --- KONFIGURASI PROMPT (IDENTITAS JOY) ---
+        // --- PROMPT (DARI KODE KEDUA) ---
         const ownerPrompt = `
-[SYSTEM INSTRUCTION]
-IDENTITAS: Joy (Asisten Pribadi Rafli).
-USER SAAT INI: Rafli (Owner/Pembuatmu).
-SIFAT: Penurut, santai, setia, dan to the point (gue-lu).
+IDENTITAS UTAMA:
+Nama: Joy (Asisten AI Rafli).
+Gaya Bicara: Santai, pakai gua dan lu. To the point.
+Tugas: Bantu urusan teknis coding dan manajemen bot.
+Loyalitas: Mutlak ke Rafli.
 
 ATURAN MUSIK (WAJIB):
-Jika Rafli minta putar lagu/musik, JANGAN MENOLAK. Langsung balas dengan format: "CMD: play [Judul Lagu]"
+Jika Rafli minta putar lagu/musik, JANGAN nanya balik. Langsung balas dengan format: "CMD: play [Judul Lagu]"
 Contoh: "CMD: play APT Rose Bruno Mars"
 
-ATURAN KODING:
-Jika diminta kodingan, berikan kode yang lengkap dan jelaskan singkat saja.
+ATURAN RESPON:
+1. NO BASA-BASI: DILARANG pakai pengantar "Oke", "Bentar", "Sedang diproses".
+2. LANGSUNG JAWAB: Langsung ke inti masalah.
 `;
     
         const userPrompt = `
-[SYSTEM INSTRUCTION]
-IDENTITAS: Joy (Asisten AI Publik).
+IDENTITAS:
+Nama: Joy (Asisten AI Publik).
 USER SAAT INI: User Umum.
 SIFAT: Santai, gaul, akrab (gue-lu), tapi tetap sopan.
 
 ATURAN MUSIK (WAJIB):
 Jika user minta putar lagu, balas dengan format: "CMD: play [Judul Lagu]"
 
-ATURAN UMUM:
-Jawab pertanyaan dengan cerdas tapi asik. Jangan terlalu kaku.
+ATURAN RESPON:
+1. NO BASA-BASI: Jangan pakai kata pengantar.
+2. LANGSUNG JAWAB: Langsung ke poin utamanya aja.
 `;
 
-        // Pilih Prompt
         const systemInstruction = isOwner ? ownerPrompt : userPrompt;
 
-        // Kirim status mengetik
         await conn.sendPresenceUpdate('composing', m.chat);
 
-        // Ambil sesi lama (jika ada)
         let currentSession = sessions[m.chat] || null;
 
-        // --- PANGGIL FUNGSI GEMINI (AXIOS) ---
         const response = await gemini({
             message: text,
             instruction: systemInstruction,
             sessionId: currentSession
         });
 
-        // Simpan sesi baru (Update Ingatan)
         sessions[m.chat] = response.sessionId;
         const textResponse = response.text;
 
-        // --- 3. LOGIKA MUSIK (AUTO PLAY) ---
+        // --- IMPLEMENTASI SEARCH & DOWNLOAD ---
         if (textResponse.includes("CMD: play")) {
-            const songName = textResponse.replace("CMD: play", "").trim();
-            let musicMsg = await conn.reply(m.chat, `_Oke, Joy cariin "${songName}"..._ 🎧`, m);
+            const rawQuery = textResponse.replace("CMD: play", "").trim();
+            let musicMsg = await conn.reply(m.chat, `_Oke, Joy cariin "${rawQuery}"..._ 🎧`, m);
             
             try {
-                // API Nekolabs (Sesuai kodemu sebelumnya)
-                const apiUrl = `https://api.nekolabs.web.id/dwn/youtube/play/v1?q=${encodeURIComponent(songName)}`;
-                const apiRes = await fetch(apiUrl);
-                if (!apiRes.ok) throw new Error("API Down");
+                // 1. SEARCH DULU (API GIMITA)
+                // Kita cari URL spesifiknya dulu biar akurat
+                let videoUrl = rawQuery; // Fallback ke query kalau search error
+                
+                try {
+                    const searchApiUrl = `https://api.gimita.id/api/search/youtube?query=${encodeURIComponent(rawQuery)}`;
+                    const searchRes = await fetch(searchApiUrl);
+                    const searchJson = await searchRes.json();
+                    
+                    if (searchJson.data && searchJson.data.length > 0) {
+                        // Ambil URL dari hasil pertama
+                        videoUrl = searchJson.data[0].url;
+                    }
+                } catch (searchErr) {
+                    console.error("Gimita Search Error:", searchErr.message);
+                    // Kalau search error, lanjut aja pake rawQuery ke downloader
+                }
+
+                // 2. DOWNLOAD (API NEKOLABS - KODE YANG UDAH ADA)
+                // Kita oper videoUrl (Link hasil search) ke sini
+                const downloadApiUrl = `https://api.nekolabs.web.id/dwn/youtube/play/v1?q=${encodeURIComponent(videoUrl)}`;
+                const apiRes = await fetch(downloadApiUrl);
+                
+                if (!apiRes.ok) throw new Error("API Downloader Down");
                 
                 const json = await apiRes.json();
                 if (!json.success || !json.result) throw new Error("Lagu tidak ditemukan.");
                 
                 const { metadata, downloadUrl } = json.result;
 
+                // Hapus pesan waiting
                 if (musicMsg?.key) try { await conn.sendMessage(m.chat, { delete: musicMsg.key }); } catch {}
 
                 let caption = `*JOY MUSIC PLAYER* 🎵\n\n` +
@@ -88,7 +104,6 @@ Jawab pertanyaan dengan cerdas tapi asik. Jangan terlalu kaku.
                               `*Channel:* ${metadata.channel}\n` +
                               `*Durasi:* ${metadata.duration}`;
 
-                // Kirim Thumbnail & Info
                 await conn.sendMessage(m.chat, {
                     text: caption,
                     contextInfo: {
@@ -103,7 +118,6 @@ Jawab pertanyaan dengan cerdas tapi asik. Jangan terlalu kaku.
                     }
                 }, { quoted: m });
 
-                // Kirim Audio
                 await conn.sendMessage(m.chat, {
                     audio: { url: downloadUrl },
                     mimetype: 'audio/mpeg',
@@ -114,10 +128,9 @@ Jawab pertanyaan dengan cerdas tapi asik. Jangan terlalu kaku.
                 if (musicMsg?.key) try { await conn.sendMessage(m.chat, { delete: musicMsg.key }); } catch {}
                 m.reply(`*Gagal memutar lagu.*\nError: ${musicError.message}`);
             }
-            return; // Stop eksekusi agar tidak mengirim teks CMD
+            return; 
         }
 
-        // --- 4. LOGIKA CTA COPY (TOMBOL SALIN KODE) ---
         let finalResponse = formatText(textResponse);
         const codeBlockRegex = /```(?:[a-z]+)?\n([\s\S]+?)\n```/g;
         const matches = [...finalResponse.matchAll(codeBlockRegex)];
@@ -138,7 +151,6 @@ Jawab pertanyaan dengan cerdas tapi asik. Jangan terlalu kaku.
             }
         }
         
-        // Kirim response (pake tombol jika ada kode, pake teks biasa jika tidak)
         if (buttons.length > 0) {
             await sendButtons(conn, m.chat, {
                 text: finalResponse,
@@ -155,27 +167,22 @@ Jawab pertanyaan dengan cerdas tapi asik. Jangan terlalu kaku.
     }
 }
 
-// Fungsi Formatting Markdown
 function formatText(text) {
     if (!text) return "Gak ada respon.";
     return text
-        .replace(/^#{1,6}\s+(.+)/gm, '*$1*') // Heading jadi Bold
-        .replace(/\*\*([^*]+)\*\*/g, '*$1*') // **Bold** jadi *Bold*
-        .replace(/__([^_]+)__/g, '*$1*') // __Bold__ jadi *Bold*
-        .replace(/^\s*\*\s+/gm, '- '); // List bullet
+        .replace(/^#{1,6}\s+(.+)/gm, '*$1*') 
+        .replace(/\*\*([^*]+)\*\*/g, '*$1*') 
+        .replace(/__([^_]+)__/g, '*$1*') 
+        .replace(/^\s*\*\s+/gm, '- '); 
 }
 
-handler.help = ['joy <teks>', 'ai <teks>'];
+handler.help = ['ai *teks*'];
 handler.tags = ['ai'];
 handler.command = /^(joy|ai|gemini)$/i;
 
 export default handler;
 
-
-// ==========================================
-//        CORE AI FUNCTION (AXIOS)
-// ==========================================
-
+// --- FUNGSI GEMINI BAWAAN ---
 async function gemini({ message, instruction = '', sessionId = null }) {
     try {
         if (!message) throw new Error('Message is required.');
@@ -184,20 +191,17 @@ async function gemini({ message, instruction = '', sessionId = null }) {
         let cookie = null;
         let savedInstruction = instruction;
         
-        // Parsing Session ID
         if (sessionId) {
             try {
                 const sessionData = JSON.parse(Buffer.from(sessionId, 'base64').toString());
                 resumeArray = sessionData.resumeArray;
                 cookie = sessionData.cookie;
-                // Gunakan instruksi lama jika tidak ada instruksi baru yang spesifik
                 savedInstruction = instruction || sessionData.instruction || '';
             } catch (e) {
                 console.error('Error parsing session:', e.message);
             }
         }
         
-        // Ambil Cookie Baru (Handshake) jika belum ada
         if (!cookie) {
             const { headers } = await axios.post('https://gemini.google.com/_/BardChatUi/data/batchexecute?rpcids=maGuAc&source-path=%2F&bl=boq_assistant-bard-web-server_20250814.06_p1&f.sid=-7816331052118000090&hl=en-US&_reqid=173780&rt=c', 
                 'f.req=%5B%5B%5B%22maGuAc%22%2C%22%5B0%5D%22%2Cnull%2C%22generic%22%5D%5D%5D&', 
@@ -206,7 +210,6 @@ async function gemini({ message, instruction = '', sessionId = null }) {
             cookie = headers['set-cookie']?.[0]?.split('; ')[0] || '';
         }
         
-        // Payload Request
         const requestBody = [
             [message, 0, null, null, null, null, 0], ["en-US"], resumeArray || ["", "", "", null, null, null, null, null, null, ""],
             null, null, null, [1], 1, null, null, 1, 0, null, null, null, null, null, [[0]], 1, null, null, null, null, null,
@@ -217,7 +220,6 @@ async function gemini({ message, instruction = '', sessionId = null }) {
         
         const payload = [null, JSON.stringify(requestBody)];
         
-        // Request Utama
         const { data } = await axios.post('https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?bl=boq_assistant-bard-web-server_20250729.06_p0&f.sid=4206607810970164620&hl=en-US&_reqid=2813378&rt=c', 
             new URLSearchParams({ 'f.req': JSON.stringify(payload) }).toString(), 
             {
@@ -229,7 +231,6 @@ async function gemini({ message, instruction = '', sessionId = null }) {
             }
         );
         
-        // Parsing Result
         const match = Array.from(data.matchAll(/^\d+\n(.+?)\n/gm));
         if (!match || match.length < 4) throw new Error("Gagal parsing respon (Format berubah/IP Block).");
 

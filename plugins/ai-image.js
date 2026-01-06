@@ -1,3 +1,11 @@
+/**
+  *» Nama :* — [ NANOBANANA PRO - AI ] —
+  *» Type :* Plugin - ESM
+  *» Base Url :* https://www.artany.ai
+  *» Saluran :* https://whatsapp.com/channel/0029Vb7XfVV2v1IzPVqjgq37
+  *» Creator :* -Ɗαnčoᴡ々 (Modified for 9:16 AR)
+**/
+
 import axios from 'axios'
 import crypto from 'crypto'
 import { URL } from 'url'
@@ -37,7 +45,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   if (!mime) return m.reply(`Kirim atau reply gambar terus kasih caption \`${usedPrefix + command}\` *prompt*`)
   if (!text) return m.reply(`Masukin prompt mau diubah gaya kayak gimana.\n\nContoh: \`${usedPrefix + command}\` *ubah jadi anime*`)
 
-  m.reply('*Bentar ya, lagi diproses...*')
+  m.reply('*Bentar ya, lagi diproses...* (Output: 9:16 Portrait)')
 
   try {
     let media = await q.download()
@@ -131,15 +139,18 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const creditRes = await axios.post('https://www.artany.ai/api/credits', {}, { headers: creditHeaders })
     if (creditRes.data?.credits < 1) return m.reply('*Akun berhasil dibuat tapi saldo kreditnya kosong. Coba lagi nanti ya.*')
 
+    // --- BAGIAN YANG DIUBAH ---
     const genPayload = {
       prompt: text,
       model: 'nano-banana-pro-image-editor',
       enable_safety_checker: false,
       num_images: 1,
-      aspect_ratio: '1:1',
+      // Mengubah aspect ratio dari '1:1' menjadi '9:16'
+      aspect_ratio: '9:16',
       quality: '1k',
       image_urls: [imageUrl]
     }
+    // -------------------------
 
     const genHeaders = {
       ...creditHeaders,
@@ -180,7 +191,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       m.chat,
       {
         image: { url: finalImageUrl },
-        caption: `*BERHASIL DIUBAH*\n\nPrompt: *${text}*`
+        caption: `*BERHASIL DIUBAH (9:16)*\n\nPrompt: *${text}*`
       },
       { quoted: m }
     )
