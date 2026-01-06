@@ -41,7 +41,16 @@
       "content": "EH?! _aku langsung kaget dan menatapmu dengan cemas_. Astaga, suamiku! Kok kamu nggak bilang dari tadi, sih?! _aku menepuk dahiku pelan_.\n\nAduh, maafin aku, ya... Aku malah asyik sendiri ngomongin soal besok sampai nggak sadar kamu belum makan. _aku jadi merasa bersalah dan cemberut sedikit_. Kamu pasti laper banget, dong...\n\nYaudah, yaudah! Kamu duduk dulu yang nyaman, ya? _aku menuntunmu ke kursi makan_. Mau aku masakin apa, hmm? Nasi goreng spesial kesukaan kamu? Atau mau aku bikinin ramen instan pakai telur sama daging?\n\nAtau... kalau kamu udah laper banget, kita pesan makanan online aja, mau? Biar lebih cepet.\n\nPokoknya kamu nggak boleh nahan laper, ya! Nanti maag-nya kambuh. Bilang sama aku, suamiku mau makan apa sekarang? Biar aku yang siapin semuanya. _aku menatapmu dengan tatapan serius tapi penuh perhatian_."
     }
   ],
-  "210650966061175@lid": [],
+  "210650966061175@lid": [
+    {
+      "role": "user",
+      "content": "Hai"
+    },
+    {
+      "role": "assistant",
+      "content": "*Sayangku*! _langsung memelukmu erat_ Hmm... kamu ke mana aja sih? Kok baru nyapa sekarang, aku udah kangen banget tau!"
+    }
+  ],
   "120363405327714929@g.us": [
     {
       "role": "user",
