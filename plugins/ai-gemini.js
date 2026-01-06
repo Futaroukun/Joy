@@ -1,173 +1,124 @@
-import chat from '../function/gemini.js'
-import fs from 'fs'
-import path from 'path'
-import fetch from 'node-fetch' 
+import axios from 'axios'
+import fetch from 'node-fetch'
 import { sendButtons } from '../function/button.js'
 
-let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
-    const hasInput = text || m.quoted || (m.msg && (m.msg.caption || m.msg.text));
-    const isMedia = /image|video|sticker|webp/i.test((m.msg || m).mimetype || '');
+// Penyimpanan sesi (Memory) agar bot ingat konteks
+let sessions = {};
 
-    if (!hasInput && !isMedia) {
-        return m.reply(`*JOY AI ASSISTANT*\n\nKirim pertanyaan, foto, atau stiker.\n\n*Contoh:*\n\`${usedPrefix + command}\` *Apa resep nasi goreng?*\n\`${usedPrefix + command}\` *(reply gambar)* *Gambar apa ini?*`)
+let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
+    // 1. Validasi Input
+    const hasInput = text || m.quoted || (m.msg && (m.msg.caption || m.msg.text));
+    if (!hasInput) return m.reply(`*JOY AI ASSISTANT*\n\nKirim pertanyaan atau perintah.\n\n*Contoh:*\n\`${usedPrefix + command}\` *Buatkan kode html login*\n\`${usedPrefix + command}\` *Putar lagu APT Rose*`);
+
+    // 2. Fitur Reset Ingatan
+    if (text?.toLowerCase() === 'reset') {
+        delete sessions[m.chat];
+        return m.reply('♻️ *Ingatan Joy telah direset.* Kita mulai dari nol ya!');
     }
-    
-    let buffer = null
-    let prompt = text || ''
-    let loadingMsg = null
-    let messages = []
-    
-    // --- KONFIGURASI PROMPT ---
-    const ownerPrompt = `
-IDENTITAS UTAMA:
-Nama: Joy (Asisten AI Rafli).
-Gaya Bicara: Santai, pakai gua dan lu. To the point.
-Tugas: Bantu urusan teknis coding dan manajemen bot.
-Loyalitas: Mutlak ke Rafli.
+
+    try {
+        // --- KONFIGURASI PROMPT (IDENTITAS JOY) ---
+        const ownerPrompt = `
+[SYSTEM INSTRUCTION]
+IDENTITAS: Joy (Asisten Pribadi Rafli).
+USER SAAT INI: Rafli (Owner/Pembuatmu).
+SIFAT: Penurut, santai, setia, dan to the point (gue-lu).
 
 ATURAN MUSIK (WAJIB):
-Jika Rafli minta putar lagu/musik, JANGAN nanya balik. Langsung balas dengan format: "CMD: play [Judul Lagu]"
+Jika Rafli minta putar lagu/musik, JANGAN MENOLAK. Langsung balas dengan format: "CMD: play [Judul Lagu]"
 Contoh: "CMD: play APT Rose Bruno Mars"
 
-ATURAN RESPON:
-1. NO BASA-BASI: DILARANG pakai pengantar "Oke", "Bentar", "Sedang diproses".
-2. LANGSUNG JAWAB: Langsung ke inti masalah.
+ATURAN KODING:
+Jika diminta kodingan, berikan kode yang lengkap dan jelaskan singkat saja.
 `;
     
-    const userPrompt = `
-IDENTITAS:
-Nama: Joy (Asisten AI buatan Rafli).
-Gaya Bicara: Santai, gaul, akrab. Pakai gua dan kamu.
-Tugas: Jawab pertanyaan dengan cerdas tapi asik.
+        const userPrompt = `
+[SYSTEM INSTRUCTION]
+IDENTITAS: Joy (Asisten AI Publik).
+USER SAAT INI: User Umum.
+SIFAT: Santai, gaul, akrab (gue-lu), tapi tetap sopan.
 
 ATURAN MUSIK (WAJIB):
 Jika user minta putar lagu, balas dengan format: "CMD: play [Judul Lagu]"
 
-ATURAN RESPON:
-1. NO BASA-BASI: Jangan pakai kata pengantar.
-2. LANGSUNG JAWAB: Langsung ke poin utamanya aja.
+ATURAN UMUM:
+Jawab pertanyaan dengan cerdas tapi asik. Jangan terlalu kaku.
 `;
-    
-    const scanKeywords = ['scan', 'kode', 'code', 'file', 'fix', 'debug', 'analisis', 'struktur', 'error', 'perbaiki', 'analisa', 'source code'];
-    const isScanMode = isOwner && scanKeywords.some(keyword => prompt.toLowerCase().includes(keyword));
-    
-    // Tentukan System Instruction dasar
-    let systemInstructionContent = isOwner ? ownerPrompt : userPrompt;
-    
-    // --- LOGIKA SCAN MODE ---
-    if (isScanMode) {
-        loadingMsg = await conn.reply(m.chat, "*SYSTEM ACCESS GRANTED (OWNER)*\n\nLagi baca struktur direktori...", m)
-        const rootDir = process.cwd()
-        const scannedData = scanDirectory(rootDir)
-        
-        // Update System Instruction khusus mode scan
-        systemInstructionContent = `MODE: SENIOR BACKEND ARCHITECT.\nFokus: Analisis Kode, Debugging.\nGaya: Teknis, santai (gua-lu).\nATURAN: Langsung analisis masalah tanpa basa-basi pembuka.\n\nKonteks Proyek Bot:\n${scannedData}`;
-        
-        // Masukkan pesan user setelah scan
-        messages.push({ role: "user", content: `Analisis permintaan ini: ${prompt}` });
-    } else {
-        // --- LOGIKA CHAT BIASA & MEDIA ---
-        if (m.quoted) {
-            const q = m.quoted;
-            const mime = (q.msg || q).mimetype || '';
-            if (/image|video|sticker|webp/i.test(mime)) {
-                await conn.sendPresenceUpdate('composing', m.chat)
-                try {
-                    buffer = await q.download();
-                    messages.push({ role: "user", content: prompt || "Jelasin media ini secara detail." });
-                } catch (e) {
-                    return m.reply("*Gagal download media.*");
-                }
-            } else if (q.text) {
-                await conn.sendPresenceUpdate('composing', m.chat)
-                messages.push({ role: "user", content: `Konteks Pesan: "${q.text}"\n\nPerintah: ${prompt}` });
-            } else {
-                await conn.sendPresenceUpdate('composing', m.chat)
-                messages.push({ role: "user", content: prompt });
-            }
-        } else {
-            const mime = (m.msg || m).mimetype || '';
-            if (/image|video|sticker|webp/i.test(mime)) {
-                await conn.sendPresenceUpdate('composing', m.chat)
-                try {
-                    buffer = await m.download();
-                    messages.push({ role: "user", content: prompt || "Deskripsiin detail media ini." });
-                } catch (e) {
-                    return m.reply("*Gagal download media.*");
-                }
-            } else {
-                await conn.sendPresenceUpdate('composing', m.chat)
-                messages.push({ role: "user", content: prompt });
-            }
-        }
-    }
-    
-    // --- PENYEMPURNAAN STRUKTUR PESAN ---
-    // Masukkan System Instruction di awal array messages dengan role 'system'
-    // Ini agar gemini.js yang baru bisa mendeteksinya sebagai config.systemInstruction
-    messages.unshift({ role: "system", content: systemInstructionContent });
 
-    try {
-        // Panggil fungsi chat dari gemini.js
-        const response = await chat(messages, buffer)
-        
-        // Hapus loading message (Khusus Scan Mode)
-        if (loadingMsg?.key) {
-            try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
-        }
+        // Pilih Prompt
+        const systemInstruction = isOwner ? ownerPrompt : userPrompt;
 
-        // --- LOGIKA PLAY MUSIC ---
-        if (response.includes("CMD: play")) {
-            const songName = response.replace("CMD: play", "").trim()
-            let musicMsg = await conn.reply(m.chat, `_Oke, gua cariin "${songName}"..._`, m)
+        // Kirim status mengetik
+        await conn.sendPresenceUpdate('composing', m.chat);
+
+        // Ambil sesi lama (jika ada)
+        let currentSession = sessions[m.chat] || null;
+
+        // --- PANGGIL FUNGSI GEMINI (AXIOS) ---
+        const response = await gemini({
+            message: text,
+            instruction: systemInstruction,
+            sessionId: currentSession
+        });
+
+        // Simpan sesi baru (Update Ingatan)
+        sessions[m.chat] = response.sessionId;
+        const textResponse = response.text;
+
+        // --- 3. LOGIKA MUSIK (AUTO PLAY) ---
+        if (textResponse.includes("CMD: play")) {
+            const songName = textResponse.replace("CMD: play", "").trim();
+            let musicMsg = await conn.reply(m.chat, `_Oke, Joy cariin "${songName}"..._ 🎧`, m);
             
             try {
-                const apiUrl = `https://api.nekolabs.web.id/dwn/youtube/play/v1?q=${encodeURIComponent(songName)}`
-                const apiRes = await fetch(apiUrl)
+                // API Nekolabs (Sesuai kodemu sebelumnya)
+                const apiUrl = `https://api.nekolabs.web.id/dwn/youtube/play/v1?q=${encodeURIComponent(songName)}`;
+                const apiRes = await fetch(apiUrl);
+                if (!apiRes.ok) throw new Error("API Down");
                 
-                if (!apiRes.ok) throw new Error("Server API lagi down.")
+                const json = await apiRes.json();
+                if (!json.success || !json.result) throw new Error("Lagu tidak ditemukan.");
                 
-                const json = await apiRes.json()
-                if (!json.success || !json.result) throw new Error("Lagu gak ketemu.")
-                
-                const { metadata, downloadUrl } = json.result
+                const { metadata, downloadUrl } = json.result;
 
-                if (musicMsg?.key) try { await conn.sendMessage(m.chat, { delete: musicMsg.key }) } catch {}
+                if (musicMsg?.key) try { await conn.sendMessage(m.chat, { delete: musicMsg.key }); } catch {}
 
-                let caption = `*JOY MUSIC PLAYER*\n\n` +
+                let caption = `*JOY MUSIC PLAYER* 🎵\n\n` +
                               `*Judul:* ${metadata.title}\n` +
                               `*Channel:* ${metadata.channel}\n` +
-                              `*Durasi:* ${metadata.duration}`
+                              `*Durasi:* ${metadata.duration}`;
 
+                // Kirim Thumbnail & Info
                 await conn.sendMessage(m.chat, {
                     text: caption,
                     contextInfo: {
                         externalAdReply: {
                             title: metadata.title,
-                            body: "Joy AI",
+                            body: "Joy AI Player",
                             thumbnailUrl: metadata.cover,
                             sourceUrl: metadata.url,
                             mediaType: 1,
                             renderLargerThumbnail: true
                         }
                     }
-                }, { quoted: m })
+                }, { quoted: m });
 
+                // Kirim Audio
                 await conn.sendMessage(m.chat, {
                     audio: { url: downloadUrl },
                     mimetype: 'audio/mpeg',
                     fileName: `${metadata.title}.mp3`
-                }, { quoted: m })
+                }, { quoted: m });
 
             } catch (musicError) {
-                if (musicMsg?.key) try { await conn.sendMessage(m.chat, { delete: musicMsg.key }) } catch {}
-                m.reply(`*Gagal muter lagu.*\nError: ${musicError.message}`)
+                if (musicMsg?.key) try { await conn.sendMessage(m.chat, { delete: musicMsg.key }); } catch {}
+                m.reply(`*Gagal memutar lagu.*\nError: ${musicError.message}`);
             }
-            return; 
+            return; // Stop eksekusi agar tidak mengirim teks CMD
         }
-        
-        // --- FORMATTING & BUTTONS ---
-        let finalResponse = formatText(response);
+
+        // --- 4. LOGIKA CTA COPY (TOMBOL SALIN KODE) ---
+        let finalResponse = formatText(textResponse);
         const codeBlockRegex = /```(?:[a-z]+)?\n([\s\S]+?)\n```/g;
         const matches = [...finalResponse.matchAll(codeBlockRegex)];
         const buttons = [];
@@ -187,64 +138,118 @@ ATURAN RESPON:
             }
         }
         
+        // Kirim response (pake tombol jika ada kode, pake teks biasa jika tidak)
         if (buttons.length > 0) {
             await sendButtons(conn, m.chat, {
                 text: finalResponse,
-                footer: "Klik tombol buat salin kode.",
+                footer: "Klik tombol untuk menyalin kode.",
                 buttons: buttons
             }, { quoted: m });
         } else {
             await conn.reply(m.chat, finalResponse, m);
         }
-        
+
     } catch (e) {
-        if (loadingMsg?.key) {
-            try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
-        }
-        console.error(e)
-        m.reply(`*Joy Error:* ${e.message}`)
+        console.error(e);
+        m.reply(`*Joy Error:* ${e.message}\n_Coba ketik .joy reset jika error berlanjut._`);
     }
 }
 
+// Fungsi Formatting Markdown
 function formatText(text) {
-    if (!text) return "Gak ada respon dari AI.";
+    if (!text) return "Gak ada respon.";
     return text
-        .replace(/^#{1,6}\s+(.+)/gm, '*$1*')
-        .replace(/\*\*([^*]+)\*\*/g, '*$1*')
-        .replace(/__([^_]+)__/g, '*$1*')
-        .replace(/~~([^~]+)~~/g, '~$1~')
-        .replace(/^\s*\*\s+/gm, '- ');
+        .replace(/^#{1,6}\s+(.+)/gm, '*$1*') // Heading jadi Bold
+        .replace(/\*\*([^*]+)\*\*/g, '*$1*') // **Bold** jadi *Bold*
+        .replace(/__([^_]+)__/g, '*$1*') // __Bold__ jadi *Bold*
+        .replace(/^\s*\*\s+/gm, '- '); // List bullet
 }
 
-function scanDirectory(dir, fileList = [], depth = 0) {
-    if (depth > 5) return fileList
-    try {
-        const files = fs.readdirSync(dir)
-        files.forEach(file => {
-            const filePath = path.join(dir, file)
-            // Blacklist diperbanyak agar scan lebih cepat & aman
-            const blacklist = ['node_modules', '.git', 'package-lock.json', 'yarn.lock', 'session', 'sessions', 'creds.json', '.env', 'src', 'tmp', 'database.json', 'store.json']
-            if (blacklist.some(b => file.includes(b))) return
-            try {
-                const stat = fs.statSync(filePath)
-                if (stat.isDirectory()) {
-                    scanDirectory(filePath, fileList, depth + 1)
-                } else {
-                    // Batasi file 50KB ke bawah agar prompt tidak overflow
-                    if (/\.(js|json|html|txt|md)$/i.test(file) && stat.size < 50 * 1024) {
-                        const content = fs.readFileSync(filePath, 'utf8')
-                        const relativePath = filePath.replace(process.cwd(), '')
-                        fileList.push(`\nFILE: ${relativePath}\n${content}`)
-                    }
-                }
-            } catch (e) {}
-        })
-    } catch (e) {}
-    return fileList.join('\n')
-}
-
-handler.help = ['ai *teks*']
-handler.tags = ['ai']
-handler.command = /^(ai|joy|gemini)$/i
+handler.help = ['joy <teks>', 'ai <teks>'];
+handler.tags = ['ai'];
+handler.command = /^(joy|ai|gemini)$/i;
 
 export default handler;
+
+
+// ==========================================
+//        CORE AI FUNCTION (AXIOS)
+// ==========================================
+
+async function gemini({ message, instruction = '', sessionId = null }) {
+    try {
+        if (!message) throw new Error('Message is required.');
+        
+        let resumeArray = null;
+        let cookie = null;
+        let savedInstruction = instruction;
+        
+        // Parsing Session ID
+        if (sessionId) {
+            try {
+                const sessionData = JSON.parse(Buffer.from(sessionId, 'base64').toString());
+                resumeArray = sessionData.resumeArray;
+                cookie = sessionData.cookie;
+                // Gunakan instruksi lama jika tidak ada instruksi baru yang spesifik
+                savedInstruction = instruction || sessionData.instruction || '';
+            } catch (e) {
+                console.error('Error parsing session:', e.message);
+            }
+        }
+        
+        // Ambil Cookie Baru (Handshake) jika belum ada
+        if (!cookie) {
+            const { headers } = await axios.post('https://gemini.google.com/_/BardChatUi/data/batchexecute?rpcids=maGuAc&source-path=%2F&bl=boq_assistant-bard-web-server_20250814.06_p1&f.sid=-7816331052118000090&hl=en-US&_reqid=173780&rt=c', 
+                'f.req=%5B%5B%5B%22maGuAc%22%2C%22%5B0%5D%22%2Cnull%2C%22generic%22%5D%5D%5D&', 
+                { headers: { 'content-type': 'application/x-www-form-urlencoded;charset=UTF-8' } }
+            );
+            cookie = headers['set-cookie']?.[0]?.split('; ')[0] || '';
+        }
+        
+        // Payload Request
+        const requestBody = [
+            [message, 0, null, null, null, null, 0], ["en-US"], resumeArray || ["", "", "", null, null, null, null, null, null, ""],
+            null, null, null, [1], 1, null, null, 1, 0, null, null, null, null, null, [[0]], 1, null, null, null, null, null,
+            ["", "", savedInstruction, null, null, null, null, null, 0, null, 1, null, null, null, []],
+            null, null, 1, null, null, null, null, null, null, null, 
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], 1, null, null, null, null, [1]
+        ];
+        
+        const payload = [null, JSON.stringify(requestBody)];
+        
+        // Request Utama
+        const { data } = await axios.post('https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?bl=boq_assistant-bard-web-server_20250729.06_p0&f.sid=4206607810970164620&hl=en-US&_reqid=2813378&rt=c', 
+            new URLSearchParams({ 'f.req': JSON.stringify(payload) }).toString(), 
+            {
+                headers: {
+                    'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'x-goog-ext-525001261-jspb': '[1,null,null,null,"9ec249fc9ad08861",null,null,null,[4]]',
+                    'cookie': cookie
+                }
+            }
+        );
+        
+        // Parsing Result
+        const match = Array.from(data.matchAll(/^\d+\n(.+?)\n/gm));
+        if (!match || match.length < 4) throw new Error("Gagal parsing respon (Format berubah/IP Block).");
+
+        const array = match.reverse();
+        const selectedArray = array[3][1];
+        const realArray = JSON.parse(selectedArray);
+        const parse1 = JSON.parse(realArray[0][2]);
+        
+        const newResumeArray = [...parse1[1], parse1[4][0][0]];
+        const text = parse1[4][0][1][0].replace(/\*\*(.+?)\*\*/g, '*$1*');
+        
+        const newSessionId = Buffer.from(JSON.stringify({
+            resumeArray: newResumeArray,
+            cookie: cookie,
+            instruction: savedInstruction
+        })).toString('base64');
+        
+        return { text: text, sessionId: newSessionId };
+
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
