@@ -1,125 +1,220 @@
-import axios from 'axios';
+/**
+  *» Nama :* — [ NANO BANANA - AI ] —
+  *» Type :* Plugin - ESM
+  *» Base Url :* https://www.artany.ai
+  *» Saluran :* https://whatsapp.com/channel/0029Vb7XfVV2v1IzPVqjgq37
+  *» Creator :* -Ɗαnčoᴡ々
+**/
 
-// Penyimpanan sesi sementara (Memory) agar bot ingat konteks obrolan
-// Format: { [chatId]: 'sessionId_string' }
-let sessions = {};
+import axios from 'axios'
+import crypto from 'crypto'
+import { URL } from 'url'
+import FormData from 'form-data'
 
-let handler = async (m, { conn, text, usedPrefix, command }) => {
-    // 1. Cek input teks
-    if (!text) throw `*Contoh penggunaan:*\n${usedPrefix + command} Halo, siapa namamu?\n\n*Fitur lain:*\n${usedPrefix + command} reset (untuk menghapus ingatan bot)`;
+const TEMPMAIL_API = Buffer.from(
+  'aHR0cHM6Ly9hcGkubmVrb2xhYnMud2ViLmlkL3Rvb2xzL3RlbXBtYWlsL3Yx',
+  'base64'
+).toString()
 
-    try {
-        // 2. Fitur Reset Sesi
-        if (text.toLowerCase() === 'reset') {
-            delete sessions[m.chat];
-            return m.reply('♻️ Sesi obrolan berhasil direset. Bot telah melupakan konteks sebelumnya.');
-        }
+const SUPABASE_URL = 'https://urrxpnraqkaiickvdtfl.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVycnhwbnJhcWthaWlja3ZkdGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwNDMzNjMsImV4cCI6MjA3NDYxOTM2M30.JFp8mnLQRuHAh7oYTGXFGP9K9hShl_MxMFZAesNjtcE'
 
-        // 3. Kirim status mengetik/loading
-        m.reply(global.wait || '_Sedang memproses..._');
+async function uploadImage(buffer) {
+  const form = new FormData()
+  form.append('file', buffer, 'image.jpg')
 
-        // 4. Ambil session ID jika ada (agar nyambung)
-        let currentSession = sessions[m.chat] || null;
-        
-        // 5. System Instruction (Identitas Bot)
-        // Kamu bisa ubah instruksi di bawah ini sesuai keinginan
-        const systemInstruction = 'Kamu adalah Asisten AI WhatsApp yang cerdas, ramah, dan membantu. Jawablah pertanyaan dengan ringkas dan jelas. Gunakan format Markdown WhatsApp (Bold, Italic, Code) untuk mempercantik jawaban.';
+  const res = await axios.post('https://tmpfiles.org/api/v1/upload', form, {
+    headers: form.getHeaders(),
+    timeout: 30000
+  })
 
-        // 6. Panggil fungsi Gemini
-        let response = await gemini({
-            message: text,
-            instruction: systemInstruction,
-            sessionId: currentSession
-        });
+  if (!res.data || !res.data.data || !res.data.data.url) {
+    throw 'Gagal upload gambar'
+  }
 
-        // 7. Simpan session ID baru untuk obrolan selanjutnya
-        sessions[m.chat] = response.sessionId;
-
-        // 8. Kirim balasan
-        await conn.sendMessage(m.chat, { text: response.text }, { quoted: m });
-
-    } catch (e) {
-        console.error(e);
-        m.reply('❌ Terjadi kesalahan saat menghubungi server Gemini. Coba lagi nanti.');
-    }
+  // Konversi URL dari format tmpfiles.org/xxx ke tmpfiles.org/dl/xxx
+  const originalUrl = res.data.data.url
+  const fileUrl = originalUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/')
+  
+  return fileUrl
 }
 
-handler.help = ['ai <teks>', 'gemini <teks>'];
-handler.tags = ['ai'];
-handler.command = /^(ai|gemini|bard)$/i;
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+  let q = m.quoted ? m.quoted : m
+  let mime = (q.msg || q).mimetype || ''
 
-export default handler;
+  if (!mime) throw `Kirim/Reply gambar dengan caption *${usedPrefix + command}* prompt`
+  if (!text) throw `Masukkan prompt gaya ubahannya.\nContoh: *${usedPrefix + command}* ubah jadi anime`
 
+  m.reply(global.wait || 'Sedang memproses...')
 
-// --- FUNGSI GEMINI (BAWAAN DARI KODE KAMU) ---
+  try {
+    let media = await q.download()
+    let imageUrl = await uploadImage(media)
 
-async function gemini({ message, instruction = '', sessionId = null }) {
-    try {
-        if (!message) throw new Error('Message is required.');
-        
-        let resumeArray = null;
-        let cookie = null;
-        let savedInstruction = instruction;
-        
-        if (sessionId) {
-            try {
-                const sessionData = JSON.parse(Buffer.from(sessionId, 'base64').toString());
-                resumeArray = sessionData.resumeArray;
-                cookie = sessionData.cookie;
-                savedInstruction = instruction || sessionData.instruction || '';
-            } catch (e) {
-                console.error('Error parsing session:', e.message);
-            }
-        }
-        
-        if (!cookie) {
-            const { headers } = await axios.post('https://gemini.google.com/_/BardChatUi/data/batchexecute?rpcids=maGuAc&source-path=%2F&bl=boq_assistant-bard-web-server_20250814.06_p1&f.sid=-7816331052118000090&hl=en-US&_reqid=173780&rt=c', 'f.req=%5B%5B%5B%22maGuAc%22%2C%22%5B0%5D%22%2Cnull%2C%22generic%22%5D%5D%5D&', {
-                headers: {
-                    'content-type': 'application/x-www-form-urlencoded;charset=UTF-8'
-                }
-            });
-            
-            cookie = headers['set-cookie']?.[0]?.split('; ')[0] || '';
-        }
-        
-        const requestBody = [
-            [message, 0, null, null, null, null, 0], ["en-US"], resumeArray || ["", "", "", null, null, null, null, null, null, ""],
-            null, null, null, [1], 1, null, null, 1, 0, null, null, null, null, null, [[0]], 1, null, null, null, null, null,
-            ["", "", savedInstruction, null, null, null, null, null, 0, null, 1, null, null, null, []],
-            null, null, 1, null, null, null, null, null, null, null, 
-            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], 1, null, null, null, null, [1]
-        ];
-        
-        const payload = [null, JSON.stringify(requestBody)];
-        
-        const { data } = await axios.post('https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?bl=boq_assistant-bard-web-server_20250729.06_p0&f.sid=4206607810970164620&hl=en-US&_reqid=2813378&rt=c', new URLSearchParams({ 'f.req': JSON.stringify(payload) }).toString(), {
-            headers: {
-                'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                'x-goog-ext-525001261-jspb': '[1,null,null,null,"9ec249fc9ad08861",null,null,null,[4]]',
-                'cookie': cookie
-            }
-        });
-        
-        const match = Array.from(data.matchAll(/^\d+\n(.+?)\n/gm));
-        const array = match.reverse();
-        const selectedArray = array[3][1];
-        const realArray = JSON.parse(selectedArray);
-        const parse1 = JSON.parse(realArray[0][2]);
-        
-        const newResumeArray = [...parse1[1], parse1[4][0][0]];
-        const text = parse1[4][0][1][0].replace(/\*\*(.+?)\*\*/g, '*$1*');
-        
-        const newSessionId = Buffer.from(JSON.stringify({
-            resumeArray: newResumeArray,
-            cookie: cookie,
-            instruction: savedInstruction
-        })).toString('base64');
-        
-        return {
-            text: text,
-            sessionId: newSessionId
-        };
-    } catch (error) {
-        throw new Error(error.message);
+    const { code_verifier, code_challenge } = generatePKCE()  
+
+    const mailData = await axios.get(`${TEMPMAIL_API}/create`).then(r => r.data)  
+    if (!mailData.success) throw 'Gagal membuat email sementara.'  
+
+    const { email, sessionId } = mailData.result  
+    const redirectUrl = 'http://localhost:3000/callback'  
+
+    const headers = {  
+      'content-type': 'application/json',  
+      'apikey': SUPABASE_KEY,  
+      'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36'  
+    }  
+
+    await axios.post(  
+      `${SUPABASE_URL}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectUrl)}`,  
+      {  
+        email,  
+        create_user: true,  
+        gotrue_meta_security: {},  
+        code_challenge,  
+        code_challenge_method: 's256'  
+      },  
+      { headers }  
+    )  
+
+    let authCode = null  
+    let attempts = 0  
+
+    while (attempts < 20 && !authCode) {  
+      await new Promise(r => setTimeout(r, 2000))  
+
+      const inbox = await axios.get(`${TEMPMAIL_API}/inbox`, {  
+        params: { id: sessionId }  
+      }).then(r => r.data)  
+
+      if (inbox.success && inbox.result.emails?.length) {  
+        const mail = inbox.result.emails[0]  
+        const content = mail.text || mail.html || ''  
+        const match = content.match(/https:\/\/urrxpnraqkaiickvdtfl\.supabase\.co\/auth\/v1\/verify\?token=[^\s"&]+&type=signup&redirect_to=[^\s"&]+/)  
+
+        if (match) {  
+          const verifyUrl = match[0].replace(/&amp;/g, '&')  
+
+          const verifyRes = await axios.get(verifyUrl, {  
+            maxRedirects: 0,  
+            validateStatus: s => s >= 200 && s < 400  
+          })  
+
+          const location = verifyRes.headers.location  
+          if (location) {  
+            const u = new URL(location)  
+            authCode = u.searchParams.get('code')  
+          }  
+        }  
+      }  
+      attempts++  
+    }  
+
+    if (!authCode) throw 'Gagal mendapatkan Auth Code dari email.'  
+
+    const exchangeRes = await axios.post(  
+      `${SUPABASE_URL}/auth/v1/token?grant_type=pkce`,  
+      {  
+        auth_code: authCode,  
+        code_verifier  
+      },  
+      { headers }  
+    )  
+
+    const { access_token, refresh_token } = exchangeRes.data  
+    if (!access_token) throw 'Gagal menukar kode menjadi token.'  
+
+    const authCookie = `sb-urrxpnraqkaiickvdtfl-auth-token=${encodeURIComponent(JSON.stringify([access_token, refresh_token, null, null, null]))}`  
+
+    const creditHeaders = {  
+      'user-agent': headers['user-agent'],  
+      'content-type': 'application/json',  
+      'cookie': authCookie,  
+      'authority': 'www.artany.ai',  
+      'origin': 'https://www.artany.ai',  
+      'referer': 'https://www.artany.ai/'  
+    }  
+
+    const creditRes = await axios.post('https://www.artany.ai/api/credits', {}, { headers: creditHeaders })  
+    if (creditRes.data?.credits < 1) throw 'Account created successfully but Credit balance remains 0.'  
+
+    const genPayload = {  
+      prompt: text,  
+      model: 'gemini-2.5-flash-image-editor',  
+      enable_safety_checker: false,  
+      num_images: 1,  
+      aspect_ratio: '1:1',  
+      image_urls: [imageUrl]  
+    }  
+
+    const genHeaders = {  
+      ...creditHeaders,  
+      referer: 'https://www.artany.ai/ai-image-editor'  
+    }  
+
+    const genRes = await axios.post(  
+      'https://www.artany.ai/api/image-generator/gemini-2.5-flash',  
+      genPayload,  
+      { headers: genHeaders }  
+    )  
+
+    const taskId = genRes.data?.data?.task_id  
+    if (!taskId) throw 'Gagal memulai task generate.'  
+
+    let finalImageUrl = null  
+    let status = 'PENDING'  
+    let checks = 0  
+
+    while (!['SUCCEEDED', 'FAILED'].includes(status) && checks < 30) {  
+      await new Promise(r => setTimeout(r, 2000))  
+
+      const s = await axios.get(  
+        `https://www.artany.ai/api/image-task-status?task_id=${taskId}`,  
+        { headers: genHeaders }  
+      )  
+
+      status = s.data?.data?.status  
+      if (status === 'SUCCEEDED') {  
+        finalImageUrl = s.data?.data?.result_images?.[0]?.url  
+      }  
+      checks++  
+    }  
+
+    if (!finalImageUrl) throw 'Gagal generate gambar atau timeout.'  
+
+    await conn.sendMessage(  
+      m.chat,  
+      {  
+        image: { url: finalImageUrl },  
+        caption: `✅ Sukses mengubah gambar.\nPrompt: "${text}"`  
+      },  
+      { quoted: m }  
+    )
+
+  } catch (e) {
+    if (e.response) {
+      m.reply(`Error API (${e.response.status}): ${JSON.stringify(e.response.data)}`)
+    } else {
+      m.reply(`Terjadi kesalahan: ${e}`)
     }
+  }
+}
+
+handler.help = ['artany <img+prompt>']
+handler.tags = ['ai', 'tools']
+handler.command = ['artany', 'imgedit', 'ai-edit']
+
+export default handler
+
+function generatePKCE() {
+  const verifier = base64URLEncode(crypto.randomBytes(32))
+  const challenge = base64URLEncode(
+    crypto.createHash('sha256').update(verifier).digest()
+  )
+  return { code_verifier: verifier, code_challenge: challenge }
+}
+
+function base64URLEncode(buf) {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
