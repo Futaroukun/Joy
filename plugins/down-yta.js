@@ -31,43 +31,35 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         let data = null;
         let buffer = null;
 
+        // --- SERVER UTAMA: NEKOLABS ---
         try {
-            const infoUrl = `https://api.gimita.id/api/downloader/ytinfo?url=${encodeURIComponent(text)}`;
-            const infoResp = await fetch(infoUrl);
-            const infoJson = await infoResp.json();
+            const apiUrl = `https://api.nekolabs.web.id/downloader/youtube/v1?url=${encodeURIComponent(text)}&format=mp3`;
+            const response = await fetch(apiUrl);
+            const json = await response.json();
 
-            if (!infoJson.success || !infoJson.audio_formats) throw new Error('Gimita Info Failed');
+            if (!json.success || !json.result) throw new Error('Nekolabs API Failed');
 
-            const formats = infoJson.audio_formats.sort((a, b) => b.abr - a.abr);
-            const bestFormat = formats[0]; 
-            const formatId = bestFormat.format_id;
+            const result = json.result;
 
-            const downUrl = `https://api.gimita.id/api/downloader/ytdown?format_id=${formatId}&type=audio&url=${encodeURIComponent(text)}`;
-            const downResp = await fetch(downUrl);
-            const downJson = await downResp.json();
-
-            if (!downJson.success || !downJson.download_url) throw new Error('Gimita Download Failed');
-
-            let fileUrl = downJson.download_url;
-            if (!fileUrl.startsWith('http')) {
-                fileUrl = 'https://api.gimita.id' + fileUrl;
-            }
-
-            const buffResp = await fetch(fileUrl);
-            if (!buffResp.ok) throw new Error('Gagal download audio Gimita');
+            // Download file dari URL yang didapat
+            const buffResp = await fetch(result.downloadUrl);
+            if (!buffResp.ok) throw new Error('Gagal download file audio');
             buffer = await buffResp.buffer();
 
             data = {
-                title: downJson.title || infoJson.title,
-                channel: infoJson.uploader,
-                thumbnail: infoJson.thumbnail,
-                durationStr: formatDuration(infoJson.duration),
+                title: result.title,
+                channel: '-', // API Nekolabs tidak menyertakan nama channel di result
+                thumbnail: result.cover,
+                durationStr: result.duration, // Format dari API sudah "03:46"
                 views: '-',
-                quality: `\`${Math.round(bestFormat.abr)}kbps (${bestFormat.ext})\``,
-                server: 'Gimita'
+                quality: `\`${result.quality}kbps (${result.format})\``,
+                server: 'Nekolabs'
             };
 
         } catch (e) {
+            // --- SERVER BACKUP: VREDEN ---
+            console.log("Nekolabs error, switch to backup:", e.message);
+            
             const vredenUrl = `https://api.vreden.my.id/api/v1/download/youtube/audio?url=${encodeURIComponent(text)}&quality=320`;
             const vredenResp = await fetch(vredenUrl);
             const vredenJson = await vredenResp.json();
