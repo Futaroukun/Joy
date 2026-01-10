@@ -1,5 +1,5 @@
 import { performance } from 'perf_hooks'
-import { cpus as _cpus, totalmem, freemem, arch, platform, release, hostname, networkInterfaces } from 'os'
+import { cpus as _cpus, totalmem, freemem, arch, platform, release, hostname, networkInterfaces, uptime as _osUptime } from 'os'
 import { sizeFormatter } from 'human-readable'
 
 let format = sizeFormatter({
@@ -15,10 +15,15 @@ const handler = async (m, { conn }) => {
     const neww = performance.now()
     const ping = Math.round(neww - old)
     
+    // --- MEMORY SYSTEM (SERVER) ---
     const totalMemory = totalmem()
     const freeMemory = freemem()
-    const usedMemory = totalMemory - freeMemory
-    const memoryUsage = ((usedMemory / totalMemory) * 100).toFixed(1)
+    const systemUsedMemory = totalMemory - freeMemory
+    const systemMemoryUsage = ((systemUsedMemory / totalMemory) * 100).toFixed(1)
+    
+    // --- MEMORY BOT (NODE.JS PROCESS) ---
+    // Mengambil penggunaan RAM khusus script bot
+    const botUsedMemory = process.memoryUsage().rss 
     
     const cpus = _cpus()
     const coreUsages = cpus.map(cpu => {
@@ -31,7 +36,10 @@ const handler = async (m, { conn }) => {
     })
     const overallCpuUsage = (coreUsages.reduce((sum, core) => sum + parseFloat(core.usage), 0) / coreUsages.length).toFixed(1)
     
-    const uptime = clockString(process.uptime() * 1000)
+    // Uptime Calculation
+    const botUptime = clockString(process.uptime() * 1000)
+    const systemUptime = clockString(_osUptime() * 1000)
+    
     const totalUsers = Object.keys(global.db.data.users).length
     const totalFeatures = Object.values(global.plugins).filter(p => p.help && !p.disabled).length
     
@@ -40,7 +48,7 @@ const handler = async (m, { conn }) => {
 
 *BOT INFO*
 * Nama Bot: ${global.info.namabot}
-* Uptime: ${uptime}
+* Bot Uptime: ${botUptime}
 * Total User: ${totalUsers}
 * Total Fitur: ${totalFeatures}
 
@@ -49,15 +57,17 @@ const handler = async (m, { conn }) => {
 * Platform: ${platform()}
 * OS: ${release()}
 * Arsitektur: ${arch()}
+* System Uptime: ${systemUptime}
 * Jaringan: ${getNetworkInfo()}
 
 *PERFORMANCE*
 * Response Time: ${ping} ms (${getPingStatus(ping)})
-* Status: ${getPerformanceStatus(ping, parseFloat(overallCpuUsage), parseFloat(memoryUsage))}
+* Status: ${getPerformanceStatus(ping, parseFloat(overallCpuUsage), parseFloat(systemMemoryUsage))}
 
-*MEMORY*
-* RAM Digunakan: ${format(usedMemory)} / ${format(totalMemory)} (*${memoryUsage}%*)
-* RAM Tersisa: ${format(freeMemory)}
+*MEMORY INFO*
+* RAM Bot: ${format(botUsedMemory)} (Script Only)
+* RAM Sistem: ${format(systemUsedMemory)} / ${format(totalMemory)} (*${systemMemoryUsage}%*)
+* RAM Free: ${format(freeMemory)}
 
 *CPU*
 * Model: ${cpus[0]?.model.split('@')[0].trim() || 'N/A'}
@@ -70,7 +80,7 @@ const handler = async (m, { conn }) => {
         contextInfo: {
             externalAdReply: {
                 title: `${global.info.namabot} | Status & Ping`,
-                body: `Response: ${ping} ms | RAM: ${memoryUsage}% | CPU: ${overallCpuUsage}%`,
+                body: `Ping: ${ping}ms | Bot RAM: ${format(botUsedMemory)}`,
                 thumbnailUrl: 'https://api.cloudsky.biz.id/file?key=kurumi-bot/1766671505860.jpg',
                 sourceUrl: 'https://instagram.com/raff_editz2',
                 mediaType: 1,
@@ -93,16 +103,16 @@ function getNetworkInfo() {
 }
 
 function getPingStatus(ping) {
-    if (ping < 100) return 'Sangat Cepat'
-    if (ping < 250) return 'Cepat'
-    if (ping < 500) return 'Normal'
-    return 'Lambat'
+    if (ping < 100) return 'Sangat Cepat 🚀'
+    if (ping < 250) return 'Cepat ⚡'
+    if (ping < 500) return 'Normal 🟢'
+    return 'Lambat 🔴'
 }
 
 function getPerformanceStatus(ping, cpu, ram) {
-    if (ping < 250 && cpu < 80 && ram < 85) return 'Optimal'
-    if (ping < 500 && cpu < 90 && ram < 90) return 'Stabil'
-    return 'Beban Tinggi'
+    if (ping < 250 && cpu < 80 && ram < 85) return 'Optimal ✅'
+    if (ping < 500 && cpu < 90 && ram < 90) return 'Stabil 🆗'
+    return 'Overload ⚠️'
 }
 
 function clockString(ms) {

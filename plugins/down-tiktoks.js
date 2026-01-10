@@ -2,6 +2,23 @@ import fetch from 'node-fetch'
 
 const searchCache = new Map();
 
+// Fungsi helper untuk format durasi (Detik -> Menit:Detik)
+function formatDuration(seconds) {
+    seconds = Number(seconds);
+    const d = Math.floor(seconds / (3600 * 24));
+    const h = Math.floor(seconds % (3600 * 24) / 3600);
+    const m = Math.floor(seconds % 3600 / 60);
+    const s = Math.floor(seconds % 60);
+
+    const dDisplay = d > 0 ? d + (d == 1 ? " day, " : " days, ") : "";
+    const hDisplay = h > 0 ? h + (h == 1 ? " hour, " : " hours, ") : "";
+    const mDisplay = m < 10 ? '0' + m : m;
+    const sDisplay = s < 10 ? '0' + s : s;
+    
+    // Format simpel MM:SS (Contoh: 03:45)
+    return `${mDisplay}:${sDisplay}`;
+}
+
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!text) {
         return m.reply(
@@ -39,7 +56,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
         let listText = '';
         videos.forEach((v, i) => {
-            let duration = `${v.duration}s`;
+            // [UBAH DI SINI] Menggunakan fungsi formatDuration
+            let duration = formatDuration(v.duration); 
             let author = v.author.nickname || v.author.username;
             listText += `*${i + 1}.* ${v.title}\n`
             listText += `└ Author: ${author} | Durasi: ${duration} | Likes: ${v.stats.likes}\n\n`
@@ -87,6 +105,7 @@ handler.before = async (m, { conn }) => {
             try {
                 let videoUrl = v.media.no_watermark || v.media.with_watermark || '';
                 
+                // Fix URL redirect issue if any
                 videoUrl = videoUrl.replace('https://tikwm.comhttps://', 'https://');
                 videoUrl = videoUrl.replace('https://tikwm.comhttps', 'https');
                 
@@ -96,7 +115,8 @@ handler.before = async (m, { conn }) => {
                 let caption = `*TIKTOK VIDEO*\n\n`
                 caption += `*Judul:* ${v.title}\n`
                 caption += `*Author:* ${v.author.nickname} (@${v.author.username})\n`
-                caption += `*Durasi:* ${v.duration} detik\n`
+                // [UBAH DI SINI] Menggunakan formatDuration juga di caption akhir
+                caption += `*Durasi:* ${formatDuration(v.duration)}\n`
                 caption += `*Plays:* ${v.stats.plays}\n`
                 caption += `*Likes:* ${v.stats.likes}\n`
                 caption += `*Comments:* ${v.stats.comments}\n`
