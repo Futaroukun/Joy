@@ -3,7 +3,7 @@ import { promisify } from 'util'
 
 const exec = promisify(cp.exec).bind(cp)
 
-async function githubUpload(conn, commitMessage = 'Update') {
+async function githubUpload(conn, commitMessage) {
   try {
     const { stdout: remoteUrl } = await exec('git config --get remote.origin.url')
     const repoUrl = remoteUrl.trim()
@@ -40,11 +40,12 @@ async function githubUpload(conn, commitMessage = 'Update') {
         success: false,
         message: `⚠️ *GITHUB UPDATE CANCELLED*
 
-📂 *Status:* Clean directory
-ℹ️ Tidak ada perubahan file baru yang terdeteksi untuk di-push.`
+📂 *Status:* Direktori Bersih
+ℹ️ Tidak ada perubahan file baru yang perlu di-upload.`
       }
     }
 
+    // Setup git user (hardcoded atau ambil dari env jika perlu)
     const gitCommands = [
       'git config --global user.email "raflisetiawan093@gmail.com"',
       'git config --global user.name "Futaroukun"',
@@ -58,11 +59,12 @@ async function githubUpload(conn, commitMessage = 'Update') {
     const { stdout: commitHash } = await exec('git rev-parse --short HEAD')
     const { stdout: commitDate } = await exec('git log -1 --format=%cd --date=format:"%d/%m/%Y %H:%M"')
 
+    // Formatting list file agar rapi
     let fileList = ''
-    if (addedFiles.length) fileList += `🆕 *Added (${addedFiles.length}):*\n` + addedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n\n'
-    if (modifiedFiles.length) fileList += `📝 *Modified (${modifiedFiles.length}):*\n` + modifiedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n\n'
-    if (deletedFiles.length) fileList += `🗑️ *Deleted (${deletedFiles.length}):*\n` + deletedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n\n'
-    if (renamedFiles.length) fileList += `🔁 *Renamed (${renamedFiles.length}):*\n` + renamedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n'
+    if (addedFiles.length) fileList += `🆕 *Ditambahkan (${addedFiles.length}):*\n` + addedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n\n'
+    if (modifiedFiles.length) fileList += `📝 *Diubah (${modifiedFiles.length}):*\n` + modifiedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n\n'
+    if (deletedFiles.length) fileList += `🗑️ *Dihapus (${deletedFiles.length}):*\n` + deletedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n\n'
+    if (renamedFiles.length) fileList += `🔁 *Diganti Nama (${renamedFiles.length}):*\n` + renamedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n'
 
     return {
       success: true,
@@ -71,13 +73,13 @@ async function githubUpload(conn, commitMessage = 'Update') {
 👤 *Author:* ${username}
 📦 *Repo:* ${repoName}
 🌿 *Branch:* ${branch}
-📅 *Date:* ${commitDate.trim()}
+📅 *Waktu:* ${commitDate.trim()}
 
-📝 *Commit Info:*
-Note: ${commitMessage}
-Hash: \`${commitHash.trim()}\`
+📝 *Pesan Commit:*
+${commitMessage}
+(Hash: \`${commitHash.trim()}\`)
 
-📊 *File Changes:*
+📊 *Rincian Perubahan:*
 ${fileList.trim()}
 
 🔗 *Repository Link:*
@@ -101,15 +103,20 @@ Cek koneksi internet atau konflik pada repository.`
 const handler = async (m, { conn, isOwner, args }) => {
   if (!isOwner) return
 
-  const commitMessage = args.join(' ').trim() || `Auto-update: ${new Date().toLocaleDateString()}`
+  // Logika Pesan Default yang lebih rapi
+  const now = new Date()
+  const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+  
+  // Jika user tidak mengetik pesan, gunakan format: "Maintenance & Update - [Tanggal]"
+  const commitMessage = args.join(' ').trim() || `Maintenance & Update - ${dateStr}`
 
   let loading
   try {
     loading = await conn.sendMessage(m.chat, {
-      text: `⚙️ *SYSTEM UPDATE*
+      text: `⚙️ *SYSTEM SYNCHRONIZATION*
 
-🔄 *Status:* Synchronizing with GitHub...
-💬 *Commit:* ${commitMessage}
+🔄 *Status:* Mengirim perubahan ke GitHub...
+💬 *Pesan:* ${commitMessage}
 🌿 *Target:* Origin
 
 Mohon tunggu sebentar...`
@@ -122,8 +129,8 @@ Mohon tunggu sebentar...`
     text: result.message,
     contextInfo: {
       externalAdReply: {
-        title: "GitHub Notification",
-        body: "Repository Updated Successfully",
+        title: "GitHub Update Notification",
+        body: `Branch: ${commitMessage}`, // Menampilkan pesan commit di body notifikasi
         thumbnailUrl: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
         sourceUrl: result.message.split('Link Repo:\n')[1] || "https://github.com",
         mediaType: 1,
@@ -143,7 +150,7 @@ Mohon tunggu sebentar...`
 
 handler.help = ['update', 'push']
 handler.tags = ['owner']
-handler.command = /^(update|push|gitpush)$/i
+handler.command = /^(update|push|u)$/i
 handler.owner = true
 
 export default handler
