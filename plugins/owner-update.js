@@ -10,6 +10,9 @@ async function githubUpload(conn, commitMessage = 'Update') {
       .replace('git@github.com:', 'https://github.com/')
       .replace('.git', '')
       .replace(/https:\/\/.*?@github\.com/, 'https://github.com')
+    
+    // Ambil username dari repo URL
+    const username = repoUrl.split('/')[3] // Contoh: https://github.com/username/repo → index 3 adalah username
 
     const { stdout: changesStdout } = await exec('git status -s')
     const changes = changesStdout.trim().split('\n').filter(Boolean)
@@ -49,6 +52,8 @@ async function githubUpload(conn, commitMessage = 'Update') {
     await exec(gitCommands)
 
     const { stdout: commitHash } = await exec('git rev-parse --short HEAD')
+    // Ambil tanggal update (waktu commit terakhir)
+    const { stdout: commitDate } = await exec('git log -1 --format=%cd --date=format:"%d %B %Y, %H:%M:%S"')
 
     const summary = []
     if (addedFiles.length) summary.push('*Ditambahkan:*\n' + addedFiles.join('\n'))
@@ -60,7 +65,9 @@ async function githubUpload(conn, commitMessage = 'Update') {
       message: [
         '*UPLOAD GITHUB BERHASIL*',
         '',
+        `*Username:* ${username}`,
         `*Hash:* ${commitHash.trim()}`,
+        `*Tanggal Update:* ${commitDate.trim()}`,
         `*Pesan:* ${commitMessage}`,
         '',
         summary.join('\n\n'),
