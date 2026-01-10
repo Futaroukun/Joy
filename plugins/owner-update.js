@@ -11,9 +11,7 @@ async function githubUpload(conn, commitMessage = 'Update') {
       .replace('.git', '')
       .replace(/https:\/\/.*?@github\.com/, 'https://github.com')
     
-    // Ambil username dari repo URL
-    const username = repoUrl.split('/')[3] // Contoh: https://github.com/username/repo → index 3 adalah username
-
+    const username = repoUrl.split('/')[3]
     const { stdout: changesStdout } = await exec('git status -s')
     const changes = changesStdout.trim().split('\n').filter(Boolean)
 
@@ -25,19 +23,19 @@ async function githubUpload(conn, commitMessage = 'Update') {
       const status = change.trim().split(' ')[0]
       const file = change.trim().split(' ').slice(1).filter(Boolean).join(' ')
 
-      if (status.includes('A')) {
-        addedFiles.push(file)
-      } else if (status.includes('D')) {
-        deletedFiles.push(file)
-      } else {
-        modifiedFiles.push(file)
-      }
+      if (status.includes('A')) addedFiles.push(`• ${file}`)
+      else if (status.includes('D')) deletedFiles.push(`• ${file}`)
+      else modifiedFiles.push(`• ${file}`)
     })
 
     if (!changes.length) {
       return {
         success: false,
-        message: '*UPLOAD DIBATALKAN*\n\nGak ada perubahan file yang terdeteksi di sini.'
+        message: `❌ UPLOAD DIBATALKAN ❌
+
+ℹ️ Informasi:
+Tidak ada perubahan file yang terdeteksi di direktori saat ini.
+Silakan cek kembali file yang ingin diupload ya! ✨`
       }
     }
 
@@ -52,45 +50,45 @@ async function githubUpload(conn, commitMessage = 'Update') {
     await exec(gitCommands)
 
     const { stdout: commitHash } = await exec('git rev-parse --short HEAD')
-    // Ambil tanggal update (waktu commit terakhir)
     const { stdout: commitDate } = await exec('git log -1 --format=%cd --date=format:"%d %B %Y, %H:%M:%S"')
 
     const summary = []
-    if (addedFiles.length) summary.push('*Ditambahkan:*\n' + addedFiles.join('\n'))
-    if (deletedFiles.length) summary.push('*Dihapus:*\n' + deletedFiles.join('\n'))
-    if (modifiedFiles.length) summary.push('*Diubah:*\n' + modifiedFiles.join('\n'))
+    if (addedFiles.length) summary.push(`📥 File yang Ditambahkan:
+${addedFiles.join('\n')}`)
+    if (deletedFiles.length) summary.push(`🗑️ File yang Dihapus:
+${deletedFiles.join('\n')}`)
+    if (modifiedFiles.length) summary.push(`✏️ File yang Diubah:
+${modifiedFiles.join('\n')}`)
 
     return {
       success: true,
-      message: [
-        '*UPLOAD GITHUB BERHASIL*',
-        '',
-        `*Username:* ${username}`,
-        `*Hash:* ${commitHash.trim()}`,
-        `*Tanggal Update:* ${commitDate.trim()}`,
-        `*Pesan:* ${commitMessage}`,
-        '',
-        summary.join('\n\n'),
-        '',
-        `*Repo:* ${repoUrl}`
-      ].join('\n')
+      message: `✅ UPLOAD GITHUB BERHASIL ✅
+
+👤 Username GitHub: ${username}
+🔑 Hash Commit: ${commitHash.trim()}
+📅 Tanggal Update: ${commitDate.trim()}
+💬 Pesan Commit: ${commitMessage}
+
+${summary.join('\n\n')}
+
+🔗 Link Repo: ${repoUrl}`
     }
 
   } catch (err) {
     return {
       success: false,
-      message: [
-        '*UPLOAD GITHUB GAGAL*',
-        '',
-        `*Error:* ${err.message}`
-      ].join('\n')
+      message: `❌ UPLOAD GITHUB GAGAL ❌
+
+⚠️ Error: ${err.message}`
     }
   }
 }
 
 const handler = async (m, { conn, isOwner, args }) => {
   if (!isOwner) {
-    return conn.reply(m.chat, '*AKSES DITOLAK*\n\nCuma Owner yang bisa pakai perintah ini.', m)
+    return conn.reply(m.chat, `❌ AKSES DITOLAK ❌
+
+Hanya Owner yang bisa pakai perintah ini.`, m)
   }
 
   const commitMessage = args.join(' ').trim() || 'Manual update via bot'
@@ -98,13 +96,11 @@ const handler = async (m, { conn, isOwner, args }) => {
   let loading
   try {
     loading = await conn.sendMessage(m.chat, {
-      text: [
-        '*LAGI UPLOAD KE GITHUB*',
-        '',
-        `*Pesan commit:* ${commitMessage}`,
-        '',
-        'Tunggu bentar, lagi kirim perubahan ke repo...'
-      ].join('\n')
+      text: `⏳ LAGI UPLOAD KE GITHUB ⏳
+
+💬 Pesan commit: ${commitMessage}
+
+Tunggu bentar, lagi kirim perubahan ke repo...`
     }, { quoted: m })
   } catch {}
 
