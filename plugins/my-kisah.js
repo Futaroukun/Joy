@@ -71,7 +71,7 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     }
 }
 
-handler.help = ['miku *on/off/reset*']
+handler.help = ['miku']
 handler.tags = ['ai']
 handler.command = /^miku$/i
 

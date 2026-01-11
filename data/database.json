@@ -487,6 +487,12 @@
     },
     "group-kick.js": {
       "disabled": false
+    },
+    "down-play.js": {
+      "disabled": true
+    },
+    "group-opclos.js": {
+      "disabled": false
     }
   }
 }

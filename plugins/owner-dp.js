@@ -13,7 +13,7 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
     try {
         const featuresDir = join(process.cwd(), 'plugins')
 
-        // 1. Baca, filter, dan urutkan plugin secara alfabetis (SAMA SEPERTI LP & GP)
+        // 1. Baca, filter, dan urutkan plugin secara alfabetis
         const pluginFiles = readdirSync(featuresDir)
             .filter(file => file.endsWith('.js'))
             .sort();
@@ -34,10 +34,8 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
         const inputAsNumber = parseInt(text);
 
         if (!isNaN(inputAsNumber) && inputAsNumber > 0 && inputAsNumber <= pluginNames.length) {
-            // Jika input adalah nomor yang valid
             targetPlugin = pluginNames[inputAsNumber - 1];
         } else if (pluginNames.includes(text)) {
-            // Jika input adalah nama plugin yang valid
             targetPlugin = text;
         }
 
@@ -46,22 +44,39 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
             return m.reply(`*Plugin Tidak Ditemukan.*\n\nInput "${text}" tidak valid. Gunakan *.dp* tanpa argumen untuk melihat daftar plugin yang tersedia.`);
         }
         
-        const file = join(featuresDir, targetPlugin + '.js')
+        // Nama file lengkap dengan ekstensi .js
+        const fileNameWithExt = targetPlugin + '.js'
+        const file = join(featuresDir, fileNameWithExt)
         
         if (!existsSync(file)) {
-            return m.reply(`*File Hilang*\n\nFile \`plugins/${targetPlugin}.js\` gak ketemu di server. Mungkin sudah dihapus?`)
+            return m.reply(`*File Hilang*\n\nFile \`plugins/${fileNameWithExt}\` gak ketemu di server. Mungkin sudah dihapus?`)
         }
 
         const stats = statSync(file)
         const fileSize = formatSize(stats.size)
+
+        // --- [BARU] LOGIKA PEMBERSIHAN DATABASE ---
+        let dbMessage = ''
+        // Cek apakah pluginSettings ada di database global
+        if (global.db.data && global.db.data.pluginSettings) {
+            // Cek apakah file ini ada entry-nya (misal status disabled: true)
+            if (global.db.data.pluginSettings[fileNameWithExt]) {
+                // Hapus entry dari database
+                delete global.db.data.pluginSettings[fileNameWithExt]
+                dbMessage = '\n✅ *Database:* Data setting plugin ikut dibersihkan.'
+            }
+        }
+        // ------------------------------------------
         
+        // Hapus file fisik
         unlinkSync(file)
 
         conn.reply(m.chat, 
             '*Plugin Berhasil Dihapus*\n\n' +
-            '*Nama:* ' + targetPlugin + '.js\n' +
-            '*Path:* `plugins/' + targetPlugin + '.js`\n' +
-            '*Size:* *' + fileSize + '*\n\n' +
+            '*Nama:* ' + fileNameWithExt + '\n' +
+            '*Path:* `plugins/' + fileNameWithExt + '`\n' +
+            '*Size:* *' + fileSize + '*\n' +
+            dbMessage + '\n\n' + // Menampilkan status penghapusan database jika ada
             '*Status:* File sudah dihapus permanen.', 
             m
         )

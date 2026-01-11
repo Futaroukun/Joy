@@ -1,10 +1,18 @@
 import cp from 'child_process'
 import { promisify } from 'util'
+import cron from 'node-cron'
 
 const exec = promisify(cp.exec).bind(cp)
 
+// Variabel untuk menyimpan status cron job
+let cronJob = null
+
+/**
+ * Fungsi utama untuk melakukan Git Push
+ */
 async function githubUpload(conn, commitMessage) {
   try {
+    // Cek Remote URL
     const { stdout: remoteUrl } = await exec('git config --get remote.origin.url')
     const repoUrl = remoteUrl.trim()
       .replace('git@github.com:', 'https://github.com/')
@@ -14,9 +22,11 @@ async function githubUpload(conn, commitMessage) {
     const username = repoUrl.split('/')[3]
     const repoName = repoUrl.split('/')[4]
 
+    // Cek Branch
     const { stdout: branchName } = await exec('git branch --show-current')
     const branch = branchName.trim() || 'main'
 
+    // Cek Status Perubahan File
     const { stdout: changesStdout } = await exec('git status -s')
     const changes = changesStdout.trim().split('\n').filter(Boolean)
 
@@ -45,7 +55,8 @@ async function githubUpload(conn, commitMessage) {
       }
     }
 
-    // Setup git user (hardcoded atau ambil dari env jika perlu)
+    // Eksekusi Git Commands
+    // Menggunakan config user kamu
     const gitCommands = [
       'git config --global user.email "raflisetiawan093@gmail.com"',
       'git config --global user.name "Futaroukun"',
@@ -56,10 +67,10 @@ async function githubUpload(conn, commitMessage) {
 
     await exec(gitCommands)
 
+    // Ambil Info Commit Terakhir
     const { stdout: commitHash } = await exec('git rev-parse --short HEAD')
     const { stdout: commitDate } = await exec('git log -1 --format=%cd --date=format:"%d/%m/%Y %H:%M"')
 
-    // Formatting list file agar rapi
     let fileList = ''
     if (addedFiles.length) fileList += `🆕 *Ditambahkan (${addedFiles.length}):*\n` + addedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n\n'
     if (modifiedFiles.length) fileList += `📝 *Diubah (${modifiedFiles.length}):*\n` + modifiedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n\n'
@@ -95,19 +106,112 @@ ${repoUrl}`
 \`\`\`
 ${err.message}
 \`\`\`
-Cek koneksi internet atau konflik pada repository.`
+Cek koneksi internet, konflik file, atau permission repository.`
     }
   }
 }
 
-const handler = async (m, { conn, isOwner, args }) => {
-  if (!isOwner) return
-
-  // Logika Pesan Default yang lebih rapi
+/**
+ * Fungsi Auto-Update (Jalan Otomatis)
+ */
+async function autoUpdate(conn) {
   const now = new Date()
   const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-  
-  // Jika user tidak mengetik pesan, gunakan format: "Maintenance & Update - [Tanggal]"
+  const commitMessage = `Auto Update - ${dateStr}`
+
+  console.log('🤖 Auto-update triggered at midnight')
+
+  // 1. Lakukan Upload
+  const result = await githubUpload(conn, commitMessage)
+
+  // 2. Kirim Notifikasi ke Target Khusus
+  const targetJid = '6283854551575@s.whatsapp.net'; // <-- HARDCODED TARGET
+
+  try {
+      await conn.sendMessage(targetJid, { 
+        text: `🤖 *AUTO UPDATE NOTIFICATION*\n\n${result.message}`,
+        contextInfo: {
+          externalAdReply: {
+            title: "Auto GitHub Update",
+            body: "Scheduled update at midnight",
+            thumbnailUrl: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+            sourceUrl: "https://github.com",
+            mediaType: 1,
+            renderLargerThumbnail: true
+          }
+        }
+      })
+  } catch (err) {
+      console.error('Failed to send auto-update notification:', err)
+  }
+}
+
+// Start cron job
+function startAutoUpdate(conn) {
+  if (cronJob) {
+    console.log('⚠️ Cron job already running')
+    return false
+  }
+
+  // Cron: 0 0 * * * = setiap hari jam 00:00 WIB
+  cronJob = cron.schedule('0 0 * * *', () => {
+    autoUpdate(conn)
+  }, {
+    timezone: "Asia/Jakarta"
+  })
+
+  console.log('✅ Auto-update scheduled: Every day at 00:00 WIB')
+  return true
+}
+
+// Stop cron job
+function stopAutoUpdate() {
+  if (cronJob) {
+    cronJob.stop()
+    cronJob = null
+    console.log('🛑 Auto-update stopped')
+    return true
+  }
+  return false
+}
+
+const handler = async (m, { conn, isOwner, args, command }) => {
+  if (!isOwner) return
+
+  // === MODE 1: PENGATURAN AUTO UPDATE ===
+  if (command === 'autoupdate') {
+    const action = args[0]?.toLowerCase()
+
+    if (action === 'start' || action === 'on') {
+      const started = startAutoUpdate(conn)
+      return m.reply(started 
+        ? `✅ *AUTO UPDATE ENABLED*\n\n⏰ Jadwal: Setiap hari jam 00:00 WIB.\n📨 Laporan: 6283854551575`
+        : `⚠️ Auto-update sudah berjalan`)
+    }
+
+    if (action === 'stop' || action === 'off') {
+      const stopped = stopAutoUpdate()
+      return m.reply(stopped 
+        ? `🛑 *AUTO UPDATE DISABLED*\n\nUpdate otomatis telah dihentikan`
+        : `⚠️ Auto-update tidak sedang berjalan`)
+    }
+
+    if (action === 'status') {
+      return m.reply(cronJob 
+        ? `✅ *AUTO UPDATE STATUS*\n\n🟢 Status: Aktif\n⏰ Jadwal: Setiap hari jam 00:00 WIB`
+        : `🔴 *AUTO UPDATE STATUS*\n\n⚠️ Status: Tidak aktif`)
+    }
+
+    return m.reply(`📌 *AUTO UPDATE COMMANDS*
+
+• .autoupdate start - Mulai auto-update
+• .autoupdate stop - Hentikan auto-update  
+• .autoupdate status - Cek status`)
+  }
+
+  // === MODE 2: MANUAL UPDATE (PUSH SEKARANG) ===
+  const now = new Date()
+  const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
   const commitMessage = args.join(' ').trim() || `Maintenance & Update - ${dateStr}`
 
   let loading
@@ -125,12 +229,13 @@ Mohon tunggu sebentar...`
 
   const result = await githubUpload(conn, commitMessage)
 
+  // Kirim laporan manual ke chat tempat command diketik
   await conn.sendMessage(m.chat, { 
     text: result.message,
     contextInfo: {
       externalAdReply: {
         title: "GitHub Update Notification",
-        body: `Branch: ${commitMessage}`, // Menampilkan pesan commit di body notifikasi
+        body: `Branch: ${commitMessage}`,
         thumbnailUrl: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
         sourceUrl: result.message.split('Link Repo:\n')[1] || "https://github.com",
         mediaType: 1,
@@ -148,9 +253,9 @@ Mohon tunggu sebentar...`
   }
 }
 
-handler.help = ['update', 'push']
+handler.help = ['update', 'push', 'autoupdate']
 handler.tags = ['owner']
-handler.command = /^(update|push|u)$/i
+handler.command = /^(update|push|u|autoupdate)$/i
 handler.owner = true
 
 export default handler
