@@ -66,9 +66,12 @@ async function githubUpload(conn, commitMessage) {
 
     await exec(gitCommands)
 
-    // Ambil Info Commit Terakhir
+    // --- FIX TIMEZONE (PAKSA WIB) ---
     const { stdout: commitHash } = await exec('git rev-parse --short HEAD')
-    const { stdout: commitDate } = await exec('git log -1 --format=%cd --date=format:"%d/%m/%Y %H:%M"')
+    
+    // Kita tambahkan 'TZ="Asia/Jakarta"' di depan perintah git log
+    // Agar Git menampilkan waktu berdasarkan WIB, bukan waktu server (UTC)
+    const { stdout: commitDate } = await exec('TZ="Asia/Jakarta" git log -1 --format=%cd --date=format:"%d/%m/%Y %H:%M"')
 
     let fileList = ''
     if (addedFiles.length) fileList += `🆕 *Ditambahkan (${addedFiles.length}):*\n` + addedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n\n'
@@ -83,7 +86,7 @@ async function githubUpload(conn, commitMessage) {
 👤 *Author:* ${username}
 📦 *Repo:* ${repoName}
 🌿 *Branch:* ${branch}
-📅 *Waktu:* ${commitDate.trim()}
+📅 *Waktu:* ${commitDate.trim()} (WIB)
 
 📝 *Pesan Commit:*
 ${commitMessage}
@@ -116,7 +119,7 @@ Cek koneksi internet, konflik file, atau permission repository.`
 async function autoUpdate(conn) {
   const now = new Date()
   
-  // FIX: Pastikan tanggal yang diambil sesuai zona waktu Jakarta
+  // Pastikan judul commit pakai tanggal WIB juga
   const dateStr = now.toLocaleDateString('id-ID', { 
       day: 'numeric', 
       month: 'long', 
@@ -126,13 +129,13 @@ async function autoUpdate(conn) {
   
   const commitMessage = `Auto Update - ${dateStr}`
 
-  console.log('🤖 Auto-update triggered (Server Time UTC: 17:00 | WIB: 00:00)')
+  console.log('🤖 Auto-update triggered')
 
   // 1. Lakukan Upload
   const result = await githubUpload(conn, commitMessage)
 
   // 2. Kirim Notifikasi ke Target Khusus
-  const targetJid = '6283854551575@s.whatsapp.net'; // <-- HARDCODED TARGET
+  const targetJid = '6283854551575@s.whatsapp.net'; 
 
   try {
       await conn.sendMessage(targetJid, { 
@@ -160,17 +163,16 @@ function startAutoUpdate(conn) {
     return false
   }
 
-  // FIX: Menggunakan jam 17:00 UTC (Server Time)
-  // 17:00 UTC = 00:00 WIB (Indonesia)
-  // Format Cron: Menit Jam * * *
+  // JADWAL CRON:
+  // Karena servermu UTC (00:25 saat di indo 07:25), berarti selisih 7 jam.
+  // Untuk jalan jam 00:00 WIB, kita harus set cron di jam 17:00 UTC (hari sebelumnya).
   cronJob = cron.schedule('0 17 * * *', () => {
     autoUpdate(conn)
   }, {
-    // HAPUS opsi timezone agar mengikuti waktu server (biasanya UTC)
-    // timezone: "Asia/Jakarta" <--- Sering bermasalah di VPS/Panel
+     // Jangan pakai timezone parameter di sini karena servernya UTC murni
   })
 
-  console.log('✅ Auto-update scheduled: 17:00 Server Time (00:00 WIB)')
+  console.log('✅ Auto-update scheduled: 17:00 UTC (00:00 WIB)')
   return true
 }
 
@@ -195,7 +197,7 @@ const handler = async (m, { conn, isOwner, args, command }) => {
     if (action === 'start' || action === 'on') {
       const started = startAutoUpdate(conn)
       return m.reply(started 
-        ? `✅ *AUTO UPDATE ENABLED*\n\n⏰ Jadwal: Setiap hari jam 17:00 UTC (00:00 WIB).\n📨 Laporan: 6283854551575`
+        ? `✅ *AUTO UPDATE ENABLED*\n\n⏰ Jadwal: Setiap hari jam 00:00 WIB.\n📨 Laporan: 6283854551575`
         : `⚠️ Auto-update sudah berjalan`)
     }
 
@@ -208,7 +210,7 @@ const handler = async (m, { conn, isOwner, args, command }) => {
 
     if (action === 'status') {
       return m.reply(cronJob 
-        ? `✅ *AUTO UPDATE STATUS*\n\n🟢 Status: Aktif\n⏰ Jadwal: Setiap hari jam 00:00 WIB (17:00 UTC)`
+        ? `✅ *AUTO UPDATE STATUS*\n\n🟢 Status: Aktif\n⏰ Jadwal: Setiap hari jam 00:00 WIB`
         : `🔴 *AUTO UPDATE STATUS*\n\n⚠️ Status: Tidak aktif`)
     }
 
@@ -239,7 +241,6 @@ Mohon tunggu sebentar...`
 
   const result = await githubUpload(conn, commitMessage)
 
-  // Kirim laporan manual ke chat tempat command diketik
   await conn.sendMessage(m.chat, { 
     text: result.message,
     contextInfo: {
