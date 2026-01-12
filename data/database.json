@@ -399,6 +399,12 @@
       "regTime": -1,
       "premiumDate": -1,
       "bannedDate": -1
+    },
+    "6283854551575@s.whatsapp.net": {
+      "name": "Raff",
+      "limit": 25,
+      "premium": false,
+      "banned": false
     }
   },
   "chats": {
