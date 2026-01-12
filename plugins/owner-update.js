@@ -12,7 +12,7 @@ let cronJob = null
  */
 async function githubUpload(conn, commitMessage) {
   try {
-    // Cek Remote URL
+    // 1. Cek Remote URL
     const { stdout: remoteUrl } = await exec('git config --get remote.origin.url')
     const repoUrl = remoteUrl.trim()
       .replace('git@github.com:', 'https://github.com/')
@@ -22,11 +22,11 @@ async function githubUpload(conn, commitMessage) {
     const username = repoUrl.split('/')[3]
     const repoName = repoUrl.split('/')[4]
 
-    // Cek Branch
+    // 2. Cek Branch
     const { stdout: branchName } = await exec('git branch --show-current')
     const branch = branchName.trim() || 'main'
 
-    // Cek Status Perubahan File
+    // 3. Cek Status Perubahan File
     const { stdout: changesStdout } = await exec('git status -s')
     const changes = changesStdout.trim().split('\n').filter(Boolean)
 
@@ -55,7 +55,7 @@ async function githubUpload(conn, commitMessage) {
       }
     }
 
-    // Eksekusi Git Commands
+    // 4. Eksekusi Git Commands
     const gitCommands = [
       'git config --global user.email "raflisetiawan093@gmail.com"',
       'git config --global user.name "Futaroukun"',
@@ -66,12 +66,18 @@ async function githubUpload(conn, commitMessage) {
 
     await exec(gitCommands)
 
-    // --- FIX TIMEZONE (PAKSA WIB) ---
+    // 5. Ambil Hash Commit
     const { stdout: commitHash } = await exec('git rev-parse --short HEAD')
     
-    // Kita tambahkan 'TZ="Asia/Jakarta"' di depan perintah git log
-    // Agar Git menampilkan waktu berdasarkan WIB, bukan waktu server (UTC)
-    const { stdout: commitDate } = await exec('TZ="Asia/Jakarta" git log -1 --format=%cd --date=format:"%d/%m/%Y %H:%M"')
+    // --- [UPDATE] AMBIL JAM DARI SCRIPT LANGSUNG (bukan dari Git) ---
+    // Ini menjamin jam yang muncul adalah WIB, tidak peduli settingan server
+    const now = new Date()
+    const commitDate = now.toLocaleString('en-GB', { 
+        timeZone: 'Asia/Jakarta',
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+        hour12: false
+    }).replace(',', '') // Hasil: "12/01/2026 07:25"
 
     let fileList = ''
     if (addedFiles.length) fileList += `🆕 *Ditambahkan (${addedFiles.length}):*\n` + addedFiles.map(f => `  ◦ ${f}`).join('\n') + '\n\n'
@@ -86,7 +92,7 @@ async function githubUpload(conn, commitMessage) {
 👤 *Author:* ${username}
 📦 *Repo:* ${repoName}
 🌿 *Branch:* ${branch}
-📅 *Waktu:* ${commitDate.trim()} (WIB)
+📅 *Waktu:* ${commitDate} WIB
 
 📝 *Pesan Commit:*
 ${commitMessage}
@@ -119,7 +125,7 @@ Cek koneksi internet, konflik file, atau permission repository.`
 async function autoUpdate(conn) {
   const now = new Date()
   
-  // Pastikan judul commit pakai tanggal WIB juga
+  // Format Tanggal untuk Pesan Commit
   const dateStr = now.toLocaleDateString('id-ID', { 
       day: 'numeric', 
       month: 'long', 
@@ -163,13 +169,10 @@ function startAutoUpdate(conn) {
     return false
   }
 
-  // JADWAL CRON:
-  // Karena servermu UTC (00:25 saat di indo 07:25), berarti selisih 7 jam.
-  // Untuk jalan jam 00:00 WIB, kita harus set cron di jam 17:00 UTC (hari sebelumnya).
+  // JADWAL CRON TETAP MENGGUNAKAN SERVER UTC
+  // Jam 17:00 UTC = Jam 00:00 WIB
   cronJob = cron.schedule('0 17 * * *', () => {
     autoUpdate(conn)
-  }, {
-     // Jangan pakai timezone parameter di sini karena servernya UTC murni
   })
 
   console.log('✅ Auto-update scheduled: 17:00 UTC (00:00 WIB)')
