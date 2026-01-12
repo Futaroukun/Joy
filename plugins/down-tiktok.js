@@ -11,6 +11,21 @@ const formatSize = (bytes) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+// Fungsi untuk mengekstrak URL TikTok dari teks
+const extractTikTokUrl = (text) => {
+    const patterns = [
+        /https?:\/\/(www\.)?(vt|vm|www)\.tiktok\.com\/[^\s]+/gi,
+        /https?:\/\/(www\.)?tiktok\.com\/@[^\/]+\/video\/\d+/gi,
+        /https?:\/\/[^\s]*tiktok[^\s]*/gi
+    ];
+    
+    for (let pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) return match[0];
+    }
+    return null;
+};
+
 async function tikwm(url) {
     try {
         const response = await axios.get(`https://tikwm.com/api/?hd=1&url=${url}`);
@@ -58,10 +73,21 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         );
     }
     
+    // Ekstrak URL TikTok dari teks
+    const tiktokUrl = extractTikTokUrl(text);
+    
+    if (!tiktokUrl) {
+        return m.reply(
+            '*URL TIKTOK TIDAK DITEMUKAN*\n\n' +
+            'Pastikan pesan Anda mengandung link TikTok yang valid.\n\n' +
+            '*Contoh:*\n' + usedPrefix + command + ' https://vt.tiktok.com/ZSPXAahx2/'
+        );
+    }
+    
     try {
         await m.reply('*Sedang memproses media, mohon tunggu...*');
         
-        let result = await tikwm(text);
+        let result = await tikwm(tiktokUrl);
         
         if (result.code === 0) {
             const data = result.data;
@@ -91,7 +117,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
             
         } else {
-            let dataBackup = await savetik(text);
+            let dataBackup = await savetik(tiktokUrl);
             
             if (!dataBackup || (!dataBackup.mp4 && !dataBackup.foto.length)) {
                 return m.reply('*GAGAL MEMPROSES LINK*\n\nSemua server sibuk atau link tidak valid.');

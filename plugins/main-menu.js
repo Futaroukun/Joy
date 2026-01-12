@@ -47,6 +47,9 @@ Saya adalah Bot Otomatis yang siap membantu Anda 24/7!
     after: `Powered By Rafli`,
 };
 
+// Cache untuk thumbnail agar tidak perlu reload setiap kali
+let thumbnailCache = null;
+
 let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
     try {
         
@@ -191,21 +194,45 @@ let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
             (match, key) => replace[key] || match
         );
 
-        const thumbnailUrl = 'https://api.cloudsky.biz.id/file?key=kurumi-bot/1766671505860.jpg';
+        // OPTIMIZED: Gunakan cache atau load thumbnail
         let finalThumbnailBuffer = null;
 
-        try {
-            const response = await fetch(thumbnailUrl);
-            const buffer = await response.arrayBuffer();
-            finalThumbnailBuffer = Buffer.from(buffer);
-        } catch (error) {
+        if (!thumbnailCache) {
+            // Load thumbnail hanya sekali saat pertama kali
+            const localThumbnailPath = join(process.cwd(), 'src', 'thumbnail.jpg');
+            const thumbnailUrl = 'https://api.cloudsky.biz.id/file?key=kurumi-bot/1766671505860.jpg';
+            
             try {
-                const fallbackThumbnailPath = join(process.cwd(), 'src', 'thumbnail.jpg');
-                if (fs.existsSync(fallbackThumbnailPath)) {
-                    finalThumbnailBuffer = fs.readFileSync(fallbackThumbnailPath);
+                // Prioritas 1: Gunakan file lokal (CEPAT - ~1-10ms)
+                if (fs.existsSync(localThumbnailPath)) {
+                    thumbnailCache = fs.readFileSync(localThumbnailPath);
+                } else {
+                    // Prioritas 2: Download dari URL jika file lokal tidak ada (LAMBAT - ~100-500ms)
+                    const response = await fetch(thumbnailUrl);
+                    if (response.ok) {
+                        const buffer = await response.arrayBuffer();
+                        thumbnailCache = Buffer.from(buffer);
+                        
+                        // Optional: Simpan ke file lokal untuk penggunaan selanjutnya
+                        try {
+                            const srcDir = join(process.cwd(), 'src');
+                            if (!fs.existsSync(srcDir)) {
+                                fs.mkdirSync(srcDir, { recursive: true });
+                            }
+                            fs.writeFileSync(localThumbnailPath, thumbnailCache);
+                        } catch (saveError) {
+                            console.log('Tidak dapat menyimpan thumbnail:', saveError.message);
+                        }
+                    }
                 }
-            } catch (ignored) {}
+            } catch (error) {
+                console.error('Error loading thumbnail:', error.message);
+                // Jika semua gagal, gunakan buffer kosong atau skip thumbnail
+                thumbnailCache = null;
+            }
         }
+
+        finalThumbnailBuffer = thumbnailCache;
         
         const contextInfo = {
             mentionedJid: [m.sender],
@@ -225,6 +252,7 @@ let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
         }, { quoted: m });
 
     } catch (e) {
+        console.error('Menu error:', e);
         m.reply('❌ Terjadi kesalahan saat menampilkan menu.');
     }
 };
