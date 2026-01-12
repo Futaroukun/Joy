@@ -56,7 +56,6 @@ async function githubUpload(conn, commitMessage) {
     }
 
     // Eksekusi Git Commands
-    // Menggunakan config user kamu
     const gitCommands = [
       'git config --global user.email "raflisetiawan093@gmail.com"',
       'git config --global user.name "Futaroukun"',
@@ -116,10 +115,18 @@ Cek koneksi internet, konflik file, atau permission repository.`
  */
 async function autoUpdate(conn) {
   const now = new Date()
-  const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+  
+  // FIX: Pastikan tanggal yang diambil sesuai zona waktu Jakarta
+  const dateStr = now.toLocaleDateString('id-ID', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta' 
+  })
+  
   const commitMessage = `Auto Update - ${dateStr}`
 
-  console.log('🤖 Auto-update triggered at midnight')
+  console.log('🤖 Auto-update triggered (Server Time UTC: 17:00 | WIB: 00:00)')
 
   // 1. Lakukan Upload
   const result = await githubUpload(conn, commitMessage)
@@ -133,7 +140,7 @@ async function autoUpdate(conn) {
         contextInfo: {
           externalAdReply: {
             title: "Auto GitHub Update",
-            body: "Scheduled update at midnight",
+            body: "Scheduled update at midnight (WIB)",
             thumbnailUrl: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
             sourceUrl: "https://github.com",
             mediaType: 1,
@@ -153,14 +160,17 @@ function startAutoUpdate(conn) {
     return false
   }
 
-  // Cron: 0 0 * * * = setiap hari jam 00:00 WIB
-  cronJob = cron.schedule('0 0 * * *', () => {
+  // FIX: Menggunakan jam 17:00 UTC (Server Time)
+  // 17:00 UTC = 00:00 WIB (Indonesia)
+  // Format Cron: Menit Jam * * *
+  cronJob = cron.schedule('0 17 * * *', () => {
     autoUpdate(conn)
   }, {
-    timezone: "Asia/Jakarta"
+    // HAPUS opsi timezone agar mengikuti waktu server (biasanya UTC)
+    // timezone: "Asia/Jakarta" <--- Sering bermasalah di VPS/Panel
   })
 
-  console.log('✅ Auto-update scheduled: Every day at 00:00 WIB')
+  console.log('✅ Auto-update scheduled: 17:00 Server Time (00:00 WIB)')
   return true
 }
 
@@ -185,7 +195,7 @@ const handler = async (m, { conn, isOwner, args, command }) => {
     if (action === 'start' || action === 'on') {
       const started = startAutoUpdate(conn)
       return m.reply(started 
-        ? `✅ *AUTO UPDATE ENABLED*\n\n⏰ Jadwal: Setiap hari jam 00:00 WIB.\n📨 Laporan: 6283854551575`
+        ? `✅ *AUTO UPDATE ENABLED*\n\n⏰ Jadwal: Setiap hari jam 17:00 UTC (00:00 WIB).\n📨 Laporan: 6283854551575`
         : `⚠️ Auto-update sudah berjalan`)
     }
 
@@ -198,7 +208,7 @@ const handler = async (m, { conn, isOwner, args, command }) => {
 
     if (action === 'status') {
       return m.reply(cronJob 
-        ? `✅ *AUTO UPDATE STATUS*\n\n🟢 Status: Aktif\n⏰ Jadwal: Setiap hari jam 00:00 WIB`
+        ? `✅ *AUTO UPDATE STATUS*\n\n🟢 Status: Aktif\n⏰ Jadwal: Setiap hari jam 00:00 WIB (17:00 UTC)`
         : `🔴 *AUTO UPDATE STATUS*\n\n⚠️ Status: Tidak aktif`)
     }
 
@@ -211,7 +221,7 @@ const handler = async (m, { conn, isOwner, args, command }) => {
 
   // === MODE 2: MANUAL UPDATE (PUSH SEKARANG) ===
   const now = new Date()
-  const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+  const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
   const commitMessage = args.join(' ').trim() || `Maintenance & Update - ${dateStr}`
 
   let loading
