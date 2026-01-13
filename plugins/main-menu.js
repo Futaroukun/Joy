@@ -12,7 +12,7 @@ try {
         _package = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
     }
 } catch (e) {
-    console.error('Error loading package.json:', e.message);
+    console.error(e);
 }
 
 let tags = {
@@ -47,36 +47,20 @@ Saya adalah Bot Otomatis yang siap membantu Anda 24/7!
     after: `Powered By Rafli`,
 };
 
+// Cache untuk thumbnail agar tidak perlu reload setiap kali
 let thumbnailCache = null;
 
 let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
     try {
-        console.log('[MENU] Command triggered by:', m.sender);
         
         await conn.sendPresenceUpdate('composing', m.chat);
         
-        // ✅ FIX 1: Validasi global.db
-        if (!global.db?.data?.users) {
-            console.error('[MENU] Database not initialized!');
-            return m.reply('❌ Database belum siap. Silakan coba lagi dalam beberapa detik.');
-        }
-        
         let user = global.db.data.users[m.sender];
-        if (!user) {
-            console.log('[MENU] User not found in database, creating new user');
-            global.db.data.users[m.sender] = {
-                name: m.pushName || 'User',
-                limit: 25,
-                premium: false,
-                banned: false
-            };
-            user = global.db.data.users[m.sender];
-        }
+        if (!user) return;
 
-        let name = user.name || m.pushName || 'Pengguna Baru';
+        let name = user.name || 'Pengguna Baru';
         let namatag = `@${m.sender.split('@')[0]}`;
         let status = 'Standard User';
-        
         if (user.banned) {
             status = 'Banned';
         } else if (isOwner) {
@@ -96,56 +80,26 @@ let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
         let uptime = clockString(process.uptime() * 1000);
         let platform = os.platform();
 
-        // ✅ FIX 2: Safe settings access
-        let mode = 'Publik';
-        try {
-            const botLid = jidNormalizedUser(conn.user?.lid || conn.user?.id);
-            if (global.db?.data?.settings && botLid) {
-                const settings = global.db.data.settings[botLid] || {};
-                const chatMode = settings.chatMode || '';
-                
-                switch (chatMode) {
-                    case 'pconly': mode = 'Private Only'; break;
-                    case 'gconly': mode = 'Group Only'; break;
-                    default: mode = 'Publik';
-                }
-            }
-        } catch (err) {
-            console.error('[MENU] Error getting settings:', err.message);
+        const botLid = jidNormalizedUser(conn.user.lid);
+        const settings = global.db.data.settings[botLid] || {};
+        const chatMode = settings.chatMode || '';
+
+        let mode;
+        switch (chatMode) {
+            case 'pconly': mode = 'Private Only'; break;
+            case 'gconly': mode = 'Group Only'; break;
+            default: mode = 'Publik';
         }
 
-        // ✅ FIX 3: Safe global.plugins access
-        let help = [];
-        try {
-            if (global.plugins && typeof global.plugins === 'object') {
-                help = Object.values(global.plugins)
-                    .filter(plugin => {
-                        return plugin && 
-                               plugin.help && 
-                               !plugin.disable &&
-                               (Array.isArray(plugin.help) ? plugin.help.length > 0 : plugin.help);
-                    })
-                    .map(plugin => ({
-                        help: Array.isArray(plugin.help) ? plugin.help : [plugin.help],
-                        tags: Array.isArray(plugin.tags) ? plugin.tags : [plugin.tags],
-                        prefix: 'customPrefix' in plugin,
-                        limit: plugin.limit,
-                        premium: plugin.premium,
-                    }));
-                
-                console.log(`[MENU] Found ${help.length} active plugins`);
-            } else {
-                console.warn('[MENU] global.plugins is not available or not an object');
-            }
-        } catch (err) {
-            console.error('[MENU] Error processing plugins:', err.message);
-        }
-
-        // Jika tidak ada plugin yang ditemukan
-        if (help.length === 0) {
-            console.warn('[MENU] No plugins found!');
-            return m.reply('⚠️ Tidak ada menu yang tersedia saat ini. Plugin mungkin belum dimuat.');
-        }
+        let help = Object.values(global.plugins)
+            .filter(plugin => plugin && plugin.help && !plugin.disable)
+            .map(plugin => ({
+                help: Array.isArray(plugin.help) ? plugin.help : [plugin.help],
+                tags: Array.isArray(plugin.tags) ? plugin.tags : [plugin.tags],
+                prefix: 'customPrefix' in plugin,
+                limit: plugin.limit,
+                premium: plugin.premium,
+            }));
 
         let activeTags = new Set();
 
@@ -164,21 +118,11 @@ let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
             }
         }
 
-        console.log(`[MENU] Active tags:`, Array.from(activeTags));
-
         const readMore = String.fromCharCode(8206).repeat(4001);
         let replace = {
-            '%': '%', 
-            p: usedPrefix, 
-            name, 
-            limit,
-            date, 
-            year, 
-            uptime, 
-            platform, 
-            mode,
-            me: botname, 
-            version: _package.version || '1.0.0',
+            '%': '%', p: usedPrefix, name, limit,
+            date, year, uptime, platform, mode,
+            me: botname, version: _package.version || '1.0.0',
             readmore: readMore,
             status: status,
             namatag: namatag
@@ -189,7 +133,6 @@ let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
         let { before, header, body, footer, after } = defaultMenu;
 
         if (!menuType) {
-            // Daftar menu
             let tagList = Object.keys(tags)
                 .filter(tag => activeTags.has(tag))
                 .sort()
@@ -208,7 +151,6 @@ let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
                 `\n\n` + after
             ];
         } else if (menuType === 'all' || (tags[menuType] && activeTags.has(menuType))) {
-            // Detail menu
             let categories = menuType === 'all' 
                 ? Object.keys(tags).filter(tag => activeTags.has(tag)).sort()
                 : [menuType];
@@ -252,100 +194,70 @@ let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
             (match, key) => replace[key] || match
         );
 
-        console.log('[MENU] Text length:', textToSend.length);
-
-        // ✅ FIX 4: Thumbnail loading dengan error handling yang lebih baik
+        // OPTIMIZED: Gunakan cache atau load thumbnail
         let finalThumbnailBuffer = null;
 
         if (!thumbnailCache) {
+            // Load thumbnail hanya sekali saat pertama kali
             const localThumbnailPath = join(process.cwd(), 'src', 'thumbnail.jpg');
             const thumbnailUrl = 'https://api.cloudsky.biz.id/file?key=kurumi-bot/1766671505860.jpg';
             
             try {
+                // Prioritas 1: Gunakan file lokal (CEPAT - ~1-10ms)
                 if (fs.existsSync(localThumbnailPath)) {
                     thumbnailCache = fs.readFileSync(localThumbnailPath);
-                    console.log('[MENU] Thumbnail loaded from local file');
                 } else {
-                    console.log('[MENU] Downloading thumbnail...');
-                    const response = await fetch(thumbnailUrl, { timeout: 5000 });
+                    // Prioritas 2: Download dari URL jika file lokal tidak ada (LAMBAT - ~100-500ms)
+                    const response = await fetch(thumbnailUrl);
                     if (response.ok) {
                         const buffer = await response.arrayBuffer();
                         thumbnailCache = Buffer.from(buffer);
-                        console.log('[MENU] Thumbnail downloaded successfully');
                         
+                        // Optional: Simpan ke file lokal untuk penggunaan selanjutnya
                         try {
                             const srcDir = join(process.cwd(), 'src');
                             if (!fs.existsSync(srcDir)) {
                                 fs.mkdirSync(srcDir, { recursive: true });
                             }
                             fs.writeFileSync(localThumbnailPath, thumbnailCache);
-                            console.log('[MENU] Thumbnail saved to file');
                         } catch (saveError) {
-                            console.log('[MENU] Could not save thumbnail:', saveError.message);
+                            console.log('Tidak dapat menyimpan thumbnail:', saveError.message);
                         }
-                    } else {
-                        console.warn('[MENU] Thumbnail download failed:', response.status);
                     }
                 }
             } catch (error) {
-                console.error('[MENU] Thumbnail error:', error.message);
+                console.error('Error loading thumbnail:', error.message);
+                // Jika semua gagal, gunakan buffer kosong atau skip thumbnail
                 thumbnailCache = null;
             }
         }
 
         finalThumbnailBuffer = thumbnailCache;
         
-        // ✅ FIX 5: Kirim pesan dengan error handling
-        try {
-            const contextInfo = {
-                mentionedJid: [m.sender],
-                externalAdReply: {
-                    title: (global.info?.namabot || 'WhatsApp Bot') + ` © ` + year,
-                    body: `Server Uptime: ${uptime}`,
-                    mediaType: 1,
-                    renderLargerThumbnail: true,
-                    thumbnail: finalThumbnailBuffer,
-                    sourceUrl: ``
-                }
-            };
-
-            await conn.sendMessage(m.chat, {
-                text: textToSend,
-                contextInfo: contextInfo
-            }, { quoted: m });
-            
-            console.log('[MENU] Message sent successfully');
-            
-        } catch (sendError) {
-            console.error('[MENU] Error sending message:', sendError.message);
-            
-            // Fallback: kirim tanpa thumbnail
-            try {
-                await conn.sendMessage(m.chat, {
-                    text: textToSend
-                }, { quoted: m });
-                console.log('[MENU] Message sent without thumbnail');
-            } catch (fallbackError) {
-                console.error('[MENU] Fallback send failed:', fallbackError.message);
-                throw fallbackError;
+        const contextInfo = {
+            mentionedJid: [m.sender],
+            externalAdReply: {
+                title: (global.info?.namabot || 'WhatsApp Bot') + ` © ` + year,
+                body: `Server Uptime: ${uptime}`,
+                mediaType: 1,
+                renderLargerThumbnail: true,
+                thumbnail: finalThumbnailBuffer,
+                sourceUrl: ``
             }
-        }
+        };
+
+        await conn.sendMessage(m.chat, {
+            text: textToSend,
+            contextInfo: contextInfo
+        }, { quoted: m });
 
     } catch (e) {
-        console.error('[MENU] Critical error:', e);
-        console.error(e.stack);
-        
-        try {
-            await m.reply('❌ Terjadi kesalahan saat menampilkan menu.\n\nError: ' + e.message);
-        } catch (replyError) {
-            console.error('[MENU] Could not send error message:', replyError.message);
-        }
+        console.error('Menu error:', e);
+        m.reply('❌ Terjadi kesalahan saat menampilkan menu.');
     }
 };
 
 handler.command = /^(menu|help|perintah)$/i;
-handler.tags = ['info'];
-handler.help = ['menu', 'help'];
 
 export default handler;
 

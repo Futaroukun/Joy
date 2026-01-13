@@ -18,7 +18,6 @@ import { imageToWebp, videoToWebp, writeExifImg, writeExifVid } from "./exif.js"
 import tmpManager from './safe-tmp.js'
 import { randomBytes } from "crypto";
 
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const {
@@ -35,7 +34,8 @@ const {
    jidDecode,
    jidNormalizedUser,
    generateMessageIDV2,
-   prepareWAMessageMedia
+   prepareWAMessageMedia,
+   getBinaryNodeChild
 } = await import("@whiskeysockets/baileys");
 
 const isNumber = x => {
@@ -43,6 +43,7 @@ const isNumber = x => {
    const int = parseInt(x);
    return typeof int === "number" && !isNaN(int);
 };
+
 const tmpFile = (ext = "") => path.join(process.cwd(), 'tmp', `${Date.now()}${ext}`);
 const _isStatusJid = (id) => !id || id === "status@broadcast";
 const _isGroupJid = (id = "") => id && id.endsWith("@g.us");
@@ -52,6 +53,9 @@ const _isGroupJid = (id = "") => id && id.endsWith("@g.us");
  */
 export function makeWASocket(connectionOptions, options = {}) {
    let conn = _makeWASocket(connectionOptions);
+   
+   // Override sendMessage untuk auto-mention
+   const OrigMsg = conn.sendMessage.bind(conn);
    
    let sock = Object.defineProperties(conn, {
       chats: {
@@ -73,11 +77,28 @@ export function makeWASocket(connectionOptions, options = {}) {
          writable: true,
          configurable: true
       },
-      // Cache untuk metadata grup
       _groupMetaCache: {
          value: new Map(),
          writable: true,
          configurable: true
+      },
+      isLid: {
+         value: new Map(),
+         writable: true,
+         configurable: true
+      },
+      
+      sendMessage: {
+         value(jid, content, options = {}) {
+            const text = content?.text || content?.caption || '';
+            return OrigMsg(jid, {
+               ...content,
+               mentions: content.mentions || conn.parseMention(text)
+            }, {
+               ...options,
+               useCachedGroupMetadata: options.useCachedGroupMetadata || true
+            });
+         }
       },
       
       decodeJid: {
@@ -85,6 +106,89 @@ export function makeWASocket(connectionOptions, options = {}) {
             if (!jid || typeof jid !== "string") return (jid !== null && jid) || null;
             return jid.decodeJid();
          }
+      },
+      
+      // FITUR BARU: profilePictureUrl
+      profilePictureUrl: {
+         async value(jid, type = 'image', query = 'url') {
+            try {
+               const result = await conn.query({
+                  tag: 'iq',
+                  attrs: {
+                     target: jid,
+                     to: 's.whatsapp.net',
+                     type: 'get',
+                     xmlns: 'w:profile:picture'
+                  },
+                  content: [{ tag: 'picture', attrs: { type, query } }]
+               }, 15000);
+               
+               const child = getBinaryNodeChild(result, 'picture');
+               return child?.content || child?.attrs?.url;
+            } catch {
+               return query == 'buffer' 
+                  ? fs.readFileSync(path.resolve(__dirname, '../media/avatar_contact.png'))
+                  : 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
+            }
+         }
+      },
+      
+      // FITUR BARU: getJid (dari simple1.js)
+      getJid: {
+         value(sender) {
+            sender = conn.decodeJid(sender);
+            if (!conn.isLid) conn.isLid = new Map();
+            if (conn.isLid.has(sender)) return conn.isLid.get(sender);
+            if (!sender?.endsWith('@lid')) return sender;
+
+            for (const chat of Object.values(conn.chats)) {
+               if (!chat?.metadata?.participants) continue;
+               const user = chat.metadata.participants.find(p => 
+                  p.lid === sender || p.id === sender
+               );
+               if (user) {
+                  const jid = user?.phoneNumber || user?.jid || user?.id;
+                  conn.isLid.set(sender, jid);
+                  return jid;
+               }
+            }
+            return sender;
+         }
+      },
+      
+      // FITUR BARU: logger
+      logger: {
+         get() {
+            let dates = new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
+            return {
+               info(...args) {
+                  console.log(chalk.bold.bgRgb(51, 204, 51)('INFO '), 
+                     `[${chalk.rgb(255, 255, 255)(dates)}]:`, 
+                     chalk.cyan(util.format(...args)));
+               },
+               error(...args) {
+                  console.log(chalk.bold.bgRgb(247, 38, 33)('ERROR '), 
+                     `[${chalk.rgb(255, 255, 255)(dates)}]:`, 
+                     chalk.rgb(255, 38, 0)(util.format(...args)));
+               },
+               warn(...args) {
+                  console.log(chalk.bold.bgRgb(255, 153, 0)('WARNING '), 
+                     `[${chalk.rgb(255, 255, 255)(dates)}]:`, 
+                     chalk.redBright(util.format(...args)));
+               },
+               trace(...args) {
+                  console.log(chalk.grey('TRACE '), 
+                     `[${chalk.rgb(255, 255, 255)(dates)}]:`, 
+                     chalk.white(util.format(...args)));
+               },
+               debug(...args) {
+                  console.log(chalk.bold.bgRgb(66, 167, 245)('DEBUG '), 
+                     `[${chalk.rgb(255, 255, 255)(dates)}]:`, 
+                     chalk.white(util.format(...args)));
+               }
+            };
+         },
+         enumerable: true
       },
       
       getNumber: {
@@ -135,7 +239,6 @@ export function makeWASocket(connectionOptions, options = {}) {
          }
       },
       
-      // === FITUR BARU: waitEvent ===
       waitEvent: {
          value(eventName, is = () => true, maxTries = 25, timeoutMs = 5000) {
             return new Promise((resolve, reject) => {
@@ -271,7 +374,6 @@ export function makeWASocket(connectionOptions, options = {}) {
          }
       },
       
-      // gatau buatan Rafli
       getAndVerifyUsername: {
          async value(jid) {
             if (!jid) return 'Unknown';
@@ -312,7 +414,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                : /^data:.*?\/.*?;base64,/i.test(PATH)
                ? Buffer.from(PATH.split`,`[1], "base64")
                : /^https?:\/\//.test(PATH)
-               ? await (res = await fetch(PATH)).buffer()
+               ? (res = Buffer.from(await (await fetch(PATH)).arrayBuffer()))
                : fs.existsSync(PATH)
                ? ((filename = PATH), fs.readFileSync(PATH))
                : typeof PATH === "string"
@@ -326,7 +428,7 @@ export function makeWASocket(connectionOptions, options = {}) {
             };
             
             if (data && saveToFile && !filename) {
-            filename = path.join(process.cwd(), "tmp", `${new Date() * 1}.${type.ext}`);
+               filename = path.join(process.cwd(), "tmp", `${new Date() * 1}.${type.ext}`);
                await fs.promises.writeFile(filename, data);
             }
                
@@ -343,7 +445,6 @@ export function makeWASocket(connectionOptions, options = {}) {
          enumerable: true
       },
       
-      // === FITUR BARU: sendAlbum ===
       sendAlbum: {
          async value(jid, items = [], options = {}) {
             options = { ...options };
@@ -401,46 +502,67 @@ export function makeWASocket(connectionOptions, options = {}) {
          enumerable: true
       },
       
-      sendStickerImage: {
-    async value(jid, path, quoted, options = {}) {
-        let buff = Buffer.isBuffer(path)
-            ? path
-            : /^data:.*?\/.*?;base64,/i.test(path)
-            ? Buffer.from(path.split`,`[1], "base64")
-            : /^https?:\/\//.test(path)
-            ? await (await fetch(path)).buffer()
-            : fs.existsSync(path)
-            ? fs.readFileSync(path)
-            : Buffer.alloc(0);
-        
-        if (!buff || buff.length === 0) {
-            throw new Error('Invalid image buffer')
-        }
-
-        console.log(`[STICKER] Processing image: ${buff.length} bytes`)
-        
-        let sticker, buffer;
-        try {
-            if (options && (options.packname || options.author)) {
-                sticker = await writeExifImg(buff, options);
-            } else {
-                sticker = await imageToWebp(buff);
-            }
-
-            if (!sticker || (Buffer.isBuffer(sticker) && sticker.length === 0)) {
-                throw new Error('Sticker conversion failed')
-            }
-
-            console.log(`[STICKER] Sending: ${sticker.length} bytes`)
-            await conn.sendMessage(jid, { sticker: sticker, ...options }, { quoted });
+      // FITUR BARU: sendSticker (versi simple1.js)
+      sendSticker: {
+         async value(jid, filePath, m, options = {}) {
+            const { data, mime } = await conn.getFile(filePath);
+            if (data.length === 0) throw new TypeError('File tidak ditemukan');
             
-            return buffer;
-        } catch (error) {
-            console.error('[STICKER ERROR]', error.message)
-            throw error
-        }
-    }
-},
+            const exif = { 
+               packName: options.packname || global.stickpack, 
+               packPublish: options.packpublish || global.stickauth 
+            };
+            
+            const stickerModule = await import('./exif.js');
+            const sticker = await stickerModule.writeExif({ mimetype: mime, data }, exif);
+            
+            return conn.sendMessage(jid, { sticker }, { 
+               quoted: m, 
+               ephemeralExpiration: m?.expiration 
+            });
+         }
+      },
+      
+      sendStickerImage: {
+         async value(jid, path, quoted, options = {}) {
+            let buff = Buffer.isBuffer(path)
+               ? path
+               : /^data:.*?\/.*?;base64,/i.test(path)
+               ? Buffer.from(path.split`,`[1], "base64")
+               : /^https?:\/\//.test(path)
+               ? await (await fetch(path)).buffer()
+               : fs.existsSync(path)
+               ? fs.readFileSync(path)
+               : Buffer.alloc(0);
+            
+            if (!buff || buff.length === 0) {
+               throw new Error('Invalid image buffer')
+            }
+
+            console.log(`[STICKER] Processing image: ${buff.length} bytes`)
+            
+            let sticker, buffer;
+            try {
+               if (options && (options.packname || options.author)) {
+                  sticker = await writeExifImg(buff, options);
+               } else {
+                  sticker = await imageToWebp(buff);
+               }
+
+               if (!sticker || (Buffer.isBuffer(sticker) && sticker.length === 0)) {
+                  throw new Error('Sticker conversion failed')
+               }
+
+               console.log(`[STICKER] Sending: ${sticker.length} bytes`)
+               await conn.sendMessage(jid, { sticker: sticker, ...options }, { quoted });
+               
+               return buffer;
+            } catch (error) {
+               console.error('[STICKER ERROR]', error.message)
+               throw error
+            }
+         }
+      },
       
       sendStickerVideo: {
          async value(jid, path, quoted, options = {}) {
@@ -463,6 +585,20 @@ export function makeWASocket(connectionOptions, options = {}) {
 
             await conn.sendMessage(jid, { sticker: sticker, ...options }, { quoted });
             return buffer;
+         }
+      },
+      
+      // FITUR BARU: sendMedia
+      sendMedia: {
+         async value(jid, path, quoted, options = {}) {
+            let { mime, data } = await conn.getFile(path);
+            let messageType = mime.split('/')[0];
+            let pase = messageType.replace('application', 'document') || messageType;
+            return conn.sendMessage(jid, { 
+               [`${pase}`]: data, 
+               mimetype: mime, 
+               ...options 
+            }, { quoted });
          }
       },
       
@@ -540,46 +676,154 @@ export function makeWASocket(connectionOptions, options = {}) {
                console.error('[SENDFILE] First attempt failed:', e.message);
                console.log('[SENDFILE] Retrying with raw buffer...')
          
-         // FALLBACK: Send dengan buffer langsung
-         m = await conn.sendMessage(jid, {
-            ...message,
-            [mtype]: file
-         }, { ...opt, ...options });
-      } finally {
-         // CLEANUP
-         if (convert && convert.delete) {
-            try { await convert.delete() } catch {}
+               m = await conn.sendMessage(jid, {
+                  ...message,
+                  [mtype]: file
+               }, { ...opt, ...options });
+            } finally {
+               if (convert && convert.delete) {
+                  try { await convert.delete() } catch {}
+               }
+               if (pathFile && pathFile.includes('/tmp/')) {
+                  tmpManager.deleteFile(pathFile)
+               }
+               file = null;
+               return m;
+            }
+         },
+         enumerable: true
+      },
+      
+      // FITUR BARU: sendButton
+      sendButton: {
+         async value(jid, content = {}, options = {}) {
+            let header = {};
+
+            if (content.header) header.title = content.header;
+
+            let mime = null;
+            if (content.image) mime = 'image';
+            else if (content.video) mime = 'video';
+            else if (content.document) mime = 'document';
+            else if (content.audio) mime = 'audio';
+
+            if (mime) {
+               const media = await prepareWAMessageMedia(
+                  { [mime]: content[mime] }, 
+                  { upload: conn.waUploadToServer }
+               );
+
+               header = {
+                  hasMediaAttachment: true,
+                  [`${mime}Message`]: media[`${mime}Message`]
+               };
+            }
+
+            const msg = generateWAMessageFromContent(jid, {
+               interactiveMessage: {
+                  header,
+                  body: { text: content.body || content.text || content.caption },
+                  footer: { text: content.footer },
+                  nativeFlowMessage: {
+                     buttons: content.buttons || []
+                  }
+               }
+            }, options);
+
+            await conn.relayMessage(jid, msg.message, {
+               messageId: msg.key.id,
+               additionalNodes: [{
+                  tag: 'biz',
+                  attrs: {},
+                  content: [{
+                     tag: 'interactive',
+                     attrs: { type: 'native_flow', v: '1' },
+                     content: [{ tag: 'native_flow', attrs: { v: '9', name: 'mixed' } }]
+                  }]
+               }]
+            });
+
+            return msg;
          }
-         if (pathFile && pathFile.includes('/tmp/')) {
-            tmpManager.deleteFile(pathFile)
-         }
-         file = null;
-         return m;
-      }
-   },
-   enumerable: true
-},
+      },
+      
+      // FITUR BARU: sendContact
+      sendContact: {
+         async value(jid, data, quoted, options) {
+            if (!Array.isArray(data[0]) && typeof data[0] === 'string') data = [data];
+            let contacts = [];
+            
+            for (let [number, name] of data) {
+               number = number.replace(/[^0-9]/g, '');
+               let njid = number + '@s.whatsapp.net';
+               let biz = (await conn.getBusinessProfile(njid).catch(_ => null)) || {};
+               
+               let vcard = `
+BEGIN:VCARD
+VERSION:3.0
+N:;${name.replace(/\n/g, '\\n')};;;
+FN:${name.replace(/\n/g, '\\n')}
+TEL;type=CELL;type=VOICE;waid=${number}:${parsePhoneNumber('+' + number).getNumber('international')}${
+   biz.description ? `
+X-WA-BIZ-NAME:${(conn.chats[njid]?.vname || conn.getName(njid) || name).replace(/\n/, '\\n')}
+X-WA-BIZ-DESCRIPTION:${biz.description.replace(/\n/g, '\\n')}
+`.trim() : ''
+}
+END:VCARD
+               `.trim();
+               contacts.push({ vcard, displayName: name });
+            }
+            
+            return conn.sendMessage(jid, {
+               ...options,
+               contacts: {
+                  ...options,
+                  displayName: (contacts.length >= 2 
+                     ? `${contacts.length} kontak` 
+                     : contacts[0].displayName) || null,
+                  contacts
+               }
+            }, { quoted, ...options });
+         },
+         enumerable: true
+      },
       
       reply: {
          async value(jid, text = '', quoted, options) {
             return Buffer.isBuffer(text)
                ? conn.sendFile(jid, text, "file", "", quoted, false, options)
-               : conn.sendMessage(
-                    jid,
-                    {
-                       ...options,
-                       text,
-                       contextInfo: {
-                          mentionedJid: conn.parseMention(text)
-                       },
-                       ...options
+               : conn.sendMessage(jid, {
+                    ...options,
+                    text,
+                    contextInfo: {
+                       mentionedJid: conn.parseMention(text)
                     },
-                    { quoted, ...options }
-                 );
+                    ...options
+                 }, { quoted, ...options });
          }
       },
       
-      // === FITUR BARU: sendPoll ===
+      // FITUR BARU: adReply
+      adReply: {
+         async value(jid, text, path, m, options = {}) {
+            const { data } = await conn.getFile(path);
+            return conn.sendMessage(jid, {
+               text: text,
+               contextInfo: {
+                  externalAdReply: {
+                     title: options.title || global.namebot,
+                     body: options.body || '',
+                     thumbnail: data,
+                     mediaType: 1,
+                     renderLargerThumbnail: options.large || true,
+                     thumbnailUrl: options.source || global.source,
+                     sourceUrl: options.source || global.source
+                  }
+               }
+            }, { quoted: m });
+         }
+      },
+      
       sendPoll: {
          async value(jid, name = '', optiPoll, options) {
             if (!Array.isArray(optiPoll[0]) && typeof optiPoll[0] === 'string') optiPoll = [optiPoll];
@@ -722,93 +966,76 @@ export function makeWASocket(connectionOptions, options = {}) {
       },
       
       downloadM: {
-   /**
-    * Download media message
-    * @param {Object} m - The message object containing media
-    * @param {String} type - The type of media to download (e.g., 'image', 'video', 'audio', 'document')
-    * @param {fs.PathLike | fs.promises.FileHandle} saveToFile - Path to save the downloaded file (optional)
-    * @returns {Promise<fs.PathLike | fs.promises.FileHandle | Buffer>} - Returns path to file or buffer
-    */
-   async value(m, type, saveToFile) {
-      try {
-         // Validate input
-         if (!m || !(m.url || m.directPath)) {
-            throw new Error('Invalid message or media not found.');
-         }
-         
-         // Download content from message (Baileys returns an async iterable or a Web ReadableStream depending on env)
-         // Workaround: some Baileys versions choke on 'sticker' type with Node PassThrough. Use 'image' for webp stickers.
-         const dlType = type === 'sticker' ? 'image' : type;
-         let stream;
-         try {
-            stream = await downloadContentFromMessage(m, dlType);
-         } catch (e) {
-            // Fallback: if environment complains about ReadableStream vs PassThrough, temporarily patch fromWeb
-            if (/readableStream/i.test(String(e?.message)) && /PassThrough/i.test(String(e?.message))) {
-               const nodeStream = await import('stream');
-               const origFromWeb = nodeStream.Readable.fromWeb?.bind(nodeStream.Readable);
-               if (origFromWeb) {
-                  try {
-                     nodeStream.Readable.fromWeb = function(rs, opts) {
-                        // If it's not a WHATWG ReadableStream (no getReader), just return rs as-is
-                        if (rs && typeof rs.getReader !== 'function') return rs;
-                        return origFromWeb(rs, opts);
-                     };
-                     stream = await downloadContentFromMessage(m, dlType);
-                  } finally {
-                     // Restore original to avoid side effects
-                     nodeStream.Readable.fromWeb = origFromWeb;
+         async value(m, type, saveToFile) {
+            try {
+               if (!m || !(m.url || m.directPath)) {
+                  throw new Error('Invalid message or media not found.');
+               }
+               
+               const dlType = type === 'sticker' ? 'image' : type;
+               let stream;
+               try {
+                  stream = await downloadContentFromMessage(m, dlType);
+               } catch (e) {
+                  if (/readableStream/i.test(String(e?.message)) && /PassThrough/i.test(String(e?.message))) {
+                     const nodeStream = await import('stream');
+                     const origFromWeb = nodeStream.Readable.fromWeb?.bind(nodeStream.Readable);
+                     if (origFromWeb) {
+                        try {
+                           nodeStream.Readable.fromWeb = function(rs, opts) {
+                              if (rs && typeof rs.getReader !== 'function') return rs;
+                              return origFromWeb(rs, opts);
+                           };
+                           stream = await downloadContentFromMessage(m, dlType);
+                        } finally {
+                           nodeStream.Readable.fromWeb = origFromWeb;
+                        }
+                     } else {
+                        throw e;
+                     }
+                  } else {
+                     throw e;
                   }
-               } else {
-                  throw e;
                }
-            } else {
-               throw e;
-            }
-         }
-         
-         // Normalize any stream-like (AsyncIterable, Node Readable, or Web ReadableStream) to Buffer
-         const toBuffer = async (s) => {
-            // Web ReadableStream (WHATWG)
-            if (s && typeof s.getReader === 'function') {
-               const reader = s.getReader();
-               const chunks = [];
-               for (;;) {
-                  const { value, done } = await reader.read();
-                  if (done) break;
-                  if (value) chunks.push(Buffer.from(value));
+               
+               const toBuffer = async (s) => {
+                  if (s && typeof s.getReader === 'function') {
+                     const reader = s.getReader();
+                     const chunks = [];
+                     for (;;) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        if (value) chunks.push(Buffer.from(value));
+                     }
+                     return Buffer.concat(chunks);
+                  }
+                  if (s && typeof s[Symbol.asyncIterator] === 'function') {
+                     const chunks = [];
+                     for await (const chunk of s) {
+                        chunks.push(Buffer.from(chunk));
+                     }
+                     return Buffer.concat(chunks);
+                  }
+                  throw new Error('Unsupported stream type from downloadContentFromMessage');
+               };
+               
+               const buffer = await toBuffer(stream);
+               
+               if (saveToFile) {
+                  const fileType = await fileTypeFromBuffer(buffer);
+                  const filename = saveToFile || `downloaded_media.${fileType?.ext || 'bin'}`;
+                  await fs.promises.writeFile(filename, buffer);
+                  return filename;
                }
-               return Buffer.concat(chunks);
+               
+               return buffer;
+            } catch (err) {
+               console.error('Error downloading media message:', err);
+               throw new Error('Failed to download media: ' + err.message);
             }
-            // Async iterable (Node Readable or async generator)
-            if (s && typeof s[Symbol.asyncIterator] === 'function') {
-               const chunks = [];
-               for await (const chunk of s) {
-                  chunks.push(Buffer.from(chunk));
-               }
-               return Buffer.concat(chunks);
-            }
-            throw new Error('Unsupported stream type from downloadContentFromMessage');
-         };
-         
-         const buffer = await toBuffer(stream);
-         
-         // If saveToFile is provided, save the buffer to file
-         if (saveToFile) {
-            const fileType = await fileTypeFromBuffer(buffer);
-            const filename = saveToFile || `downloaded_media.${fileType?.ext || 'bin'}`;
-            await fs.promises.writeFile(filename, buffer);
-            return filename; // Return file path
-         }
-         
-         return buffer; // Return the buffer if not saving to a file
-      } catch (err) {
-         console.error('Error downloading media message:', err);
-         throw new Error('Failed to download media: ' + err.message);
-      }
-   },
-   enumerable: true
-},
+         },
+         enumerable: true
+      },
       
       parseMention: {
          value(text = "") {
@@ -878,7 +1105,7 @@ export function makeWASocket(connectionOptions, options = {}) {
             const self = conn.user?.lid && areJidsSameUser ? 
                areJidsSameUser(jid, conn.user.lid) : false;
 
-            const v = jid === "12066409886@s.whatsapp.net"
+            const v = jid === "0@s.whatsapp.net"
                ? { jid, vname: "WhatsApp" }
                : self
                ? conn.user
@@ -952,6 +1179,30 @@ export function makeWASocket(connectionOptions, options = {}) {
          }
       },
       
+      sendGroupV4Invite: {
+         async value(groupJid, participant, inviteCode, inviteExpiration, groupName, caption, jpegThumbnail, options = {}) {
+            const msg = generateWAMessageFromContent(participant, {
+               groupInviteMessage: {
+                  inviteCode,
+                  inviteExpiration: parseInt(inviteExpiration) || Date.now() + 3 * 86400000,
+                  groupJid,
+                  groupName,
+                  jpegThumbnail,
+                  caption
+               }
+            }, {
+               userJid: conn.user.id,
+               ...options
+            });
+
+            await conn.relayMessage(participant, msg.message, {
+               messageId: msg.key.id
+            });
+            return msg;
+         },
+         enumerable: true
+      },
+      
       insertAllGroup: {
          async value() {
             const groups = (await conn.groupFetchAllParticipating().catch(_ => null)) || {};
@@ -1022,19 +1273,51 @@ export function makeWASocket(connectionOptions, options = {}) {
 }
 
 /**
+ * Helper function untuk parse message content
+ */
+function parseMessage(content) {
+   content = extractMessageContent(content);
+   if (content && content.viewOnceMessageV2Extension) {
+      content = content.viewOnceMessageV2Extension.message;
+   }
+   if (content && content.protocolMessage && content.protocolMessage.type == 14) {
+      let type = getContentType(content.protocolMessage);
+      content = content.protocolMessage[type];
+   }
+   if (content && content.message) {
+      let type = getContentType(content.message);
+      content = content.message[type];
+   }
+   return content;
+}
+
+const getContentType = (content) => {
+   if (content) {
+      const keys = Object.keys(content);
+      const key = keys.find(k => 
+         (k === 'conversation' || k.endsWith('Message') || k.includes('V2') || k.includes('V3')) && 
+         k !== 'senderKeyDistributionMessage'
+      );
+      return key;
+   }
+};
+
+/**
  * Serialize Message dengan dukungan interactive message
  */
 export async function smsg(conn, m, hasParent) {
    if (!m) return m;
 
    m = proto.WebMessageInfo.create(m);
+   m.message = parseMessage(m.message);
+   
    const messageId = generateMessageIDV2().slice(0, 4);
    const MediaType = [
       "audioMessage", "bcallMessage", "botInvokeMessage", "buttonsMessage",
       "buttonsResponseMessage", "contactMessage", "conversation", "contactsArrayMessage",
       "documentMessage", "documentWithCaptionMessage", "editedMessage", "ephemeralMessage",
       "extendedTextMessage", "groupInviteMessage", "groupMentionedMessage", "imageMessage",
-      "interactiveMessage", "interactiveResponseMessage", "invoiceMessage", "listMessage",
+      "interactiveMessage", "interactiveResponseMessage", "invokeMessage", "listMessage",
       "listResponseMessage", "liveLocationMessage", "locationMessage", "lottieStickerMessage",
       "messageHistoryBundle", "newsletterAdminInviteMessage", "orderMessage",
       "pollCreationMessage", "pollCreationMessageV2", "pollCreationMessageV3",
@@ -1044,6 +1327,36 @@ export async function smsg(conn, m, hasParent) {
       "stickerMessage", "templateButtonReplyMessage", "templateMessage", "videoMessage",
       "viewOnceMessage", "viewOnceMessageV2", "viewOnceMessageV2Extension"
    ];
+
+   // Define conn property
+   Object.defineProperty(m, 'conn', {
+      enumerable: false,
+      writable: true,
+      value: conn
+   });
+
+   // Handle protocol message
+   let protocolMessageKey;
+   if (m.message) {
+      if (m.mtype == 'protocolMessage' && m.msg.key) {
+         protocolMessageKey = m.msg.key;
+         if (protocolMessageKey == 'status@broadcast') protocolMessageKey.remoteJid = m.chat;
+         if (!protocolMessageKey.participant || protocolMessageKey.participant == 'status_me') 
+            protocolMessageKey.participant = m.sender;
+         protocolMessageKey.fromMe = conn.decodeJid(protocolMessageKey.participant) === conn.decodeJid(conn.user.id);
+         if (!protocolMessageKey.fromMe && protocolMessageKey.remoteJid === conn.decodeJid(conn.user.id)) 
+            protocolMessageKey.remoteJid = m.sender;
+      }
+      if (m.quoted) if (!m.quoted.mediaMessage) delete m.quoted.download;
+   }
+   if (!m.mediaMessage) delete m.download;
+
+   try {
+      if (protocolMessageKey && m.mtype == 'protocolMessage') 
+         conn.ev.emit('message.delete', protocolMessageKey);
+   } catch (e) {
+      console.error(e);
+   }
 
    return Object.defineProperties(m, {
       id: {
@@ -1097,7 +1410,7 @@ export async function smsg(conn, m, hasParent) {
       msg: {
          get() {
             if (!m.message) return null;
-            return m.message[m.mtype];
+            return parseMessage(m.message[m.mtype]);
          }
       },
       mediaMessage: {
@@ -1132,7 +1445,6 @@ export async function smsg(conn, m, hasParent) {
       text: {
          get() {
             const msg = m.msg;
-
             let extractedText = "";
 
             if (m.mtype === 'conversation') {
@@ -1190,14 +1502,13 @@ export async function smsg(conn, m, hasParent) {
             const qthis = this;
             const msg = qthis.msg;
             const contextInfo = msg?.contextInfo;
-            const quoted = contextInfo?.quotedMessage;
+            const quoted = parseMessage(contextInfo?.quotedMessage);
             if (!msg || !contextInfo || !quoted) return null;
 
             const type = Object.keys(quoted)[0];
             let q = quoted[type];
             const text = typeof q === "string" ? q : q.text;
 
-            // PERBAIKAN #1: Definisikan properti media untuk objek quoted
             return Object.defineProperties(
                JSON.parse(JSON.stringify(typeof q === "string" ? { text: q } : q)),
                {
@@ -1205,7 +1516,7 @@ export async function smsg(conn, m, hasParent) {
                      get() { return type; },
                      enumerable: true
                   },
-                  mediaMessage: { // DITAMBAHKAN
+                  mediaMessage: {
                      get() {
                         const Message = ((q.url || q.directPath) ?
                            { ...quoted } : extractMessageContent(quoted)) || null;
@@ -1215,20 +1526,27 @@ export async function smsg(conn, m, hasParent) {
                      },
                      enumerable: true
                   },
-                  mediaType: { // DITAMBAHKAN
-                      get() {
-                          let message;
-                          if (!(message = this.mediaMessage)) return null;
-                          return Object.keys(message)[0];
-                      },
-                      enumerable: true
+                  mediaType: {
+                     get() {
+                        let message;
+                        if (!(message = this.mediaMessage)) return null;
+                        return Object.keys(message)[0];
+                     },
+                     enumerable: true
                   },
                   id: {
                      get() { return contextInfo.stanzaId; },
                      enumerable: true
                   },
                   chat: {
-                     get() { return contextInfo.remoteJid || qthis.chat; },
+                     get() { return conn.getJid(contextInfo.remoteJid || qthis.chat); },
+                     enumerable: true
+                  },
+                  isBaileys: {
+                     get() { 
+                        const id = this.id;
+                        return /^3A|2A.{18}$/.test(id) ? false : /^(.{21}|.{32})$/.test(id) ? false : true;
+                     },
                      enumerable: true
                   },
                   sender: {
@@ -1248,15 +1566,45 @@ export async function smsg(conn, m, hasParent) {
                      },
                      enumerable: true
                   },
-                  // PERBAIKAN #2: Gunakan konteks `this` untuk download, bukan `m`
+                  mentionedJid: {
+                     get() {
+                        let raw = q.contextInfo?.mentionedJid || qthis.getQuotedObj?.()?.mentionedJid || [];
+                        return raw.map(jid => conn.getLid(jid));
+                     },
+                     enumerable: true
+                  },
+                  name: {
+                     get() {
+                        const sender = this.sender;
+                        return sender ? conn?.getName(sender) : null;
+                     },
+                     enumerable: true
+                  },
+                  vM: {
+                     get() {
+                        return proto.WebMessageInfo.create({
+                           key: {
+                              remoteJid: this.chat,
+                              fromMe: this.fromMe,
+                              id: this.id,
+                              participant: this.sender
+                           },
+                           message: quoted,
+                           ...(qthis.isGroup ? { participant: this.sender } : {})
+                        });
+                     }
+                  },
+                  fakeObj: {
+                     get() { return this.vM; }
+                  },
                   download: {
                      value(saveToFile = false) {
-                         const mtype = this.mediaType;
-                         const mediaRoot = this.mediaMessage;
-                         if (!mtype || !mediaRoot || !mediaRoot[mtype]) {
-                             throw new Error('Media tidak ditemukan di dalam pesan yang di-reply.');
-                         }
-                         return conn.downloadM(mediaRoot[mtype], mtype.replace(/message/i, ""), saveToFile);
+                        const mtype = this.mediaType;
+                        const mediaRoot = this.mediaMessage;
+                        if (!mtype || !mediaRoot || !mediaRoot[mtype]) {
+                           throw new Error('Media tidak ditemukan di dalam pesan yang di-reply.');
+                        }
+                        return conn.downloadM(mediaRoot[mtype], mtype.replace(/message/i, ""), saveToFile);
                      },
                      enumerable: true,
                      configurable: true
@@ -1266,25 +1614,58 @@ export async function smsg(conn, m, hasParent) {
                         return conn?.reply(chatId ? chatId : this.chat, text, this.vM, options);
                      },
                      enumerable: true
+                  },
+                  copy: {
+                     value() {
+                        const M = proto.WebMessageInfo;
+                        return smsg(conn, M.create(M.toObject(this.vM)));
+                     },
+                     enumerable: true
+                  },
+                  forward: {
+                     value(jid, force = false, options) {
+                        return conn?.sendMessage(jid, {
+                           forward: this.vM,
+                           force,
+                           ...options
+                        }, { ...options });
+                     },
+                     enumerable: true
+                  },
+                  copyNForward: {
+                     value(jid, forceForward = false, options) {
+                        return conn?.copyNForward(jid, this.vM, forceForward, options);
+                     },
+                     enumerable: true
+                  },
+                  cMod: {
+                     value(jid, text = '', sender = this.sender, options = {}) {
+                        return conn?.cMod(jid, this.vM, text, sender, options);
+                     },
+                     enumerable: true
+                  },
+                  delete: {
+                     value() {
+                        return conn?.sendMessage(this.chat, { delete: this.vM.key });
+                     },
+                     enumerable: true
                   }
                }
             );
          },
          enumerable: true
       },
-      // PERBAIKAN #3: Perbaiki `self.conn` menjadi `conn` dan pesan error
       download: {
-          value(saveToFile = false) {
-              const mtype = this.mediaType;
-              const mediaRoot = this.mediaMessage;
-              if (!mtype || !mediaRoot || !mediaRoot[mtype]) {
-                  throw new Error('Tidak ada media yang bisa diunduh dari pesan ini.');
-              }
-              // Ganti self.conn menjadi conn
-              return conn?.downloadM(mediaRoot[mtype], mtype.replace(/message/i, ''), saveToFile);
-          },
-          enumerable: true,
-          configurable: true,
+         value(saveToFile = false) {
+            const mtype = this.mediaType;
+            const mediaRoot = this.mediaMessage;
+            if (!mtype || !mediaRoot || !mediaRoot[mtype]) {
+               throw new Error('Tidak ada media yang bisa diunduh dari pesan ini.');
+            }
+            return conn?.downloadM(mediaRoot[mtype], mtype.replace(/message/i, ''), saveToFile);
+         },
+         enumerable: true,
+         configurable: true
       },
       reply: {
          value(text, chatId, options) {
@@ -1299,6 +1680,61 @@ export async function smsg(conn, m, hasParent) {
                   key: m.key
                }
             });
+         },
+         enumerable: true
+      },
+      // FITUR BARU: edit
+      edit: {
+         value(text, key) {
+            return conn.sendMessage(this.chat, { text, edit: key || this.key });
+         },
+         enumerable: true
+      },
+      copy: {
+         value() {
+            const M = proto.WebMessageInfo;
+            return smsg(conn, M.create(M.toObject(this)));
+         },
+         enumerable: true
+      },
+      forward: {
+         value(jid, force = false, options = {}) {
+            return conn?.sendMessage(jid, {
+               forward: this,
+               force,
+               ...options
+            }, { ...options });
+         },
+         enumerable: true
+      },
+      copyNForward: {
+         value(jid, forceForward = false, options = {}) {
+            return conn?.copyNForward(jid, this, forceForward, options);
+         },
+         enumerable: true
+      },
+      cMod: {
+         value(jid, text = '', sender = this.sender, options = {}) {
+            return conn?.cMod(jid, this, text, sender, options);
+         },
+         enumerable: true
+      },
+      getQuotedObj: {
+         value() {
+            if (!this.quoted?.id) return null;
+            const q = proto.WebMessageInfo.create(conn?.loadMessage(this.quoted.id) || this.quoted.vM);
+            return smsg(conn, q);
+         },
+         enumerable: true
+      },
+      getQuotedMessage: {
+         get() {
+            return this.getQuotedObj;
+         }
+      },
+      delete: {
+         value() {
+            return conn?.sendMessage(this.chat, { delete: this.key });
          },
          enumerable: true
       },
