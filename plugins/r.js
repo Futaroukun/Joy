@@ -1,76 +1,72 @@
-// Sesuaikan path ini dengan lokasi file button.js kamu
-import { sendInteractiveMessage } from '../function/button.js' 
-
 let handler = async (m, { conn, usedPrefix, command }) => {
-    
-    // 1. Definisikan Sections (Isi List)
+    // 1. Definisikan Isi List (Sections)
     const sections = [
         {
-            title: "🔥 Menu Populer",
+            title: "📂 Menu Utama",
             rows: [
                 {
-                    header: "Ping",
-                    title: "Cek Kecepatan",
-                    description: "Test respon bot",
+                    header: "Info Bot",
+                    title: "Status Bot",
+                    description: "Cek kesehatan sistem bot",
                     id: ".ping"
                 },
                 {
-                    header: "Owner",
-                    title: "Kontak Pemilik",
-                    description: "Chat owner bot",
+                    header: "Pemilik",
+                    title: "Owner Contact",
+                    description: "Hubungi pembuat bot",
                     id: ".owner"
                 }
             ]
         },
         {
-            title: "📂 Kategori Lain",
+            title: "🌟 Fitur Lain",
             rows: [
                 {
-                    title: "Menu RPG",
-                    description: "Main game RPG",
-                    id: ".menurpg"
+                    title: "Sewa Bot",
+                    description: "Info harga sewa",
+                    id: ".sewa"
+                },
+                {
+                    title: "Donasi",
+                    description: "Dukung bot ini",
+                    id: ".donasi"
                 }
             ]
         }
     ]
 
-    // 2. Siapkan Parameter Tombol (JSON String)
-    const listParams = JSON.stringify({
-        title: "KLIK DISINI", // Tulisan di tombol hijau
-        sections: sections
-    })
+    // 2. Susun Tombol List (Single Select)
+    // Ingat: Di fungsi sendButton kamu, tombol harus format Native Flow
+    const buttons = [
+        {
+            name: "single_select",
+            buttonParamsJson: JSON.stringify({
+                title: "KLIK DISINI", // Tulisan di tombol hijau
+                sections: sections
+            })
+        }
+    ]
 
-    // 3. Susun Payload sesuai format helper function/button.js
+    // 3. Susun Konten Pesan
     const content = {
-        text: "Halo! Ini test menggunakan Helper Button.",
-        footer: "Powered by Baileys Helper",
-        title: "TEST LIST MESSAGE",
-        
-        // Perhatikan bagian ini:
-        interactiveButtons: [
-            {
-                name: "single_select", // Wajib nama ini untuk List
-                buttonParamsJson: listParams
-            }
-        ]
+        header: "LIST MENU TEST",
+        body: "Ini adalah contoh tampilan *List Message* menggunakan fungsi `conn.sendButton`.\nSilakan pilih menu di bawah ini:",
+        footer: "Powered by Baileys",
+        buttons: buttons // Masukkan tombol list tadi ke sini
     }
 
+    // 4. Kirim
     try {
-        await m.reply('⏳ Mengirim List Message via Helper...')
-        
-        // 4. Panggil Fungsi Helper
-        await sendInteractiveMessage(conn, m.chat, content, { 
-            quoted: m 
-        })
-        
+        await m.reply('⏳ Mengirim List Message...')
+        await conn.sendButton(m.chat, content, { quoted: m })
     } catch (e) {
         console.error(e)
-        m.reply('❌ Gagal mengirim: ' + e.message)
+        m.reply('❌ Gagal: ' + e)
     }
 }
 
-handler.help = ['testhelper']
+handler.help = ['testlistonly']
 handler.tags = ['owner']
-handler.command = /^(testhelper|teshelper)$/i
+handler.command = /^(testlistonly|teslist|listonly)$/i
 
 export default handler
