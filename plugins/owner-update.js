@@ -28,7 +28,13 @@ async function githubUpload(conn, commitMessage) {
     const { stdout: remoteUrlOut } = await exec('git config --get remote.origin.url')
     let repoUrl = remoteUrlOut.trim()
     
-    // Normalisasi URL SSH ke HTTPS untuk display (opsional)
+    // --- [SECURITY FIX] SANITASI TOKEN ---
+    // Regex ini menghapus "user:token@" dari URL agar tidak bocor di chat
+    // Mengubah: https://user:ghp_token@github.com/repo
+    // Menjadi: https://github.com/repo
+    repoUrl = repoUrl.replace(/(https?:\/\/)[^@]+@/, '$1')
+
+    // Normalisasi URL SSH ke HTTPS untuk display
     if (repoUrl.startsWith('git@')) {
         repoUrl = repoUrl.replace(':', '/').replace('git@', 'https://')
     }
@@ -40,16 +46,16 @@ async function githubUpload(conn, commitMessage) {
 
     // 2. Cek Branch Aktif
     const { stdout: branchOut } = await exec('git branch --show-current')
-    const branch = branchOut.trim() || 'Main'
+    const branch = branchOut.trim() || 'main'
 
     // 3. Cek Status Perubahan File
-    // Kita gunakan git status -s untuk melihat file yang berubah
     const { stdout: changesStdout } = await exec('git status -s')
     const changes = changesStdout.trim().split('\n').filter(Boolean)
 
     if (changes.length === 0) {
       return {
         success: false,
+        repoUrl, // Kembalikan URL bersih
         message: `⚠️ *GITHUB UPDATE CANCELLED*
 
 📂 *Status:* Direktori Bersih (Clean)
@@ -57,14 +63,14 @@ async function githubUpload(conn, commitMessage) {
       }
     }
 
-    // Kategorisasi File untuk Laporan
+    // Kategorisasi File
     const addedFiles = []
     const deletedFiles = []
     const modifiedFiles = []
     const renamedFiles = []
 
     changes.forEach(change => {
-      const parts = change.trim().split(/\s+/) // Pisahkan spasi
+      const parts = change.trim().split(/\s+/)
       const status = parts[0]
       const file = parts.slice(1).join(' ')
 
@@ -74,8 +80,7 @@ async function githubUpload(conn, commitMessage) {
       else modifiedFiles.push(file)
     })
 
-    // 4. Konfigurasi User (Penting untuk CI/CD atau Server)
-    // Kita jalankan terpisah agar jika sudah ada config, tidak error fatal
+    // 4. Konfigurasi User
     await runGitCommand('git config --global user.email "raflisetiawan093@gmail.com"')
     await runGitCommand('git config --global user.name "Futaroukun"')
 
@@ -83,30 +88,28 @@ async function githubUpload(conn, commitMessage) {
     await exec('git add .')
 
     // 6. Eksekusi Git Commit
-    // Kita try-catch khusus commit karena jika "nothing to commit" dia bisa error exit code 1
     try {
         await exec(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`)
     } catch (commitErr) {
-        // Jika errornya "nothing to commit", kita anggap batal tapi bukan fatal error
         if (commitErr.message.includes('nothing to commit')) {
              return {
                 success: false,
+                repoUrl,
                 message: `⚠️ *GITHUB UPDATE CANCELLED*
 ℹ️ Tidak ada perubahan yang perlu di-commit.`
             }
         }
-        throw commitErr // Lempar error lain
+        throw commitErr 
     }
 
     // 7. Eksekusi Git Push
-    // Menggunakan try-catch untuk menangkap error permission/network
     try {
         await exec(`git push origin ${branch}`)
     } catch (pushErr) {
         throw new Error(`Gagal Push ke Remote. Cek koneksi atau permission token.\nDetail: ${pushErr.message}`)
     }
 
-    // 8. Ambil Info Hash Terakhir
+    // 8. Ambil Info Hash
     const { stdout: commitHash } = await exec('git rev-parse --short HEAD')
     
     // Waktu
@@ -127,6 +130,7 @@ async function githubUpload(conn, commitMessage) {
 
     return {
       success: true,
+      repoUrl, // Kembalikan URL yang sudah disanitasi
       message: `🚀 *GITHUB PUSH SUCCESS*
 
 👤 *Author:* ${username}
@@ -148,6 +152,7 @@ ${repoUrl}`
   } catch (err) {
     return {
       success: false,
+      repoUrl: "https://github.com", // Default jika gagal ambil url
       message: `❌ *GITHUB PUSH FAILED*
 
 ⚠️ *Error Log:*
@@ -159,7 +164,7 @@ Cek apakah git remote sudah disetting atau ada file konflik.`
   }
 }
 
-// ... (SISA KODE SAMA SEPERTI SEBELUMNYA) ...
+// ... (AUTO UPDATE FUNCTIONS SAMA) ...
 
 async function autoUpdate(conn) {
   const now = new Date()
@@ -180,7 +185,8 @@ async function autoUpdate(conn) {
             title: "Auto GitHub Update",
             body: result.success ? "Success" : "Failed",
             thumbnailUrl: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-            sourceUrl: "https://github.com",
+            // Gunakan URL Bersih dari result
+            sourceUrl: result.repoUrl || "https://github.com",
             mediaType: 1,
             renderLargerThumbnail: true
           }
@@ -196,7 +202,6 @@ function startAutoUpdate(conn) {
     console.log('⚠️ Cron job already running')
     return false
   }
-  // Jam 00:00 WIB = 17:00 UTC
   cronJob = cron.schedule('0 17 * * *', () => {
     autoUpdate(conn)
   })
@@ -266,7 +271,8 @@ const handler = async (m, { conn, isOwner, args, command }) => {
         title: "GitHub Update Notification",
         body: result.success ? `Branch: ${commitMessage}` : "Failed",
         thumbnailUrl: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-        sourceUrl: "https://github.com",
+        // Gunakan URL Bersih dari result, BUKAN parsing dari pesan teks
+        sourceUrl: result.repoUrl || "https://github.com",
         mediaType: 1,
         renderLargerThumbnail: true
       }
