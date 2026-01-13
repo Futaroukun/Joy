@@ -204,7 +204,7 @@ const handler = async (m, { conn, isOwner, args, command }) => {
     contextInfo: {
       externalAdReply: {
         title: "GitHub Update Notification",
-        body: result.success ? `Pesan: ${commitMessage}` : "Gagal",
+        body: '',
         thumbnailUrl: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
         sourceUrl: result.repoUrl || "https://github.com",
         mediaType: 1,
