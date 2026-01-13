@@ -4,8 +4,10 @@ import cron from 'node-cron'
 
 const exec = promisify(cp.exec).bind(cp)
 
+// Variabel status cron
 let cronJob = null
 
+// --- HELPER FUNCTIONS ---
 async function runGitCommand(command) {
     try {
         const { stdout, stderr } = await exec(command)
@@ -15,11 +17,16 @@ async function runGitCommand(command) {
     }
 }
 
+/**
+ * Fungsi Utama: Upload ke GitHub
+ */
 async function githubUpload(conn, commitMessage) {
   try {
+    // 1. Cek Remote URL & Sanitasi Token
     const { stdout: remoteUrlOut } = await exec('git config --get remote.origin.url')
     let repoUrl = remoteUrlOut.trim()
     
+    // Hapus token (username:token@)
     repoUrl = repoUrl.replace(/(https?:\/\/)[^@]+@/, '$1')
 
     if (repoUrl.startsWith('git@')) {
@@ -31,9 +38,11 @@ async function githubUpload(conn, commitMessage) {
     const username = splitUrl[splitUrl.length - 2]
     const repoName = splitUrl[splitUrl.length - 1]
 
+    // 2. Cek Branch
     const { stdout: branchOut } = await exec('git branch --show-current')
     const branch = branchOut.trim() || 'main'
 
+    // 3. Cek Perubahan
     const { stdout: changesStdout } = await exec('git status -s')
     const changes = changesStdout.trim().split('\n').filter(Boolean)
 
@@ -41,10 +50,12 @@ async function githubUpload(conn, commitMessage) {
       return {
         success: false,
         repoUrl,
-        message: `*GITHUB UPDATE DIBATALIN*\n\nStatus: Direktori Bersih\nGak ada file yang diubah atau ditambahin.`
+        shortMessage: "Tidak ada perubahan file.",
+        message: `⚠️ *UPDATE DIBATALKAN*\nDirektori bersih, tidak ada yang perlu di-upload.`
       }
     }
 
+    // Kategorisasi File
     const addedFiles = []
     const deletedFiles = []
     const modifiedFiles = []
@@ -61,9 +72,9 @@ async function githubUpload(conn, commitMessage) {
       else modifiedFiles.push(file)
     })
 
+    // 4. Git Commands
     await runGitCommand('git config --global user.email "raflisetiawan093@gmail.com"')
     await runGitCommand('git config --global user.name "Futaroukun"')
-
     await exec('git add .')
 
     try {
@@ -73,7 +84,8 @@ async function githubUpload(conn, commitMessage) {
              return {
                 success: false,
                 repoUrl,
-                message: `*GITHUB UPDATE DIBATALIN*\nGak ada perubahan yang perlu di-commit.`
+                shortMessage: "Tidak ada perubahan.",
+                message: `⚠️ *UPDATE DIBATALKAN*\nTidak ada perubahan untuk di-commit.`
             }
         }
         throw commitErr 
@@ -82,11 +94,11 @@ async function githubUpload(conn, commitMessage) {
     try {
         await exec(`git push origin ${branch}`)
     } catch (pushErr) {
-        throw new Error(`Gagal Push. Cek koneksi atau token.\nDetail: ${pushErr.message}`)
+        throw new Error(`Gagal Push: ${pushErr.message}`)
     }
 
+    // 5. Info Hasil
     const { stdout: commitHash } = await exec('git rev-parse --short HEAD')
-    
     const now = new Date()
     const commitDate = now.toLocaleString('id-ID', { 
         timeZone: 'Asia/Jakarta',
@@ -96,58 +108,104 @@ async function githubUpload(conn, commitMessage) {
     })
 
     let fileList = ''
-    if (addedFiles.length) fileList += `*Ditambahin (${addedFiles.length}):*\n` + addedFiles.map(f => `• ${f}`).join('\n') + '\n\n'
-    if (modifiedFiles.length) fileList += `*Diubah (${modifiedFiles.length}):*\n` + modifiedFiles.map(f => `• ${f}`).join('\n') + '\n\n'
-    if (deletedFiles.length) fileList += `*Dihapus (${deletedFiles.length}):*\n` + deletedFiles.map(f => `• ${f}`).join('\n') + '\n\n'
-    if (renamedFiles.length) fileList += `*Ganti Nama (${renamedFiles.length}):*\n` + renamedFiles.map(f => `• ${f}`).join('\n') + '\n'
+    if (addedFiles.length) fileList += `🆕 *New (${addedFiles.length}):*\n` + addedFiles.map(f => `◦ ${f}`).join('\n') + '\n'
+    if (modifiedFiles.length) fileList += `📝 *Mod (${modifiedFiles.length}):*\n` + modifiedFiles.map(f => `◦ ${f}`).join('\n') + '\n'
+    if (deletedFiles.length) fileList += `🗑️ *Del (${deletedFiles.length}):*\n` + deletedFiles.map(f => `◦ ${f}`).join('\n') + '\n'
 
     return {
       success: true,
       repoUrl,
-      message: `*GITHUB PUSH BERHASIL*\n\nAuthor: *${username}*\nRepo: *${repoName}*\nBranch: *${branch}*\nWaktu: *${commitDate} WIB*\n\nPesan Commit:\n*${commitMessage}*\n(Hash: \`${commitHash.trim()}\`)\n\nRincian:\n${fileList.trim() || "- Gak ada detail file -"}\n\nLink:\n${repoUrl}`
+      shortMessage: "Push Berhasil",
+      message: `🚀 *PUSH SUCCESS*\n\n👤 Author: ${username}\n📦 Repo: ${repoName}\n🌿 Branch: ${branch}\n📅 Date: ${commitDate}\n\n📝 *Commit:* ${commitMessage}\n🔑 *Hash:* ${commitHash.trim()}\n\n📊 *Files:*\n${fileList || "- Tidak ada list detail -"}`
     }
 
   } catch (err) {
     return {
       success: false,
       repoUrl: "https://github.com",
-      message: `*GITHUB PUSH GAGAL*\n\nError Log:\n\`${err.message}\``
+      shortMessage: "Push Gagal",
+      message: `❌ *PUSH FAILED*\n\nError:\n${err.message}`
     }
   }
 }
 
+/**
+ * Fungsi Mengirim Laporan Menggunakan List Button (Native Flow)
+ */
+async function sendReportButton(conn, jid, result, title, quoted = null) {
+    // 1. Tombol Link (Buka Repo)
+    const linkButton = {
+        name: "cta_url",
+        buttonParamsJson: JSON.stringify({
+            display_text: "🔗 Buka Repository",
+            url: result.repoUrl || "https://github.com",
+            merchant_url: result.repoUrl || "https://github.com"
+        })
+    }
+
+    // 2. Tombol List (Menu Opsi) - PERBAIKAN DI SINI
+    const listButton = {
+        name: "single_select",
+        buttonParamsJson: JSON.stringify({
+            title: "📋 Opsi Lainnya",
+            sections: [
+                {
+                    title: "Manajemen Bot",
+                    highlight_label: "Menu",
+                    rows: [
+                        { 
+                            header: "Cek Status", 
+                            title: "Status Auto Update", 
+                            description: "Lihat status auto update saat ini", 
+                            id: ".autoupdate status" 
+                        },
+                        { 
+                            header: "Restart Bot", 
+                            title: "Restart Sistem", 
+                            description: "Restart ulang bot WhatsApp", 
+                            id: ".restart" 
+                        }
+                    ]
+                }
+            ]
+        })
+    }
+
+    // 3. Susun Konten
+    const content = {
+        header: title,
+        image: { url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" }, 
+        body: result.message,
+        footer: "GitHub Automation System",
+        buttons: [linkButton, listButton]
+    }
+
+    // 4. Kirim
+    await conn.sendButton(jid, content, { quoted: quoted })
+}
+
+
+/**
+ * Logika Auto Update
+ */
 async function autoUpdate(conn) {
   const now = new Date()
-  const dateStr = now.toLocaleDateString('id-ID', { 
-      day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' 
-  })
+  const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
   const commitMessage = `Auto Update - ${dateStr}`
   
   const result = await githubUpload(conn, commitMessage)
-  const targetJid = '6283854551575@s.whatsapp.net'
+  const targetJid = '6283854551575@s.whatsapp.net' // Nomor Owner
 
   try {
-      await conn.sendMessage(targetJid, { 
-        text: `*NOTIFIKASI AUTO UPDATE*\n\n${result.message}`,
-        contextInfo: {
-          externalAdReply: {
-            title: "Auto GitHub Update",
-            body: result.success ? "Success" : "Failed",
-            thumbnailUrl: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-            sourceUrl: result.repoUrl || "https://github.com",
-            mediaType: 1,
-            renderLargerThumbnail: true
-          }
-        }
-      })
+      await sendReportButton(conn, targetJid, result, "🤖 AUTO UPDATE NOTIFICATION")
   } catch (err) {
-      console.error(err)
+      console.error("Gagal kirim notif auto update:", err)
   }
 }
 
 function startAutoUpdate(conn) {
   if (cronJob) return false
-  cronJob = cron.schedule('0 17 * * *', () => {
+  cronJob = cron.schedule('0 17 * * *', () => { // 17:00 UTC = 00:00 WIB
     autoUpdate(conn)
   })
   return true
@@ -162,63 +220,132 @@ function stopAutoUpdate() {
   return false
 }
 
-const handler = async (m, { conn, isOwner, args, command }) => {
+// --- HANDLER UTAMA ---
+const handler = async (m, { conn, isOwner, args, command, usedPrefix }) => {
   if (!isOwner) return
 
+  // === MODE 1: PENGATURAN AUTO UPDATE ===
   if (command === 'autoupdate') {
     const action = args[0]?.toLowerCase()
 
+    // --- START ---
     if (action === 'start' || action === 'on') {
       const started = startAutoUpdate(conn)
-      return m.reply(started 
-        ? `*AUTO UPDATE AKTIF*\n\nJadwal: Jam 00:00 WIB tiap hari.\nLaporan bakal dikirim ke nomor owner.`
-        : `*Auto update udah jalan kok.*`)
+      const msg = started 
+        ? `✅ *AUTO UPDATE DIAKTIFKAN*\nJadwal: 00:00 WIB setiap hari.`
+        : `⚠️ *Auto update sudah berjalan.*`
+      return m.reply(msg)
     }
 
+    // --- STOP ---
     if (action === 'stop' || action === 'off') {
       const stopped = stopAutoUpdate()
-      return m.reply(stopped 
-        ? `*AUTO UPDATE DIMATIIN*\n\nUpdate otomatis udah dihentiim.`
-        : `*Emang lagi gak jalan auto updatenya.*`)
+      const msg = stopped 
+        ? `🛑 *AUTO UPDATE DIMATIKAN*`
+        : `⚠️ *Auto update tidak aktif.*`
+      return m.reply(msg)
     }
 
+    // --- STATUS ---
     if (action === 'status') {
-      return m.reply(cronJob 
-        ? `*STATUS AUTO UPDATE*\n\nStatus: Aktif\nJadwal: Jam 00:00 WIB`
-        : `*STATUS AUTO UPDATE*\n\nStatus: Mati`)
+      const statusText = cronJob 
+        ? `✅ *STATUS: AKTIF*\n🕒 Jadwal: 00:00 WIB\n\nKlik tombol di bawah untuk mematikan.`
+        : `🔴 *STATUS: MATI*\n\nKlik tombol di bawah untuk menyalakan.`
+      
+      const buttons = [{
+        name: "single_select",
+        buttonParamsJson: JSON.stringify({
+            title: "⚙️ Ubah Status",
+            sections: [{
+                title: "Kontrol Auto Update",
+                highlight_label: "Config",
+                rows: [
+                    { 
+                        header: "Aktifkan", 
+                        title: "Nyalakan Auto Update", 
+                        description: "Aktifkan penjadwalan update otomatis", 
+                        id: ".autoupdate start" 
+                    },
+                    { 
+                        header: "Matikan", 
+                        title: "Matikan Auto Update", 
+                        description: "Hentikan penjadwalan update otomatis", 
+                        id: ".autoupdate stop" 
+                    }
+                ]
+            }]
+        })
+      }]
+      
+      return conn.sendButton(m.chat, {
+          header: "AUTO UPDATE STATUS",
+          body: statusText,
+          footer: "System Config",
+          buttons: buttons
+      }, { quoted: m })
     }
 
-    return m.reply(`*PERINTAH AUTO UPDATE*\n\n• \`${usedPrefix + command}\` *start* - Nyalain\n• \`${usedPrefix + command}\` *stop* - Matiin\n• \`${usedPrefix + command}\` *status* - Cek status`)
+    // --- MENU UTAMA (.autoupdate) ---
+    const buttons = [{
+        name: "single_select",
+        buttonParamsJson: JSON.stringify({
+            title: "📋 Pilih Aksi",
+            sections: [{
+                title: "Konfigurasi Auto Update",
+                highlight_label: "Menu",
+                rows: [
+                    { 
+                        header: "Start", 
+                        title: "Start Auto Update", 
+                        description: "Nyalakan penjadwalan otomatis", 
+                        id: ".autoupdate start" 
+                    },
+                    { 
+                        header: "Stop", 
+                        title: "Stop Auto Update", 
+                        description: "Hentikan penjadwalan otomatis", 
+                        id: ".autoupdate stop" 
+                    },
+                    { 
+                        header: "Status", 
+                        title: "Cek Status", 
+                        description: "Lihat status auto update saat ini", 
+                        id: ".autoupdate status" 
+                    }
+                ]
+            }]
+        })
+    }]
+    
+    return conn.sendButton(m.chat, {
+        header: "AUTO UPDATE CONFIG",
+        body: "Silakan pilih konfigurasi untuk update otomatis:",
+        footer: "GitHub Automation",
+        buttons: buttons
+    }, { quoted: m })
   }
 
+  // === MODE 2: MANUAL UPDATE (PUSH) ===
   const now = new Date()
   const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
-  const commitMessage = args.join(' ').trim() || `Maintenance & Update - ${dateStr}`
+  const commitMessage = args.join(' ').trim() || `Update Manual - ${dateStr}`
 
-  let loading = await m.reply(`*Lagi ngirim perubahan ke GitHub...*\n\nPesan: *${commitMessage}*`)
+  let loading
+  try {
+     loading = await m.reply(`⏳ *Sedang mengirim perubahan ke GitHub...*\n"${commitMessage}"`)
+  } catch {}
 
   const result = await githubUpload(conn, commitMessage)
 
-  await conn.sendMessage(m.chat, { 
-    text: result.message,
-    contextInfo: {
-      externalAdReply: {
-        title: "GitHub Update Notification",
-        body: '',
-        thumbnailUrl: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-        sourceUrl: result.repoUrl || "https://github.com",
-        mediaType: 1,
-        renderLargerThumbnail: true
-      }
-    }
-  }, { quoted: m })
+  // Kirim laporan hasil pakai List Button
+  await sendReportButton(conn, m.chat, result, "MANUAL UPDATE REPORT", m)
 
   if (loading?.key) {
     setTimeout(async () => { try { await conn.sendMessage(m.chat, { delete: loading.key }) } catch {} }, 2000)
   }
 }
 
-handler.help = ['update', 'push', 'autoupdate']
+handler.help = ['update', 'autoupdate']
 handler.tags = ['owner']
 handler.command = /^(update|push|u|autoupdate)$/i
 handler.owner = true
