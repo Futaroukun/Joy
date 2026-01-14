@@ -16,7 +16,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     try {
         loadingMsg = await m.reply('*Sabar, gua lagi nyari lagunya...*')
 
-        const apiUrl = `https://api.nekolabs.web.id/dwn/youtube/play/v1?q=${encodeURIComponent(text)}`
+        // URL API Baru
+        const apiUrl = `https://api.ootaizumi.web.id/downloader/youtube/play?query=${encodeURIComponent(text)}`
         const response = await fetch(apiUrl)
 
         if (!response.ok) {
@@ -25,38 +26,44 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
         const json = await response.json()
 
-        if (!json.success || !json.result) {
-            throw new Error('Lagu gak ketemu atau API lagi bermasalah.')
+        // Validasi response berdasarkan struktur JSON baru
+        if (!json.status || !json.result || !json.result.download) {
+            throw new Error('Lagu gak ketemu atau link download kosong.')
         }
 
-        const { metadata, downloadUrl } = json.result
+        const data = json.result
 
         if (loadingMsg?.key) {
             try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
         }
 
         let caption = `*YOUTUBE PLAY*\n\n` +
-                      `*Judul:* ${metadata.title}\n` +
-                      `*Channel:* ${metadata.channel}\n` +
-                      `*Durasi:* ${metadata.duration}`
+                      `*Judul:* ${data.title}\n` +
+                      `*Channel:* ${data.author.name}\n` +
+                      `*Durasi:* ${data.timestamp}\n` +
+                      `*Views:* ${data.views}\n` +
+                      `*Upload:* ${data.ago}`
 
+        // Kirim Info Lagu dengan Thumbnail
         await conn.sendMessage(m.chat, {
             text: caption,
             contextInfo: {
                 externalAdReply: {
-                    title: metadata.title,
-                    body: `Channel: ${metadata.channel}`,
-                    thumbnailUrl: metadata.cover,
-                    sourceUrl: metadata.url,
+                    title: data.title,
+                    body: `Channel: ${data.author.name}`,
+                    thumbnailUrl: data.thumbnail || data.image,
+                    sourceUrl: data.url,
                     mediaType: 1,
                     renderLargerThumbnail: true
                 }
             }
         }, { quoted: m })
 
+        // Kirim Audio
         await conn.sendMessage(m.chat, {
-            audio: { url: downloadUrl },
-            mimetype: 'audio/mpeg'
+            audio: { url: data.download }, // Mengambil link dari json.result.download
+            mimetype: 'audio/mpeg',
+            fileName: `${data.title}.mp3`
         }, { quoted: m })
 
     } catch (error) {
@@ -64,7 +71,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         if (loadingMsg?.key) {
             try { await conn.sendMessage(m.chat, { delete: loadingMsg.key }) } catch {}
         }
-        m.reply(`*GAGAL MEMUTAR LAGU*\n\n*Error:* ${error.message}\n\nCoba lagi dengan judul lain.`)
+        m.reply(`*GAGAL MEMUTAR LAGU*\n\n*Error:* ${error.message}\n\nCoba lagi nanti.`)
     }
 }
 
