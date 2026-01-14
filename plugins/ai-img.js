@@ -62,7 +62,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 }
 
 handler.help = ['editimg *instruksi*']
-handler.tags = ['ai', 'image']
+handler.tags = ['ai']
 handler.command = /^(editimg|imgedit|aiedit|editai)$/i
 
 export default handler
