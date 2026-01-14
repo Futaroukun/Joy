@@ -173,6 +173,5 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
 handler.help = ['deepseek *teks*'];
 handler.tags = ['ai'];
 handler.command = /^(deepseek|ds|dsreset)$/i;
-handler.limit = true;
 
 export default handler;
