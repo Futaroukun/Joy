@@ -95,8 +95,8 @@ async function githubUpload(conn, commitMessage) {
 
     let fileList = ''
     if (addedFiles.length) fileList += `*New (${addedFiles.length}):*\n` + addedFiles.map(f => `• ${f}`).join('\n') + '\n'
-    if (modifiedFiles.length) fileList += `*Mod (${modifiedFiles.length}):*\n` + modifiedFiles.map(f => `• ${f}`).join('\n') + '\n'
-    if (deletedFiles.length) fileList += `*Del (${deletedFiles.length}):*\n` + deletedFiles.map(f => `• ${f}`).join('\n') + '\n'
+    if (modifiedFiles.length) fileList += `*Modified (${modifiedFiles.length}):*\n` + modifiedFiles.map(f => `• ${f}`).join('\n') + '\n'
+    if (deletedFiles.length) fileList += `*Deleted (${deletedFiles.length}):*\n` + deletedFiles.map(f => `• ${f}`).join('\n') + '\n'
 
     return {
       success: true,
@@ -162,7 +162,7 @@ async function sendReportButton(conn, jid, result, title, quoted = null) {
         header: title,
         image: { url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" }, 
         body: result.message,
-        footer: "GitHub Automation System",
+        footer: "Update System Joy",
         buttons: [linkButton, listButton]
     }
 
