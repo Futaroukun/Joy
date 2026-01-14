@@ -10,7 +10,7 @@ import crypto from "crypto";
 
 import { format } from "util";
 import { fileTypeFromBuffer } from "file-type";
-import { parsePhoneNumber } from "awesome-phonenumber";
+import PhoneNumber from "awesome-phonenumber";
 import { watchFile, unwatchFile } from "fs";
 import { fileURLToPath } from "url";
 import { toAudio } from "./converter.js";
@@ -108,7 +108,6 @@ export function makeWASocket(connectionOptions, options = {}) {
          }
       },
       
-      // FITUR BARU: profilePictureUrl
       profilePictureUrl: {
          async value(jid, type = 'image', query = 'url') {
             try {
@@ -133,30 +132,35 @@ export function makeWASocket(connectionOptions, options = {}) {
          }
       },
       
-      // FITUR BARU: getJid (dari simple1.js)
       getJid: {
          value(sender) {
-            sender = conn.decodeJid(sender);
-            if (!conn.isLid) conn.isLid = new Map();
-            if (conn.isLid.has(sender)) return conn.isLid.get(sender);
-            if (!sender?.endsWith('@lid')) return sender;
+            try {
+               sender = conn.decodeJid(sender);
+               if (!sender) return null;
+               
+               if (!conn.isLid) conn.isLid = new Map();
+               if (conn.isLid.has(sender)) return conn.isLid.get(sender);
+               if (!sender?.endsWith('@lid')) return sender;
 
-            for (const chat of Object.values(conn.chats)) {
-               if (!chat?.metadata?.participants) continue;
-               const user = chat.metadata.participants.find(p => 
-                  p.lid === sender || p.id === sender
-               );
-               if (user) {
-                  const jid = user?.phoneNumber || user?.jid || user?.id;
-                  conn.isLid.set(sender, jid);
-                  return jid;
+               for (const chat of Object.values(conn.chats || {})) {
+                  if (!chat?.metadata?.participants) continue;
+                  const user = chat.metadata.participants.find(p => 
+                     p.lid === sender || p.id === sender
+                  );
+                  if (user) {
+                     const jid = user?.phoneNumber || user?.jid || user?.id;
+                     conn.isLid.set(sender, jid);
+                     return jid;
+                  }
                }
+               return sender;
+            } catch (e) {
+               console.error('[getJid Error]:', e.message);
+               return sender;
             }
-            return sender;
          }
       },
       
-      // FITUR BARU: logger
       logger: {
          get() {
             let dates = new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
@@ -193,49 +197,64 @@ export function makeWASocket(connectionOptions, options = {}) {
       
       getNumber: {
          value(sender) {
-            if (!conn.storeNumber) conn.storeNumber = {};
-            if (!sender || typeof sender !== "string") return "";
-            if (sender.endsWith("@s.whatsapp.net")) return sender.split("@")[0];
-      
-            if (conn.storeNumber[sender]) return conn.storeNumber[sender];
-            for (let chat of Object.values(conn.chats)) {
-               if (!chat.metadata?.participants) continue;
-               const user = chat.metadata.participants.find(p => p.id === sender);
-               if (user?.phoneNumber) return conn.storeNumber[sender] = (user.phoneNumber).split("@")[0];
+            try {
+               if (!conn.storeNumber) conn.storeNumber = {};
+               if (!sender || typeof sender !== "string") return "";
+               if (sender.endsWith("@s.whatsapp.net")) return sender.split("@")[0];
+         
+               if (conn.storeNumber[sender]) return conn.storeNumber[sender];
+               for (let chat of Object.values(conn.chats || {})) {
+                  if (!chat.metadata?.participants) continue;
+                  const user = chat.metadata.participants.find(p => p.id === sender);
+                  if (user?.phoneNumber) return conn.storeNumber[sender] = (user.phoneNumber).split("@")[0];
+               }
+               return sender;
+            } catch (e) {
+               console.error('[getNumber Error]:', e.message);
+               return sender || "";
             }
-            return sender;
          }
       },
       
       getLid: {
          value(sender) {
-            if (!conn.storeLid) conn.storeLid = {};
-            if (!sender || typeof sender !== "string") return "";
-            const decoded = jidNormalizedUser(sender);
-            if (decoded.endsWith("@lid")) return decoded;
-            if (decoded && typeof decoded == "string") {
-               if (conn.storeLid[decoded]) return conn.storeLid[decoded];
-               for (let chat of Object.values(conn.chats || {})) {
-                  const participants = chat.metadata?.participants;
-                  if (!participants) continue;
-                  const user = participants.find(p => p.phoneNumber === decoded);
-                  if (user?.id) return (conn.storeLid[user.phoneNumber] = jidNormalizedUser(user.id));
+            try {
+               if (!conn.storeLid) conn.storeLid = {};
+               if (!sender || typeof sender !== "string") return "";
+               const decoded = jidNormalizedUser(sender);
+               if (decoded.endsWith("@lid")) return decoded;
+               if (decoded && typeof decoded == "string") {
+                  if (conn.storeLid[decoded]) return conn.storeLid[decoded];
+                  for (let chat of Object.values(conn.chats || {})) {
+                     const participants = chat.metadata?.participants;
+                     if (!participants) continue;
+                     const user = participants.find(p => p.phoneNumber === decoded);
+                     if (user?.id) return (conn.storeLid[user.phoneNumber] = jidNormalizedUser(user.id));
+                  }
                }
+               return decoded;
+            } catch (e) {
+               console.error('[getLid Error]:', e.message);
+               return sender || "";
             }
-            return decoded;
          }
       },
       
       getLidPN: {
          async value(sender) {
-            if (!sender || typeof sender !== "string") return "";
-            if (sender.endsWith("@s.whatsapp.net")) {
-               const lid = await conn.signalRepository?.lidMapping?.getLIDForPN?.(sender);
-               return lid?.decodeJid();
-            } else if (sender.endsWith("@lid")) {
-               const Jid = await conn.signalRepository?.lidMapping?.getPNForLID?.(sender);
-               return Jid?.decodeJid();
-            } else return sender;
+            try {
+               if (!sender || typeof sender !== "string") return "";
+               if (sender.endsWith("@s.whatsapp.net")) {
+                  const lid = await conn.signalRepository?.lidMapping?.getLIDForPN?.(sender);
+                  return lid?.decodeJid();
+               } else if (sender.endsWith("@lid")) {
+                  const Jid = await conn.signalRepository?.lidMapping?.getPNForLID?.(sender);
+                  return Jid?.decodeJid();
+               } else return sender;
+            } catch (e) {
+               console.error('[getLidPN Error]:', e.message);
+               return sender || "";
+            }
          }
       },
       
@@ -308,7 +327,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                         const qM = {
                            key: {
                               remoteJid,
-                              fromMe: areJidsSameUser((conn?.user.lid).decodeJid(), remoteJid),
+                              fromMe: areJidsSameUser((conn?.user?.lid || conn?.user?.id || '').decodeJid(), remoteJid),
                               id: context.stanzaId,
                               participant
                            },
@@ -343,7 +362,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                         if (!chats.subject) chats.subject = metadata.subject || '';
                         if (!chats.metadata) chats.metadata = metadata;
                      }
-                     sender = conn.decodeJid((message.key?.fromMe && (conn?.user.lid).decodeJid()) || 
+                     sender = conn.decodeJid((message.key?.fromMe && (conn?.user?.lid || conn?.user?.id || '').decodeJid()) || 
                         message.participant || message.key?.participant || chat || '');
                      if (sender !== chat) {
                         let chats = conn.chats[sender];
@@ -356,7 +375,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                   chats.isChats = true;
                   if (!chats.messages) chats.messages = {};
                   
-                  const fromMe = message.key.fromMe || areJidsSameUser(sender || chat, (conn?.user.lid).decodeJid());
+                  const fromMe = message.key.fromMe || areJidsSameUser(sender || chat, (conn?.user?.lid || conn?.user?.id || '').decodeJid());
                   if (!['protocolMessage'].includes(mtype) && !fromMe && 
                       message.messageStubType != WAMessageStubType.CIPHERTEXT && message.message) {
                      delete message.message.messageContextInfo;
@@ -368,7 +387,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                         chats.messages = Object.fromEntries(chatsMessages.slice(30, chatsMessages.length));
                   }
                } catch (e) {
-                  console.error(e);
+                  console.error('[pushMessage Error]:', e);
                }
             }
          }
@@ -376,30 +395,40 @@ export function makeWASocket(connectionOptions, options = {}) {
       
       getAndVerifyUsername: {
          async value(jid) {
-            if (!jid) return 'Unknown';
-            const cleanJid = jid.decodeJid();
-            let name = await this.getName(cleanJid);
-            const isNameJustJid = /@s\.whatsapp\.net|@lid$/.test(name);
-            const userInDb = global.db?.data?.users[cleanJid];
-            const isDbNameJustJid = userInDb && /@s\.whatsapp\.net|@lid$/.test(userInDb.name);
-            if (isNameJustJid || (userInDb && isDbNameJustJid)) {
-               try {
-                  const profile = await this.getProfileInfo(cleanJid);
-                  if (profile.pushname && profile.pushname.trim() !== '') {
-                     name = profile.pushname;
+            try {
+               if (!jid) return 'Unknown';
+               const cleanJid = jid.decodeJid();
+               let name = await this.getName(cleanJid);
+               const isNameJustJid = /@s\.whatsapp\.net|@lid$/.test(name);
+               const userInDb = global.db?.data?.users?.[cleanJid];
+               const isDbNameJustJid = userInDb && /@s\.whatsapp\.net|@lid$/.test(userInDb.name);
+               
+               if (isNameJustJid || (userInDb && isDbNameJustJid)) {
+                  try {
+                     const profile = await this.getProfileInfo(cleanJid);
+                     if (profile?.pushname && profile.pushname.trim() !== '') {
+                        name = profile.pushname;
+                     }
+                  } catch (e) {
+                     console.log(`[getAndVerifyUsername] Gagal fetch profile untuk ${cleanJid}`);
                   }
-               } catch (e) {
-                  console.log(`[getAndVerifyUsername] Gagal fetch profile untuk ${cleanJid}`);
                }
+               
+               if (userInDb && userInDb.name !== name && !/@s\.whatsapp\.net|@lid$/.test(name)) {
+                  console.log(`[DB-HEAL] Updating name for ${cleanJid}: "${userInDb.name}" -> "${name}"`);
+                  userInDb.name = name;
+               }
+               
+               if (/@s\.whatsapp\.net|@lid$/.test(name)) {
+                  const parts = name.split('@');
+                  return parts && parts.length > 0 ? parts[0] : 'Unknown';
+               }
+               
+               return name || 'Unknown';
+            } catch (e) {
+               console.error('[getAndVerifyUsername Error]:', e.message);
+               return 'Unknown';
             }
-            if (userInDb && userInDb.name !== name && !/@s\.whatsapp\.net|@lid$/.test(name)) {
-               console.log(`[DB-HEAL] Updating name for ${cleanJid}: "${userInDb.name}" -> "${name}"`);
-               userInDb.name = name;
-            }
-            if (/@s\.whatsapp\.net|@lid$/.test(name)) {
-               return name.split('@')[0];
-            }
-            return name;
          },
          enumerable: true
       },
@@ -502,7 +531,6 @@ export function makeWASocket(connectionOptions, options = {}) {
          enumerable: true
       },
       
-      // FITUR BARU: sendSticker (versi simple1.js)
       sendSticker: {
          async value(jid, filePath, m, options = {}) {
             const { data, mime } = await conn.getFile(filePath);
@@ -588,7 +616,6 @@ export function makeWASocket(connectionOptions, options = {}) {
          }
       },
       
-      // FITUR BARU: sendMedia
       sendMedia: {
          async value(jid, path, quoted, options = {}) {
             let { mime, data } = await conn.getFile(path);
@@ -694,7 +721,6 @@ export function makeWASocket(connectionOptions, options = {}) {
          enumerable: true
       },
       
-      // FITUR BARU: sendButton
       sendButton: {
          async value(jid, content = {}, options = {}) {
             let header = {};
@@ -747,7 +773,6 @@ export function makeWASocket(connectionOptions, options = {}) {
          }
       },
       
-      // FITUR BARU: sendContact
       sendContact: {
          async value(jid, data, quoted, options) {
             if (!Array.isArray(data[0]) && typeof data[0] === 'string') data = [data];
@@ -763,7 +788,7 @@ BEGIN:VCARD
 VERSION:3.0
 N:;${name.replace(/\n/g, '\\n')};;;
 FN:${name.replace(/\n/g, '\\n')}
-TEL;type=CELL;type=VOICE;waid=${number}:${parsePhoneNumber('+' + number).getNumber('international')}${
+TEL;type=CELL;type=VOICE;waid=${number}:${PhoneNumber('+' + number).getNumber('international')}${
    biz.description ? `
 X-WA-BIZ-NAME:${(conn.chats[njid]?.vname || conn.getName(njid) || name).replace(/\n/, '\\n')}
 X-WA-BIZ-DESCRIPTION:${biz.description.replace(/\n/g, '\\n')}
@@ -803,7 +828,6 @@ END:VCARD
          }
       },
       
-      // FITUR BARU: adReply
       adReply: {
          async value(jid, text, path, m, options = {}) {
             const { data } = await conn.getFile(path);
@@ -879,7 +903,7 @@ END:VCARD
       },
       
       cMod: {
-         value(jid, message, text = '', sender = (conn?.user.lid).decodeJid(), options = {}) {
+         value(jid, message, text = '', sender = (conn?.user?.lid || conn?.user?.id || '').decodeJid(), options = {}) {
             if (options.mentions && !Array.isArray(options.mentions)) options.mentions = [options.mentions];
             let copy = message.toJSON();
             delete copy.message.messageContextInfo;
@@ -907,7 +931,7 @@ END:VCARD
             else if (copy.key.remoteJid.includes('@broadcast')) sender = sender || copy.key.remoteJid;
             
             copy.key.remoteJid = jid;
-            copy.key.fromMe = areJidsSameUser(sender, (conn?.user.lid).decodeJid()) || false;
+            copy.key.fromMe = areJidsSameUser(sender, (conn?.user?.lid || conn?.user?.id || '').decodeJid()) || false;
             return proto.WebMessageInfo.create(copy);
          },
          enumerable: true
@@ -939,7 +963,7 @@ END:VCARD
             
             m = generateWAMessageFromContent(jid, m, {
                ...options,
-               userJid: (conn?.user.lid).decodeJid()
+               userJid: (conn?.user?.lid || conn?.user?.id || '').decodeJid()
             });
             
             await conn.relayMessage(jid, m.message, {
@@ -952,10 +976,10 @@ END:VCARD
       },
       
       fakeReply: {
-         value(jid, text = '', fakeJid = (conn?.user.lid).decodeJid(), fakeText = '', fakeGroupJid, options) {
+         value(jid, text = '', fakeJid = (conn?.user?.lid || conn?.user?.id || '').decodeJid(), fakeText = '', fakeGroupJid, options) {
             return conn.reply(jid, text, {
                key: {
-                  fromMe: areJidsSameUser(fakeJid, (conn?.user.lid).decodeJid()),
+                  fromMe: areJidsSameUser(fakeJid, (conn?.user?.lid || conn?.user?.id || '').decodeJid()),
                   participant: fakeJid,
                   ...(fakeGroupJid ? { remoteJid: fakeGroupJid } : {})
                },
@@ -1039,22 +1063,29 @@ END:VCARD
       
       parseMention: {
          value(text = "") {
-            const regex = /@?(\d{5,20})(?:@s\.whatsapp\.net)?/g;
-            const mentions = [];
-            let match;
+            try {
+               const regex = /@?(\d{5,20})(?:@s\.whatsapp\.net)?/g;
+               const mentions = [];
+               let match;
 
-            while ((match = regex.exec(text)) !== null) {
-               const raw = match[1];
-               const pn = parsePhoneNumber(`+${raw}`);
+               while ((match = regex.exec(text)) !== null) {
+                  const raw = match[1];
+                  if (!raw) continue;
+                  
+                  const pn = PhoneNumber(`+${raw}`);
 
-               if (pn.valid) {
-                  mentions.push(conn.getLid(`${raw}@s.whatsapp.net`));
-               } else if (raw.length >= 13 && !raw.startsWith("1203")) {
-                  mentions.push(`${raw}@lid`);
+                  if (pn.valid) {
+                     mentions.push(conn.getLid(`${raw}@s.whatsapp.net`));
+                  } else if (raw.length >= 13 && !raw.startsWith("1203")) {
+                     mentions.push(`${raw}@lid`);
+                  }
                }
-            }
 
-            return [...new Set(mentions)];
+               return [...new Set(mentions)];
+            } catch (e) {
+               console.error('[parseMention Error]:', e.message);
+               return [];
+            }
          },
          enumerable: true
       },
@@ -1080,39 +1111,44 @@ END:VCARD
       
       getName: {
          value: async function (jid = "", withoutContact = false) {
-            if (!jid) return "";
-            jid = conn.decodeJid(jid);
-            withoutContact = conn.withoutContact || withoutContact;
+            try {
+               if (!jid) return "";
+               jid = conn.decodeJid(jid);
+               withoutContact = conn.withoutContact || withoutContact;
 
-            if (_isGroupJid(jid)) {
-               const chat = conn.chats[jid];
-               if (chat?.subject) return chat.subject;
+               if (_isGroupJid(jid)) {
+                  const chat = conn.chats[jid];
+                  if (chat?.subject) return chat.subject;
 
-               const cached = conn._groupMetaCache.get(jid);
-               if (cached) return cached.subject;
+                  const cached = conn._groupMetaCache.get(jid);
+                  if (cached) return cached.subject;
 
-               try {
-                  const md = await conn.groupMetadata(jid);
-                  if (md) {
-                     conn._groupMetaCache.set(jid, md);
-                     return md.subject || chat?.name || jid;
+                  try {
+                     const md = await conn.groupMetadata(jid);
+                     if (md) {
+                        conn._groupMetaCache.set(jid, md);
+                        return md.subject || chat?.name || jid;
+                     }
+                  } catch {
+                     return chat?.name || jid;
                   }
-               } catch {
-                  return chat?.name || jid;
                }
+
+               const self = conn.user?.lid && areJidsSameUser ? 
+                  areJidsSameUser(jid, conn.user.lid) : false;
+
+               const v = jid === "0@s.whatsapp.net"
+                  ? { jid, vname: "WhatsApp" }
+                  : self
+                  ? conn.user
+                  : conn.chats[jid] || {};
+
+               const name = v.name || v.vname || v.notify || v.verifiedName || v.subject;
+               return withoutContact ? "" : name || jid;
+            } catch (e) {
+               console.error('[getName Error]:', e.message);
+               return jid || "";
             }
-
-            const self = conn.user?.lid && areJidsSameUser ? 
-               areJidsSameUser(jid, conn.user.lid) : false;
-
-            const v = jid === "0@s.whatsapp.net"
-               ? { jid, vname: "WhatsApp" }
-               : self
-               ? conn.user
-               : conn.chats[jid] || {};
-
-            const name = v.name || v.vname || v.notify || v.verifiedName || v.subject;
-            return withoutContact ? "" : name || jid;
          },
          enumerable: true
       },
@@ -1238,7 +1274,7 @@ END:VCARD
       
       ...(typeof conn.chatRead !== "function" ? {
          chatRead: {
-            value(jid, participant = (conn?.user.lid).decodeJid(), messageID) {
+            value(jid, participant = (conn?.user?.lid || conn?.user?.id || '').decodeJid(), messageID) {
                return conn.sendReadReceipt(jid, participant, [messageID]);
             },
             enumerable: true
@@ -1393,7 +1429,7 @@ export async function smsg(conn, m, hasParent) {
       },
       fromMe: {
          get() {
-            return m.key?.fromMe || areJidsSameUser((conn?.user.lid).decodeJid(), m.sender) || false;
+            return m.key?.fromMe || areJidsSameUser((conn?.user?.lid || conn?.user?.id || '').decodeJid(), m.sender) || false;
          },
          enumerable: true
       },
@@ -1555,7 +1591,7 @@ export async function smsg(conn, m, hasParent) {
                   },
                   fromMe: {
                      get() {
-                        return areJidsSameUser(this.sender, (conn?.user.lid).decodeJid());
+                        return areJidsSameUser(this.sender, (conn?.user?.lid || conn?.user?.id || '').decodeJid());
                      },
                      enumerable: true
                   },
@@ -1683,7 +1719,6 @@ export async function smsg(conn, m, hasParent) {
          },
          enumerable: true
       },
-      // FITUR BARU: edit
       edit: {
          value(text, key) {
             return conn.sendMessage(this.chat, { text, edit: key || this.key });
@@ -1844,3 +1879,4 @@ async function generateProfilePicture(mediaUpload) {
 function nullish(args) {
    return !(args !== null && args !== undefined);
 }
+         
