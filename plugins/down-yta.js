@@ -1,6 +1,5 @@
 import fetch from 'node-fetch'
 
-// Helper Format Durasi dari detik
 const formatDuration = (seconds) => {
     if (isNaN(seconds) || seconds < 0) return "00:00";
     const minutes = Math.floor(seconds / 60);
@@ -8,87 +7,11 @@ const formatDuration = (seconds) => {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
-// --- SCRAPER 1: THESOCIALCAT (PRIMARY) ---
-class Youtube {
-    constructor() {
-        this.API_URL = "https://thesocialcat.com/api/youtube-download";
-        this.HEADERS = {
-            "accept": "*/*",
-            "accept-language": "id-ID",
-            "content-type": "application/json",
-            "Referer": "https://thesocialcat.com/tools/youtube-video-downloader",
-            "Referrer-Policy": "strict-origin-when-cross-origin"
-        };
-        this.CREATED_BY = "Ditzzy";
-        this.NOTE = "Thank you for using this scrape, I hope you appreciate me for making this scrape by not deleting wm";
-    }
-
-    wrapResponse(data) {
-        return {
-            created_by: this.CREATED_BY,
-            note: this.NOTE,
-            results: data
-        };
-    }
-
-    async download(url, format) {
-        try {
-            const response = await fetch(this.API_URL, {
-                method: "POST",
-                headers: this.HEADERS,
-                body: JSON.stringify({
-                    format,
-                    url
-                }),
-                timeout: 30000
-            });
-
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return this.wrapResponse(data);
-        } catch (e) {
-            throw new Error(`Error downloading: ${e.message}`);
-        }
-    }
-}
-
-// --- SCRAPER 2: OOTAIZUMI (BACKUP) ---
-const ootaizumi = async (url) => {
-    try {
-        const apiUrl = `https://api.ootaizumi.web.id/downloader/youtube?url=${encodeURIComponent(url)}&format=mp3`;
-        const response = await fetch(apiUrl, { timeout: 30000 });
-        
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
-        }
-        
-        const json = await response.json();
-
-        if (!json.status || !json.result || !json.result.download) {
-            throw new Error('Format response API tidak valid');
-        }
-        
-        return {
-            title: json.result.title || 'YouTube Audio',
-            download: json.result.download,
-            thumbnail: json.result.thumbnail || json.result.image || 'https://telegra.ph/file/5a5a67f0822606822c60c.jpg',
-            channel: json.result.author?.name || json.result.channel || '-',
-            duration: json.result.timestamp || json.result.duration || '00:00',
-            server: "Ootaizumi"
-        };
-    } catch (e) {
-        throw new Error(`Ootaizumi Error: ${e.message}`);
-    }
-};
-
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!text) {
         return m.reply(
             `*MASUKKAN LINK YOUTUBE*\n\n` +
-            `Download lagu MP3 dari YouTube.\n\n` +
+            `Gunakan fitur ini buat download audio MP3.\n\n` +
             `*Cara Pakai:*\n` +
             `\`${usedPrefix + command}\` \`url\`\n\n` +
             `*Contoh:*\n` +
@@ -96,9 +19,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         )
     }
 
-    const ytRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)[\w-]{11}.*$/
+    const ytRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}.*$/
     if (!ytRegex.test(text)) {
-        return m.reply('*Link gak valid!* Pastikan link YouTube kamu benar.')
+        return m.reply('*Link gak valid!* Pastiin link YouTube kamu bener.')
     }
 
     let loadingMsg = null
@@ -108,90 +31,105 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         let data = null;
         let buffer = null;
 
-        // --- COBA SERVER UTAMA (TheSocialCat) ---
         try {
-            const yt = new Youtube();
-            const response = await yt.download(text, 'audio');
-            
-            // Response structure: { created_by, note, results: {...} }
-            const result = response.results;
-            
-            if (!result || !result.mediaUrl) {
-                throw new Error('mediaUrl tidak ditemukan dalam response');
+            const apiUrl = `https://api.ryzumi.vip/api/downloader/ytmp3?url=${encodeURIComponent(text)}`
+            const response = await fetch(apiUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+            })
+
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Server Utama merespon dengan HTML (Server Down/Maintenance)");
             }
 
-            console.log('TheSocialCat Response:', JSON.stringify(result, null, 2));
+            const json = await response.json()
 
-            // Download Audio dari mediaUrl
-            const buffResp = await fetch(result.mediaUrl, { timeout: 60000 });
-            if (!buffResp.ok) throw new Error(`Gagal download: ${buffResp.status}`);
-            buffer = await buffResp.buffer();
+            if (!json.url) {
+                throw new Error('Link download tidak ditemukan di API utama.')
+            }
+
+            const buffResp = await fetch(json.url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+            })
+            
+            if (!buffResp.ok) throw new Error(`Gagal mendownload file (Status: ${buffResp.status})`)
+            buffer = await buffResp.buffer()
 
             data = {
-                title: result.caption || result.id || "YouTube Audio",
-                channel: result.username || '-',
-                thumbnail: result.thumbnail || 'https://telegra.ph/file/5a5a67f0822606822c60c.jpg',
-                durationStr: formatDuration(result.videoMeta?.duration || 0),
-                quality: `128kbps`,
-                server: "TheSocialCat"
+                title: json.title,
+                channel: json.author || '-',
+                thumbnail: json.thumbnail,
+                durationStr: formatDuration(json.lengthSeconds),
+                views: json.views ? json.views.toLocaleString() : '-',
+                quality: `\`${json.quality || '128kbps'}\``,
+                server: 'Ryzumi'
             };
 
         } catch (e) {
-            // --- JIKA GAGAL, PINDAH KE SERVER BACKUP (Ootaizumi) ---
-            console.log("Primary Scraper Error:", e.message);
-            console.log("Switching to backup server...");
+            console.log("Primary API error, switching to backup:", e.message);
 
-            const result = await ootaizumi(text);
+            const apiUrl = `https://api.ootaizumi.web.id/downloader/youtube?url=${encodeURIComponent(text)}&format=mp3`
+            const response = await fetch(apiUrl)
+            
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Server Backup merespon dengan HTML.");
+            }
 
-            // Download Audio Backup
-            const buffResp = await fetch(result.download, { timeout: 60000 });
-            if (!buffResp.ok) throw new Error(`Gagal download backup: ${buffResp.status}`);
-            buffer = await buffResp.buffer();
+            const json = await response.json()
+
+            if (!json.status || !json.result || !json.result.download) {
+                throw new Error('Semua server sibuk/error.')
+            }
+
+            const result = json.result
+
+            const buffResp = await fetch(result.download, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+            })
+            
+            if (!buffResp.ok) throw new Error(`Gagal mendownload file (Status: ${buffResp.status})`)
+            buffer = await buffResp.buffer()
 
             data = {
                 title: result.title,
-                channel: result.channel,
-                thumbnail: result.thumbnail,
-                durationStr: result.duration,
-                quality: `128kbps`,
-                server: result.server
+                channel: result.author?.name || '-',
+                thumbnail: result.thumbnail || result.image,
+                durationStr: result.timestamp || formatDuration(result.seconds),
+                views: result.views || '-',
+                quality: '`128kbps`',
+                server: 'Ootaizumi (Backup)'
             };
         }
 
-        // Validasi buffer
-        if (!buffer || buffer.length === 0) {
-            throw new Error('File audio kosong atau tidak valid');
-        }
-
-        console.log('Final Data:', data);
-        console.log('Buffer Size:', buffer.length, 'bytes');
-
-        // Update status loading
         if (loadingMsg?.key) {
             try {
                 await conn.sendMessage(m.chat, {
                     text: `*Berhasil diunduh!*\n\nLagi ngirim audio:\n*${data.title}*\n\nTunggu sebentar ya...`,
                     edit: loadingMsg.key
                 })
-            } catch (e) {
-                console.log('Edit message error:', e.message);
-            }
+            } catch (e) {}
         }
 
-        const caption = `*YOUTUBE MP3 DOWNLOADER*\n\n` +
-                       `*Judul:* ${data.title}\n` +
-                       `*Channel:* ${data.channel}\n` +
-                       `*Durasi:* ${data.durationStr}\n` +
-                       `*Kualitas:* ${data.quality}\n` +
-                       `*Server:* ${data.server}`
+        let caption = `*YOUTUBE MP3 DOWNLOADER*\n\n` +
+                      `*Judul:* ${data.title}\n` +
+                      `*Channel:* ${data.channel}\n` +
+                      `*Durasi:* ${data.durationStr}\n` +
+                      `*Views:* ${data.views}\n` +
+                      `*Server:* ${data.server}`
 
-        // Kirim Pesan Info (AdReply)
         await conn.sendMessage(m.chat, {
             text: caption,
             contextInfo: {
                 externalAdReply: {
                     title: data.title,
-                    body: `${data.channel} • ${data.durationStr}`,
+                    body: `Channel: ${data.channel}`,
                     thumbnailUrl: data.thumbnail,
                     sourceUrl: text,
                     mediaType: 1,
@@ -200,35 +138,23 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }, { quoted: m })
 
-        // Kirim File Audio
         await conn.sendMessage(m.chat, {
             audio: buffer,
             mimetype: 'audio/mpeg',
-            fileName: `${data.title.replace(/[^\w\s]/gi, '')}.mp3`
+            fileName: `${data.title}.mp3`
         }, { quoted: m })
-
-        // Hapus loading message setelah sukses
-        if (loadingMsg?.key) {
-            try {
-                await conn.sendMessage(m.chat, { delete: loadingMsg.key })
-            } catch (e) {}
-        }
 
     } catch (error) {
         console.error('YTMP3 Error:', error)
-        const errMsg = `*PENGUNDUHAN GAGAL*\n\nSemua server sibuk atau link error.\n\n*Error:* ${error.message}\n\nCoba lagi dalam beberapa saat.`;
-        
         if (loadingMsg?.key) {
             try {
                 await conn.sendMessage(m.chat, {
-                    text: errMsg,
+                    text: `*PENGUNDUHAN GAGAL*\n\nMaaf, semua server lagi sibuk/down.\n*Log:* ${error.message}`,
                     edit: loadingMsg.key
                 })
-            } catch {
-                m.reply(errMsg)
-            }
+            } catch {}
         } else {
-            m.reply(errMsg)
+            m.reply(`*PENGUNDUHAN GAGAL*\n\nMaaf, semua server lagi sibuk/down.\n*Log:* ${error.message}`)
         }
     }
 }
