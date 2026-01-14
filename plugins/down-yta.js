@@ -1,5 +1,4 @@
 import fetch from 'node-fetch'
-import crypto from 'crypto'
 
 const formatDuration = (seconds) => {
     if (isNaN(seconds) || seconds < 0) return "00:00";
@@ -8,139 +7,11 @@ const formatDuration = (seconds) => {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
-// Savetube Scraper
-const savetube = {
-    api: {
-        base: "https://media.savetube.me/api",
-        cdn: "/random-cdn",
-        info: "/v2/info",
-        download: "/download"
-    },
-    headers: {
-        'accept': '*/*',
-        'content-type': 'application/json',
-        'origin': 'https://yt.savetube.me',
-        'referer': 'https://yt.savetube.me/',
-        'user-agent': 'Postify/1.0.0'
-    },
-
-    hexToBuffer: (hexString) => {
-        const matches = hexString.match(/.{1,2}/g);
-        return Buffer.from(matches.join(''), 'hex');
-    },
-
-    decrypt: async (enc) => {
-        try {
-            const secretKey = 'C5D58EF67A7584E4A29F6C35BBC4EB12';
-            const data = Buffer.from(enc, 'base64');
-            const iv = data.slice(0, 16);
-            const content = data.slice(16);
-            const key = savetube.hexToBuffer(secretKey);
-
-            const decipher = crypto.createDecipheriv('aes-128-cbc', key, iv);
-            let decrypted = decipher.update(content);
-            decrypted = Buffer.concat([decrypted, decipher.final()]);
-
-            return JSON.parse(decrypted.toString());
-        } catch (error) {
-            throw new Error(error.message);
-        }
-    },
-
-    youtube: (url) => {
-        if (!url) return null;
-        const patterns = [
-            /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
-            /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-            /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
-            /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
-            /youtu\.be\/([a-zA-Z0-9_-]{11})/
-        ];
-        for (let pattern of patterns) {
-            if (pattern.test(url)) return url.match(pattern)[1];
-        }
-        return null;
-    },
-
-    request: async (endpoint, data = {}, method = 'post') => {
-        try {
-            const url = endpoint.startsWith('http') ? endpoint : `${savetube.api.base}${endpoint}`;
-            const options = {
-                method,
-                headers: savetube.headers
-            };
-
-            if (method === 'post') {
-                options.body = JSON.stringify(data);
-            } else {
-                const params = new URLSearchParams(data);
-                options.url = `${url}?${params}`;
-            }
-
-            const response = await fetch(method === 'get' ? options.url : url, options);
-            const result = await response.json();
-
-            return {
-                status: true,
-                code: 200,
-                data: result
-            };
-        } catch (error) {
-            return {
-                status: false,
-                code: 500,
-                error: error.message
-            };
-        }
-    },
-
-    getCDN: async () => {
-        const response = await savetube.request(savetube.api.cdn, {}, 'get');
-        if (!response.status) return response;
-        return {
-            status: true,
-            code: 200,
-            data: response.data.cdn
-        };
-    },
-
-    download: async (link, format = 'mp3') => {
-        const id = savetube.youtube(link);
-        if (!id) throw new Error('Link YouTube tidak valid');
-
-        const cdnx = await savetube.getCDN();
-        if (!cdnx.status) throw new Error('Gagal mendapatkan CDN');
-        const cdn = cdnx.data;
-
-        const result = await savetube.request(`https://${cdn}${savetube.api.info}`, {
-            url: `https://www.youtube.com/watch?v=${id}`
-        });
-        if (!result.status) throw new Error('Gagal mendapatkan info video');
-
-        const decrypted = await savetube.decrypt(result.data.data);
-
-        const dl = await savetube.request(`https://${cdn}${savetube.api.download}`, {
-            id: id,
-            downloadType: 'audio',
-            quality: '128',
-            key: decrypted.key
-        });
-
-        return {
-            title: decrypted.title || "Unknown",
-            thumbnail: decrypted.thumbnail || `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`,
-            download: dl.data.data.downloadUrl,
-            duration: decrypted.duration,
-            quality: '128kbps'
-        };
-    }
-};
-
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!text) {
         return m.reply(
             `*MASUKKAN LINK YOUTUBE*\n\n` +
-            `Gunakan fitur ini buat download audio kualitas paling bagus.\n\n` +
+            `Gunakan fitur ini buat download audio MP3.\n\n` +
             `*Cara Pakai:*\n` +
             `\`${usedPrefix + command}\` \`url\`\n\n` +
             `*Contoh:*\n` +
@@ -155,43 +26,52 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
     let loadingMsg = null
     try {
-        loadingMsg = await m.reply('*Sabar, lagi nyari kualitas audio paling bagus...*')
+        loadingMsg = await m.reply('*Sabar, lagi download audio...*')
 
         let data = null;
         let buffer = null;
 
-        // --- SERVER UTAMA: SAVETUBE ---
+        // --- SERVER UTAMA: OOTAIZUMI API ---
         try {
-            const result = await savetube.download(text, 'mp3');
+            // Request ke API Baru
+            const apiUrl = `https://api.ootaizumi.web.id/downloader/youtube?url=${encodeURIComponent(text)}&format=mp3`
+            const response = await fetch(apiUrl)
+            const json = await response.json()
 
-            // Download audio
-            const buffResp = await fetch(result.download);
-            if (!buffResp.ok) throw new Error('Gagal download file audio');
-            buffer = await buffResp.buffer();
+            if (!json.status || !json.result || !json.result.download) {
+                throw new Error('Link download tidak ditemukan di API utama.')
+            }
+
+            const result = json.result
+
+            // Download Audio dari URL result
+            const buffResp = await fetch(result.download)
+            if (!buffResp.ok) throw new Error(`Gagal mendownload file (Status: ${buffResp.status})`)
+            buffer = await buffResp.buffer()
 
             data = {
                 title: result.title,
-                channel: '-',
-                thumbnail: result.thumbnail,
-                durationStr: formatDuration(result.duration || 0),
-                views: '-',
-                quality: `\`${result.quality} MP3\``,
-                server: 'Savetube'
+                channel: result.author?.name || '-',
+                thumbnail: result.thumbnail || result.image,
+                durationStr: result.timestamp || formatDuration(result.seconds),
+                views: result.views || '-',
+                quality: '`128kbps`', // Default standar MP3
+                server: 'Ootaizumi'
             };
 
         } catch (e) {
             // --- SERVER BACKUP: NEKOLABS V2 ---
-            console.log("Savetube error, switch to backup:", e.message);
+            console.log("Primary API error, switching to backup:", e.message);
 
             const apiUrl = `https://api.nekolabs.web.id/downloader/youtube/v2?url=${encodeURIComponent(text)}`;
             const response = await fetch(apiUrl);
             const json = await response.json();
 
-            if (!json.success || !json.result) throw new Error('Nekolabs API Failed');
+            if (!json.success || !json.result) throw new Error('Semua server sibuk/error.');
 
             const result = json.result;
 
-            // Cari audio dengan kualitas terbaik
+            // Cari audio dengan bitrate tertinggi
             let bestAudio = null;
             let maxBitrate = 0;
 
@@ -205,11 +85,11 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                 }
             }
 
-            if (!bestAudio) throw new Error('Audio tidak ditemukan');
+            if (!bestAudio) throw new Error('Audio tidak ditemukan di server backup.');
 
             // Download audio
             const buffResp = await fetch(bestAudio.url);
-            if (!buffResp.ok) throw new Error('Gagal download file audio');
+            if (!buffResp.ok) throw new Error('Gagal download file audio backup');
             buffer = await buffResp.buffer();
 
             data = {
@@ -223,22 +103,24 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             };
         }
 
+        // Update status loading
         if (loadingMsg?.key) {
             try {
                 await conn.sendMessage(m.chat, {
-                    text: `*Berhasil diunduh!*\n\nLagi ngirim audio:\n*${data.title}* (${data.quality})\n\nTunggu sebentar ya...`,
+                    text: `*Berhasil diunduh!*\n\nLagi ngirim audio:\n*${data.title}*\n\nTunggu sebentar ya...`,
                     edit: loadingMsg.key
                 })
             } catch (e) {}
         }
 
-        let caption = `*YOUTUBE AUDIO DOWNLOADER*\n\n` +
+        let caption = `*YOUTUBE MP3 DOWNLOADER*\n\n` +
                       `*Judul:* ${data.title}\n` +
                       `*Channel:* ${data.channel}\n` +
                       `*Durasi:* ${data.durationStr}\n` +
-                      `*Kualitas:* ${data.quality}\n` +
+                      `*Views:* ${data.views}\n` +
                       `*Server:* ${data.server}`
 
+        // Kirim Pesan Info (AdReply)
         await conn.sendMessage(m.chat, {
             text: caption,
             contextInfo: {
@@ -253,6 +135,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }, { quoted: m })
 
+        // Kirim File Audio
         await conn.sendMessage(m.chat, {
             audio: buffer,
             mimetype: 'audio/mpeg',
@@ -264,12 +147,12 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         if (loadingMsg?.key) {
             try {
                 await conn.sendMessage(m.chat, {
-                    text: `*PENGUNDUHAN GAGAL*\n\nAda masalah pas proses permintaan kamu.\n*Error:* ${error.message}`,
+                    text: `*PENGUNDUHAN GAGAL*\n\nMaaf, server lagi sibuk atau link error.\n*Log:* ${error.message}`,
                     edit: loadingMsg.key
                 })
             } catch {}
         } else {
-            m.reply(`*PENGUNDUHAN GAGAL*\n\nAda masalah pas proses permintaan kamu.\n*Error:* ${error.message}`)
+            m.reply(`*PENGUNDUHAN GAGAL*\n\nMaaf, server lagi sibuk atau link error.\n*Log:* ${error.message}`)
         }
     }
 }
