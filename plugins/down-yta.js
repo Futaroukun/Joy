@@ -9,7 +9,6 @@ const formatDuration = (seconds) => {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
-// Fungsi ytdown dari kode baru
 async function ytdown(url, type = 'video') {
     const { data } = await axios.post('https://ytdown.to/proxy.php', new URLSearchParams({ url }), { 
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' } 
@@ -19,13 +18,11 @@ async function ytdown(url, type = 'video') {
     if (api.status == 'ERROR') throw new Error(api.message);
 
     const media = api.mediaItems.find((m) => m.type.toLowerCase() === type.toLowerCase());
-    if (!media) throw new Error('Media type not found');
+    if (!media) throw new Error('Media type gak ketemu');
 
     while (true) {
         const { data: res } = await axios.get(media.mediaUrl);
-
-        if (res.error === 'METADATA_NOT_FOUND') throw new Error('Metadata not found');
-
+        if (res.error === 'METADATA_NOT_FOUND') throw new Error('Metadata gak ketemu');
         if (res.percent === 'Completed' && res.fileUrl !== 'In Processing...') {
             return {
                 info: {
@@ -42,39 +39,28 @@ async function ytdown(url, type = 'video') {
                 download: res.fileUrl,
             };
         }
-
         await delay(5000);
     }
 }
 
-// Fungsi getMetadata dari kode baru
 async function getMetadata(url) {
     const match = url.match(/(?:youtube(?:-nocookie)?\.com\/(?:.*?[?&]v=|embed\/|v\/|shorts\/|live\/|music\/watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-    if (!match) throw new Error('Link Youtube tidak valid');
+    if (!match) throw new Error('Link Youtube gak valid');
     const res = await axios.post(
         'https://www.terrific.tools/api/youtube/get-video-metadata',
-        {
-            videoId: match[1],
-        },
-        {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        }
+        { videoId: match[1] },
+        { headers: { 'Content-Type': 'application/json' } }
     );
-
     return res.data;
 }
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!text) {
         return m.reply(
-            `*MASUKKAN LINK YOUTUBE*\n\n` +
-            `Gunakan fitur ini buat download audio MP3.\n\n` +
-            `*Cara Pakai:*\n` +
-            `\`${usedPrefix + command}\` \`url\`\n\n` +
-            `*Contoh:*\n` +
-            `\`${usedPrefix + command}\` \`https://youtu.be/GEsaP891k90\``
+            `*MASUKKIN LINK YOUTUBE*\n\n` +
+            `Pake fitur ini buat download audio MP3.\n\n` +
+            `*Cara Pakai:* \`${usedPrefix + command}\` *url*\n\n` +
+            `*Contoh:* \`${usedPrefix + command}\` *https://youtu.be/GEsaP891k90*`
         )
     }
 
@@ -85,23 +71,20 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
     let loadingMsg = null
     try {
-        loadingMsg = await m.reply('*Sabar, lagi download audio...*')
+        loadingMsg = await m.reply('*Bentar ya, lagi proses download audionya...*')
 
         let data = null;
         let buffer = null;
 
         try {
-            // SERVER UTAMA: ytdown.to
             const dl = await ytdown(text, 'video');
             const info = await getMetadata(text);
 
             const buffResp = await fetch(dl.download, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                }
+                headers: { 'User-Agent': 'Mozilla/5.0' }
             })
             
-            if (!buffResp.ok) throw new Error(`Gagal mendownload file (Status: ${buffResp.status})`)
+            if (!buffResp.ok) throw new Error(`Gagal download file (${buffResp.status})`)
             buffer = await buffResp.buffer()
 
             data = {
@@ -115,32 +98,22 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             };
 
         } catch (e) {
-            console.log("Primary API error, switching to backup:", e.message);
+            console.log("Server utama error, pindah ke backup:", e.message);
 
-            // BACKUP SERVER: Ootaizumi
             const apiUrl = `https://api.ootaizumi.web.id/downloader/youtube?url=${encodeURIComponent(text)}&format=mp3`
             const response = await fetch(apiUrl)
-            
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-                throw new Error("Server Backup merespon dengan HTML.");
-            }
-
             const json = await response.json()
 
             if (!json.status || !json.result || !json.result.download) {
-                throw new Error('Semua server sibuk/error.')
+                throw new Error('Semua server lagi sibuk.')
             }
 
             const result = json.result
-
             const buffResp = await fetch(result.download, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                }
+                headers: { 'User-Agent': 'Mozilla/5.0' }
             })
             
-            if (!buffResp.ok) throw new Error(`Gagal mendownload file (Status: ${buffResp.status})`)
+            if (!buffResp.ok) throw new Error(`Gagal download file (${buffResp.status})`)
             buffer = await buffResp.buffer()
 
             data = {
@@ -157,18 +130,18 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         if (loadingMsg?.key) {
             try {
                 await conn.sendMessage(m.chat, {
-                    text: `*Berhasil diunduh!*\n\nLagi ngirim audio:\n*${data.title}*\n\nTunggu sebentar ya...`,
+                    text: `*Berhasil diunduh!*\n\nLagi ngirim audionya ya:\n*${data.title}*`,
                     edit: loadingMsg.key
                 })
             } catch (e) {}
         }
 
         let caption = `*YOUTUBE MP3 DOWNLOADER*\n\n` +
-                      `*Judul:* ${data.title}\n` +
-                      `*Channel:* ${data.channel}\n` +
-                      `*Durasi:* ${data.durationStr}\n` +
-                      `*Views:* ${data.views}\n` +
-                      `*Server:* ${data.server}`
+                      `• Judul: *${data.title}*\n` +
+                      `• Channel: *${data.channel}*\n` +
+                      `• Durasi: *${data.durationStr}*\n` +
+                      `• Views: *${data.views}*\n` +
+                      `• Server: *${data.server}*`
 
         await conn.sendMessage(m.chat, {
             text: caption,
@@ -195,12 +168,12 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         if (loadingMsg?.key) {
             try {
                 await conn.sendMessage(m.chat, {
-                    text: `*PENGUNDUHAN GAGAL*\n\nMaaf, semua server lagi sibuk/down.\n*Log:* ${error.message}`,
+                    text: `*PENGUNDUHAN GAGAL*\n\nMaaf, semua server lagi sibuk atau down.\n*Log:* ${error.message}`,
                     edit: loadingMsg.key
                 })
             } catch {}
         } else {
-            m.reply(`*PENGUNDUHAN GAGAL*\n\nMaaf, semua server lagi sibuk/down.\n*Log:* ${error.message}`)
+            m.reply(`*PENGUNDUHAN GAGAL*\n\nMaaf, semua server lagi sibuk atau down.\n*Log:* ${error.message}`)
         }
     }
 }
@@ -208,6 +181,5 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 handler.help = ['ytmp3 *url*']
 handler.tags = ['downloader']
 handler.command = /^(ytmp3|youtubemp3|yta)$/i
-handler.limit = false
 
 export default handler
