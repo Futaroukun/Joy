@@ -1,4 +1,6 @@
 import fetch from 'node-fetch'
+import axios from 'axios'
+import { delay } from '@whiskeysockets/baileys'
 
 const formatDuration = (seconds) => {
     if (isNaN(seconds) || seconds < 0) return "00:00";
@@ -6,6 +8,63 @@ const formatDuration = (seconds) => {
     const remainingSeconds = Math.floor(seconds % 60);
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
+
+// Fungsi ytdown dari kode baru
+async function ytdown(url, type = 'video') {
+    const { data } = await axios.post('https://ytdown.to/proxy.php', new URLSearchParams({ url }), { 
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' } 
+    });
+
+    const api = data.api;
+    if (api.status == 'ERROR') throw new Error(api.message);
+
+    const media = api.mediaItems.find((m) => m.type.toLowerCase() === type.toLowerCase());
+    if (!media) throw new Error('Media type not found');
+
+    while (true) {
+        const { data: res } = await axios.get(media.mediaUrl);
+
+        if (res.error === 'METADATA_NOT_FOUND') throw new Error('Metadata not found');
+
+        if (res.percent === 'Completed' && res.fileUrl !== 'In Processing...') {
+            return {
+                info: {
+                    title: api.title,
+                    desc: api.description,
+                    thumbnail: api.imagePreviewUrl,
+                    views: api.mediaStats?.viewsCount,
+                    uploader: api.userInfo?.name,
+                    quality: media.mediaQuality,
+                    duration: media.mediaDuration,
+                    extension: media.mediaExtension,
+                    size: media.mediaFileSize,
+                },
+                download: res.fileUrl,
+            };
+        }
+
+        await delay(5000);
+    }
+}
+
+// Fungsi getMetadata dari kode baru
+async function getMetadata(url) {
+    const match = url.match(/(?:youtube(?:-nocookie)?\.com\/(?:.*?[?&]v=|embed\/|v\/|shorts\/|live\/|music\/watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (!match) throw new Error('Link Youtube tidak valid');
+    const res = await axios.post(
+        'https://www.terrific.tools/api/youtube/get-video-metadata',
+        {
+            videoId: match[1],
+        },
+        {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        }
+    );
+
+    return res.data;
+}
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!text) {
@@ -32,25 +91,11 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         let buffer = null;
 
         try {
-            const apiUrl = `https://api.ryzumi.vip/api/downloader/ytmp3?url=${encodeURIComponent(text)}`
-            const response = await fetch(apiUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                }
-            })
+            // SERVER UTAMA: ytdown.to
+            const dl = await ytdown(text, 'video');
+            const info = await getMetadata(text);
 
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-                throw new Error("Server Utama merespon dengan HTML (Server Down/Maintenance)");
-            }
-
-            const json = await response.json()
-
-            if (!json.url) {
-                throw new Error('Link download tidak ditemukan di API utama.')
-            }
-
-            const buffResp = await fetch(json.url, {
+            const buffResp = await fetch(dl.download, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                 }
@@ -60,18 +105,19 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             buffer = await buffResp.buffer()
 
             data = {
-                title: json.title,
-                channel: json.author || '-',
-                thumbnail: json.thumbnail,
-                durationStr: formatDuration(json.lengthSeconds),
-                views: json.views ? json.views.toLocaleString() : '-',
-                quality: `\`${json.quality || '128kbps'}\``,
-                server: 'Ryzumi'
+                title: dl.info.title || info.title,
+                channel: dl.info.uploader || info.channelTitle || '-',
+                thumbnail: dl.info.thumbnail || info.thumbnails?.maxres,
+                durationStr: dl.info.duration || formatDuration(info.duration),
+                views: dl.info.views || info.viewCount || '-',
+                quality: `\`${dl.info.quality || '128kbps'}\``,
+                server: 'YTDown.to'
             };
 
         } catch (e) {
             console.log("Primary API error, switching to backup:", e.message);
 
+            // BACKUP SERVER: Ootaizumi
             const apiUrl = `https://api.ootaizumi.web.id/downloader/youtube?url=${encodeURIComponent(text)}&format=mp3`
             const response = await fetch(apiUrl)
             
