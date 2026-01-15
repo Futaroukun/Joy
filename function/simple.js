@@ -10,7 +10,7 @@ import crypto from "crypto";
 
 import { format } from "util";
 import { fileTypeFromBuffer } from "file-type";
-import PhoneNumber from "awesome-phonenumber";
+import PhoneNumber from 'awesome-phonenumber';
 import { watchFile, unwatchFile } from "fs";
 import { fileURLToPath } from "url";
 import { toAudio } from "./converter.js";
@@ -394,7 +394,7 @@ export function makeWASocket(connectionOptions, options = {}) {
       },
       
       getAndVerifyUsername: {
-         async value(jid) {
+         async value(jid, m) {
             try {
                if (!jid) return 'Unknown';
                const cleanJid = jid.decodeJid();
@@ -404,7 +404,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                   name = chatData.name;
                }
                if (!name) {
-                  name = await conn.getName(cleanJid);
+                  name = m.name || m.verifiedBizName || m.pushName || await conn.getName(cleanJid);
                }
                
                const isNameJustJid = /@s\.whatsapp\.net|@lid$/.test(name);
