@@ -398,16 +398,32 @@ export function makeWASocket(connectionOptions, options = {}) {
             try {
                if (!jid) return 'Unknown';
                const cleanJid = jid.decodeJid();
-               let name = await this.getName(cleanJid);
+               let name = null;
+               const chatData = conn.chats[cleanJid];
+               if (chatData?.name && !/@s\.whatsapp\.net|@lid$/.test(chatData.name)) {
+                  name = chatData.name;
+               }
+               if (!name) {
+                  name = await conn.getName(cleanJid);
+               }
+               
                const isNameJustJid = /@s\.whatsapp\.net|@lid$/.test(name);
                const userInDb = global.db?.data?.users?.[cleanJid];
                const isDbNameJustJid = userInDb && /@s\.whatsapp\.net|@lid$/.test(userInDb.name);
                
                if (isNameJustJid || (userInDb && isDbNameJustJid)) {
                   try {
-                     const profile = await this.getProfileInfo(cleanJid);
-                     if (profile?.pushname && profile.pushname.trim() !== '') {
-                        name = profile.pushname;
+                     const businessProfile = await conn.getBusinessProfile(cleanJid).catch(() => null);
+                     if (businessProfile?.vname && businessProfile.vname.trim() !== '') {
+                        name = businessProfile.vname;
+                     } else {
+                        const profile = await conn.profilePictureUrl(cleanJid, 'image').catch(() => null);
+                        if (profile) {
+                           const contactInfo = conn.contacts?.[cleanJid];
+                           if (contactInfo?.name && !/@s\.whatsapp\.net|@lid$/.test(contactInfo.name)) {
+                              name = contactInfo.name;
+                           }
+                        }
                      }
                   } catch (e) {
                      console.log(`[getAndVerifyUsername] Gagal fetch profile untuk ${cleanJid}`);
@@ -415,15 +431,16 @@ export function makeWASocket(connectionOptions, options = {}) {
                }
                
                if (userInDb && userInDb.name !== name && !/@s\.whatsapp\.net|@lid$/.test(name)) {
-                  console.log(`[DB-HEAL] Updating name for ${cleanJid}: "${userInDb.name}" -> "${name}"`);
+                  console.log(chalk.yellow(`[DB-HEAL] Updating name for ${cleanJid.split('@')[0]}: "${userInDb.name}" -> "${name}"`));
                   userInDb.name = name;
                }
-               
                if (/@s\.whatsapp\.net|@lid$/.test(name)) {
-                  const parts = name.split('@');
-                  return parts && parts.length > 0 ? parts[0] : 'Unknown';
+                  const parts = name.split('@')[0];
+                  if (parts.length > 10) {
+                     return parts.slice(-10);
+                  }
+                  return parts || 'Unknown';
                }
-               
                return name || 'Unknown';
             } catch (e) {
                console.error('[getAndVerifyUsername Error]:', e.message);
@@ -1110,19 +1127,19 @@ END:VCARD
       },
       
       getName: {
-         value: async function (jid = "", withoutContact = false) {
+         value: async function(jid = "", withoutContact = false) {
             try {
                if (!jid) return "";
                jid = conn.decodeJid(jid);
                withoutContact = conn.withoutContact || withoutContact;
-
+         
                if (_isGroupJid(jid)) {
                   const chat = conn.chats[jid];
                   if (chat?.subject) return chat.subject;
-
+            
                   const cached = conn._groupMetaCache.get(jid);
                   if (cached) return cached.subject;
-
+            
                   try {
                      const md = await conn.groupMetadata(jid);
                      if (md) {
@@ -1133,21 +1150,31 @@ END:VCARD
                      return chat?.name || jid;
                   }
                }
-
-               const self = conn.user?.lid && areJidsSameUser ? 
+         
+               const self = conn.user?.lid && areJidsSameUser ?
                   areJidsSameUser(jid, conn.user.lid) : false;
-
-               const v = jid === "0@s.whatsapp.net"
-                  ? { jid, vname: "WhatsApp" }
-                  : self
-                  ? conn.user
-                  : conn.chats[jid] || {};
-
-               const name = v.name || v.vname || v.notify || v.verifiedName || v.subject;
-               return withoutContact ? "" : name || jid;
+         
+               const v = jid === "0@s.whatsapp.net" ?
+                  { jid, vname: "WhatsApp" } :
+                  self ?
+                  conn.user :
+                  conn.chats[jid] || {};
+         
+               let name = v.name || v.vname || v.notify || v.verifiedName || v.subject;
+      
+               if (!name || /@s\.whatsapp\.net|@lid$/.test(name)) {
+                  const jidParts = jid.split('@')[0];
+                  if (jidParts.length > 10) {
+                     name = jidParts.slice(-10);
+                  } else {
+                     name = jidParts;
+                  }
+               }
+         
+               return withoutContact ? "" : (name || jid.split('@')[0]);
             } catch (e) {
                console.error('[getName Error]:', e.message);
-               return jid || "";
+               return jid?.split('@')[0] || "";
             }
          },
          enumerable: true
@@ -1879,4 +1906,3 @@ async function generateProfilePicture(mediaUpload) {
 function nullish(args) {
    return !(args !== null && args !== undefined);
 }
-         
