@@ -186,7 +186,7 @@ export async function handler(chatUpdate) {
             // Gunakan LID untuk akses database
             let user = global.db.data.users[senderLID];
             if (typeof user !== "object") global.db.data.users[senderLID] = {};
-            const resolvedName = await conn.getAndVerifyUsername(senderLID); 
+            const resolvedName = await conn.getAndVerifyUsername(senderLID, m); 
             
             if (user) {
                 if (!user.name || typeof user.name === 'object') {
