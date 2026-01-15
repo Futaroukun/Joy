@@ -394,7 +394,7 @@ export function makeWASocket(connectionOptions, options = {}) {
       },
       
       getAndVerifyUsername: {
-         async value(jid) {
+         async value(jid, m) {
             try {
                if (!jid) return 'Unknown';
                const cleanJid = jid.decodeJid();
@@ -404,7 +404,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                   name = chatData.name;
                }
                if (!name) {
-                  name = await conn.getName(cleanJid);
+                  name = m.name || m.verifiedBizName || m.pushName || await conn.getName(cleanJid);
                }
                
                const isNameJustJid = /@s\.whatsapp\.net|@lid$/.test(name);
@@ -1905,4 +1905,5 @@ async function generateProfilePicture(mediaUpload) {
 
 function nullish(args) {
    return !(args !== null && args !== undefined);
+
 }
