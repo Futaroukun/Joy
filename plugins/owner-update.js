@@ -555,22 +555,18 @@ async function autoUpdate(conn) {
   try {
     const result = await githubUpload(conn, commitMessage)
     
-    // Only send notification if there's something to report
-    if (result.success || result.message.includes('GAGAL')) {
-      const sent = await sendReportButton(
-        conn,
-        CONFIG.targetJid,
-        result,
-        "LAPORAN AUTO UPDATE"
-      )
-      
-      if (sent) {
-        console.log('Auto update notification sent successfully')
-      } else {
-        console.log('Auto update notification skipped (cooldown/duplicate)')
-      }
+    // Always send notification (success, failed, or no changes)
+    const sent = await sendReportButton(
+      conn,
+      CONFIG.targetJid,
+      result,
+      "LAPORAN AUTO UPDATE"
+    )
+    
+    if (sent) {
+      console.log('Auto update notification sent successfully')
     } else {
-      console.log('Auto update: No changes detected, notification skipped')
+      console.log('Auto update notification skipped (cooldown/duplicate)')
     }
   } catch (err) {
     console.error('Auto update error:', err.message)
