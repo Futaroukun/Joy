@@ -120,9 +120,6 @@
     "group-kick.js": {
       "disabled": false
     },
-    "down-play.js": {
-      "disabled": false
-    },
     "group-opclos.js": {
       "disabled": false
     }
