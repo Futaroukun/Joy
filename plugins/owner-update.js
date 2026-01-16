@@ -146,7 +146,7 @@ async function githubUpload(conn, commitMessage) {
       return {
         success: false,
         repoUrl: repoInfo.repoUrl,
-        message: `*UPDATE DIBATALIN*\n\nRepo: *${repoInfo.repoName}*\nBranch: *${repoInfo.branch}*\n\n_Gak ada file baru buat di-upload._`
+        message: `*UPDATE DIBATALKAN*\n\nRepository: *${repoInfo.repoName}*\nBranch: *${repoInfo.branch}*\nStatus: Tidak ada perubahan terdeteksi.`
       }
     }
 
@@ -156,7 +156,7 @@ async function githubUpload(conn, commitMessage) {
     
     const sanitized = sanitizeCommitMessage(commitMessage)
     const commitResult = await runGitCommand(`git commit -m "${sanitized}"`)
-    if (!commitResult.success) throw new Error('Gagal commit.')
+    if (!commitResult.success) throw new Error('Gagal membuat commit.')
 
     await runGitCommand(`git push origin ${repoInfo.branch}`)
     
@@ -167,27 +167,27 @@ async function githubUpload(conn, commitMessage) {
 
     const { addedFiles, deletedFiles, modifiedFiles, renamedFiles } = changeCheck.stats
     let fileList = ''
-    if (addedFiles.length) fileList += `*✨ Baru (${addedFiles.length}):*\n${formatFileList(addedFiles)}\n\n`
-    if (modifiedFiles.length) fileList += `*📝 Edit (${modifiedFiles.length}):*\n${formatFileList(modifiedFiles)}\n\n`
-    if (renamedFiles.length) fileList += `*🔄 Rename (${renamedFiles.length}):*\n${formatFileList(renamedFiles)}\n\n`
-    if (deletedFiles.length) fileList += `*🗑️ Hapus (${deletedFiles.length}):*\n${formatFileList(deletedFiles)}\n\n`
+    if (addedFiles.length) fileList += `*File Baru (${addedFiles.length}):*\n${formatFileList(addedFiles)}\n\n`
+    if (modifiedFiles.length) fileList += `*File Diedit (${modifiedFiles.length}):*\n${formatFileList(modifiedFiles)}\n\n`
+    if (renamedFiles.length) fileList += `*File Diganti Nama (${renamedFiles.length}):*\n${formatFileList(renamedFiles)}\n\n`
+    if (deletedFiles.length) fileList += `*File Dihapus (${deletedFiles.length}):*\n${formatFileList(deletedFiles)}\n\n`
 
     const successMessage = `*PUSH BERHASIL*\n\n` +
-      `• Author: *${repoInfo.username}*\n` +
+      `• User: *${repoInfo.username}*\n` +
       `• Repo: *${repoInfo.repoName}*\n` +
       `• Branch: *${repoInfo.branch}*\n` +
       `• Waktu: *${commitDate}*\n` +
       `• Durasi: *${duration}s*\n\n` +
       `• Pesan: _${commitMessage}_\n` +
       `• Hash: \`${commitHash.trim()}\`\n\n` +
-      `*Detail File (${changeCheck.totalChanges}):*\n${fileList || "_Gak ada detail_"}`
+      `*Detail Perubahan (${changeCheck.totalChanges}):*\n${fileList || "_Tidak ada rincian file_"}`
 
     await saveUpdateLog({ success: true, repo: repoInfo.repoName, branch: repoInfo.branch, hash: commitHash.trim(), message: commitMessage, filesChanged: changeCheck.totalChanges, duration })
     return { success: true, repoUrl: repoInfo.repoUrl, message: successMessage }
 
   } catch (err) {
     await saveUpdateLog({ success: false, error: err.message, message: commitMessage })
-    return { success: false, repoUrl: "https://github.com", message: `*PUSH GAGAL*\n\nError:\n\`\`\`${err.message}\`\`\`` }
+    return { success: false, repoUrl: "https://github.com", message: `*PUSH GAGAL*\n\nDeskripsi Error:\n\`\`\`${err.message}\`\`\`` }
   }
 }
 
@@ -195,7 +195,7 @@ async function sendReportButton(conn, jid, result, title, quoted = null) {
   const linkButton = {
     name: "cta_url",
     buttonParamsJson: JSON.stringify({
-      display_text: "🔗 Buka Repo",
+      display_text: "Buka Repository",
       url: result.repoUrl || "https://github.com",
       merchant_url: result.repoUrl || "https://github.com"
     })
@@ -204,13 +204,13 @@ async function sendReportButton(conn, jid, result, title, quoted = null) {
   const listButton = {
     name: "single_select",
     buttonParamsJson: JSON.stringify({
-      title: "⚙️ Menu",
+      title: "Menu Sistem",
       sections: [{
         title: "Pilih Opsi",
         rows: [
-          { header: "📊 Status", title: "Cek Status", description: "Lihat status auto update", id: ".autoupdate status" },
-          { header: "📜 History", title: "Riwayat", description: "Lihat 10 log terakhir", id: ".autoupdate history" },
-          { header: "🔄 Restart", title: "Restart Bot", description: "Mulai ulang sistem", id: ".restart" }
+          { header: "Status", title: "Cek Status Sistem", description: "Lihat konfigurasi auto update", id: ".autoupdate status" },
+          { header: "History", title: "Riwayat Update", description: "Tampilkan 10 log terakhir", id: ".autoupdate history" },
+          { header: "Restart", title: "Mulai Ulang Bot", description: "Restart sistem sekarang", id: ".restart" }
         ]
       }]
     })
@@ -220,7 +220,7 @@ async function sendReportButton(conn, jid, result, title, quoted = null) {
     header: title,
     image: { url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" }, 
     body: result.message,
-    footer: "Joy Auto Update System",
+    footer: "Joy Automation System",
     buttons: [linkButton, listButton]
   }, { quoted })
 }
@@ -228,9 +228,9 @@ async function sendReportButton(conn, jid, result, title, quoted = null) {
 async function autoUpdate(conn) {
   const now = new Date()
   const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
-  const result = await githubUpload(conn, `🤖 Auto Update - ${dateStr}`)
+  const result = await githubUpload(conn, `Auto Update - ${dateStr}`)
   try {
-    await sendReportButton(conn, CONFIG.targetJid, result, "🤖 AUTO UPDATE REPORT")
+    await sendReportButton(conn, CONFIG.targetJid, result, "LAPORAN AUTO UPDATE")
   } catch (err) {
     console.error(err)
   }
@@ -252,19 +252,19 @@ function stopAutoUpdate() {
 }
 
 const handler = async (m, { conn, isOwner, args, command, usedPrefix }) => {
-  if (!isOwner) return m.reply('*Perintah ini cuma buat owner.*')
+  if (!isOwner) return m.reply('*Akses ditolak. Hanya untuk Owner.*')
 
   if (command === 'autoupdate') {
     const action = args[0]?.toLowerCase()
 
     if (action === 'start' || action === 'on') {
       const started = startAutoUpdate(conn)
-      return m.reply(started ? `*AUTO UPDATE AKTIF*\n\nJadwal: Jam 00:00 WIB tiap hari.` : `*Udah aktif kok.*`)
+      return m.reply(started ? `*AUTO UPDATE AKTIF*\nJadwal: 00:00 WIB.` : `*Sistem sudah berjalan.*`)
     }
 
     if (action === 'stop' || action === 'off') {
       const stopped = stopAutoUpdate()
-      return m.reply(stopped ? `*AUTO UPDATE MATI*` : `*Emang lagi gak jalan.*`)
+      return m.reply(stopped ? `*AUTO UPDATE DIMATIKAN*` : `*Sistem memang sedang tidak aktif.*`)
     }
 
     if (action === 'status') {
@@ -272,20 +272,20 @@ const handler = async (m, { conn, isOwner, args, command, usedPrefix }) => {
       const buttons = [{
         name: "single_select",
         buttonParamsJson: JSON.stringify({
-          title: isActive ? "Matikan" : "Aktifkan",
+          title: isActive ? "Nonaktifkan" : "Aktifkan",
           sections: [{
-            title: "Kontrol",
+            title: "Kontrol Sistem",
             rows: [
-              { header: isActive ? "🛑 Stop" : "▶️ Start", title: isActive ? "Off" : "On", id: isActive ? ".autoupdate stop" : ".autoupdate start" },
-              { header: "📜 Log", title: "History", id: ".autoupdate history" }
+              { header: isActive ? "Stop" : "Start", title: isActive ? "Matikan" : "Jalankan", id: isActive ? ".autoupdate stop" : ".autoupdate start" },
+              { header: "Log", title: "Lihat History", id: ".autoupdate history" }
             ]
           }]
         })
       }]
       return conn.sendButton(m.chat, {
-        header: "📊 STATUS",
-        body: isActive ? `*AKTIF*\nJam: 00:00 WIB` : `*MATI*`,
-        footer: "System Config",
+        header: "STATUS SISTEM",
+        body: isActive ? `*STATUS: AKTIF*\nJadwal: 00:00 WIB` : `*STATUS: MATI*`,
+        footer: "Konfigurasi Otomasi",
         buttons
       }, { quoted: m })
     }
@@ -293,30 +293,30 @@ const handler = async (m, { conn, isOwner, args, command, usedPrefix }) => {
     if (action === 'history' || action === 'log') {
       try {
         const logs = JSON.parse(await fs.readFile(LOG_FILE, 'utf-8'))
-        if (logs.length === 0) return m.reply('*Belum ada riwayat.*')
-        let txt = `*RIWAYAT UPDATE*\n\n`
+        if (logs.length === 0) return m.reply('*Riwayat kosong.*')
+        let txt = `*RIWAYAT UPDATE TERAKHIR*\n\n`
         logs.slice(0, 10).forEach((log, i) => {
-          txt += `${i + 1}. ${log.success ? '✅' : '❌'} ${log.message}\n   ${log.duration}s | ${log.hash || 'N/A'}\n\n`
+          txt += `${i + 1}. [${log.success ? 'SUKSES' : 'GAGAL'}] ${log.message}\n   Durasi: ${log.duration}s | Hash: ${log.hash || '-'}\n\n`
         })
         return m.reply(txt)
-      } catch { return m.reply('*Gak ada log.*') }
+      } catch { return m.reply('*Log tidak ditemukan.*') }
     }
 
     return conn.sendButton(m.chat, {
-      header: "🤖 CONFIG",
-      body: `Status: ${cronJob ? 'Aktif' : 'Mati'}`,
-      footer: "GitHub System",
+      header: "KONFIGURASI AUTO UPDATE",
+      body: `Status Saat Ini: ${cronJob ? 'Aktif' : 'Mati'}`,
+      footer: "Automation Management",
       buttons: [{
         name: "single_select",
         buttonParamsJson: JSON.stringify({
-          title: "Aksi",
+          title: "Pilih Tindakan",
           sections: [{
-            title: "Menu",
+            title: "Menu Utama",
             rows: [
-              { title: "Start", id: ".autoupdate start" },
-              { title: "Stop", id: ".autoupdate stop" },
-              { title: "Status", id: ".autoupdate status" },
-              { title: "History", id: ".autoupdate history" }
+              { title: "Mulai Auto Update", id: ".autoupdate start" },
+              { title: "Hentikan Auto Update", id: ".autoupdate stop" },
+              { title: "Cek Status", id: ".autoupdate status" },
+              { title: "Lihat Riwayat", id: ".autoupdate history" }
             ]
           }]
         })
@@ -326,9 +326,9 @@ const handler = async (m, { conn, isOwner, args, command, usedPrefix }) => {
 
   const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
   const commitMessage = args.join(' ').trim() || `Update Manual - ${dateStr}`
-  let loading = await m.reply(`*Lagi ngirim ke GitHub...*`)
+  let loading = await m.reply(`*Memulai proses upload ke GitHub...*`)
   const result = await githubUpload(conn, commitMessage)
-  await sendReportButton(conn, m.chat, result, "📤 MANUAL REPORT", m)
+  await sendReportButton(conn, m.chat, result, "LAPORAN UPDATE MANUAL", m)
   if (loading?.key) setTimeout(() => conn.sendMessage(m.chat, { delete: loading.key }), 2000)
 }
 
