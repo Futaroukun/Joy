@@ -102,8 +102,8 @@ async function saveUpdateLog(logData) {
       })
     })
     
-    // Keep last 100 logs
-    if (logs.length > 100) logs = logs.slice(0, 100)
+    // Keep last 15 logs
+    if (logs.length > 15) logs = logs.slice(0, 15)
     
     await fs.writeFile(LOG_FILE, JSON.stringify(logs, null, 2))
     return true
@@ -668,15 +668,24 @@ const handler = async (m, { conn, isOwner, args, command, usedPrefix }) => {
     if (action === 'config' || action === 'cfg') {
       const repoInfo = await getRepoInfo().catch(() => null)
       
+      // Convert cron to readable format
+      const cronParts = CONFIG.schedule.split(' ')
+      const hour = cronParts[1] || '0'
+      const minute = cronParts[0] || '0'
+      const scheduleText = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`
+      
+      // Format target number (remove @s.whatsapp.net)
+      const targetNumber = CONFIG.targetJid.replace('@s.whatsapp.net', '')
+      
       let configText = `*KONFIGURASI SISTEM*\n\n`
       configText += `Git User:\n`
       configText += `  Name: ${CONFIG.git.name}\n`
       configText += `  Email: ${CONFIG.git.email}\n\n`
       configText += `Schedule:\n`
-      configText += `  Cron: ${CONFIG.schedule}\n`
+      configText += `  Jam: ${scheduleText} WIB\n`
       configText += `  Timezone: ${CONFIG.timezone}\n\n`
       configText += `Notification:\n`
-      configText += `  Target: ${CONFIG.targetJid}\n\n`
+      configText += `  Nomor: ${targetNumber}\n\n`
       configText += `Retry Settings:\n`
       configText += `  Max Retries: ${CONFIG.maxRetries}\n`
       configText += `  Retry Delay: ${CONFIG.retryDelay}ms\n`
@@ -693,6 +702,49 @@ const handler = async (m, { conn, isOwner, args, command, usedPrefix }) => {
 
     // DEFAULT - Show menu
     const isActive = getAutoUpdateStatus()
+    
+    // Build menu rows based on status
+    const menuRows = []
+    
+    // Show Start only if inactive, Stop only if active
+    if (!isActive) {
+      menuRows.push({
+        header: "Start",
+        title: "Aktifkan Auto Update",
+        description: "Jalankan jadwal update otomatis",
+        id: ".autoupdate start"
+      })
+    } else {
+      menuRows.push({
+        header: "Stop",
+        title: "Nonaktifkan Auto Update",
+        description: "Hentikan jadwal update otomatis",
+        id: ".autoupdate stop"
+      })
+    }
+    
+    // Always show these options
+    menuRows.push(
+      {
+        header: "Status",
+        title: "Cek Status",
+        description: "Lihat status sistem saat ini",
+        id: ".autoupdate status"
+      },
+      {
+        header: "History",
+        title: "Riwayat Update",
+        description: "Tampilkan log update",
+        id: ".autoupdate history"
+      },
+      {
+        header: "Config",
+        title: "Konfigurasi",
+        description: "Lihat pengaturan sistem",
+        id: ".autoupdate config"
+      }
+    )
+    
     const buttons = [{
       name: "single_select",
       buttonParamsJson: JSON.stringify({
@@ -700,38 +752,7 @@ const handler = async (m, { conn, isOwner, args, command, usedPrefix }) => {
         sections: [{
           title: "Menu Auto Update",
           highlight_label: "Menu",
-          rows: [
-            {
-              header: "Start",
-              title: "Aktifkan Auto Update",
-              description: "Jalankan jadwal update otomatis",
-              id: ".autoupdate start"
-            },
-            {
-              header: "Stop",
-              title: "Nonaktifkan Auto Update",
-              description: "Hentikan jadwal update otomatis",
-              id: ".autoupdate stop"
-            },
-            {
-              header: "Status",
-              title: "Cek Status",
-              description: "Lihat status sistem saat ini",
-              id: ".autoupdate status"
-            },
-            {
-              header: "History",
-              title: "Riwayat Update",
-              description: "Tampilkan log update",
-              id: ".autoupdate history"
-            },
-            {
-              header: "Config",
-              title: "Konfigurasi",
-              description: "Lihat pengaturan sistem",
-              id: ".autoupdate config"
-            }
-          ]
+          rows: menuRows
         }]
       })
     }]
