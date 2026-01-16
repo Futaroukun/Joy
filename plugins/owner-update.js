@@ -9,6 +9,8 @@ const exec = promisify(cp.exec).bind(cp)
 
 // State management
 let cronJob = null
+let lastNotificationHash = null
+let notificationCooldown = false
 const DATA_DIR = path.join(process.cwd(), 'data')
 const LOG_FILE = path.join(DATA_DIR, 'update_history.json')
 const CONFIG_FILE = path.join(DATA_DIR, 'autoupdate_config.json')
@@ -181,6 +183,44 @@ function formatDuration(seconds) {
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${mins}m ${secs}s`
+}
+
+function generateNotificationHash(result) {
+  // Create hash from message content to detect duplicates
+  const content = `${result.success}-${result.message.substring(0, 100)}`
+  let hash = 0
+  for (let i = 0; i < content.length; i++) {
+    const char = content.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash
+  }
+  return hash.toString()
+}
+
+async function canSendNotification(result) {
+  // Check if we're in cooldown period
+  if (notificationCooldown) {
+    console.log('Notification blocked: cooldown active')
+    return false
+  }
+  
+  // Check if this is a duplicate notification
+  const currentHash = generateNotificationHash(result)
+  if (lastNotificationHash === currentHash) {
+    console.log('Notification blocked: duplicate detected')
+    return false
+  }
+  
+  lastNotificationHash = currentHash
+  
+  // Set cooldown to prevent spam (5 minutes)
+  notificationCooldown = true
+  setTimeout(() => {
+    notificationCooldown = false
+    lastNotificationHash = null
+  }, 5 * 60 * 1000)
+  
+  return true
 }
 
 // ==================== GIT OPERATIONS ====================
@@ -424,6 +464,13 @@ async function githubUpload(conn, commitMessage) {
 // ==================== NOTIFICATION FUNCTIONS ====================
 
 async function sendReportButton(conn, jid, result, title, quoted = null) {
+  // Check if we can send notification (prevent spam)
+  const canSend = await canSendNotification(result)
+  if (!canSend) {
+    console.log('Notification skipped to prevent spam')
+    return false
+  }
+
   const linkButton = {
     name: "cta_url",
     buttonParamsJson: JSON.stringify({
@@ -470,18 +517,26 @@ async function sendReportButton(conn, jid, result, title, quoted = null) {
     })
   }
 
-  await conn.sendButton(jid, {
-    header: title,
-    image: { url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" },
-    body: result.message,
-    footer: "GitHub Automation System v2.0",
-    buttons: [linkButton, listButton]
-  }, { quoted })
+  try {
+    await conn.sendButton(jid, {
+      header: title,
+      image: { url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" },
+      body: result.message,
+      footer: "GitHub Automation System v2.0",
+      buttons: [linkButton, listButton]
+    }, { quoted })
+    return true
+  } catch (err) {
+    console.error('Failed to send notification:', err.message)
+    return false
+  }
 }
 
 // ==================== AUTO UPDATE FUNCTIONS ====================
 
 async function autoUpdate(conn) {
+  console.log('Auto update triggered at:', new Date().toLocaleString('id-ID', { timeZone: CONFIG.timezone }))
+  
   const now = new Date()
   const dateStr = now.toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -497,17 +552,28 @@ async function autoUpdate(conn) {
   
   const commitMessage = `Auto Update - ${dateStr} ${timeStr}`
   
-  const result = await githubUpload(conn, commitMessage)
-
   try {
-    await sendReportButton(
-      conn,
-      CONFIG.targetJid,
-      result,
-      "LAPORAN AUTO UPDATE"
-    )
+    const result = await githubUpload(conn, commitMessage)
+    
+    // Only send notification if there's something to report
+    if (result.success || result.message.includes('GAGAL')) {
+      const sent = await sendReportButton(
+        conn,
+        CONFIG.targetJid,
+        result,
+        "LAPORAN AUTO UPDATE"
+      )
+      
+      if (sent) {
+        console.log('Auto update notification sent successfully')
+      } else {
+        console.log('Auto update notification skipped (cooldown/duplicate)')
+      }
+    } else {
+      console.log('Auto update: No changes detected, notification skipped')
+    }
   } catch (err) {
-    console.error('Failed to send auto update notification:', err.message)
+    console.error('Auto update error:', err.message)
   }
 }
 
