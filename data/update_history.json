@@ -3,6 +3,20 @@
     "success": true,
     "repo": "Joy",
     "branch": "main",
+    "hash": "af3a3e3",
+    "message": "Update Manual - 18 Januari 2026",
+    "filesChanged": 3,
+    "duration": "1.03",
+    "author": "Futaroukun",
+    "type": "manual",
+    "timestamp": "2026-01-18T01:06:07.970Z",
+    "dateFormatted": "18 Jan 2026, 08.06.07",
+    "id": "mkj1cb1eozqijc9d4zo"
+  },
+  {
+    "success": true,
+    "repo": "Joy",
+    "branch": "main",
     "hash": "1141ff9",
     "message": "Update Manual - 18 Januari 2026",
     "filesChanged": 5,
@@ -151,15 +165,5 @@
     "error": "Gagal membuat commit.",
     "message": "Auto Update - 17 Januari 2026",
     "timestamp": "2026-01-16T17:00:15.236Z"
-  },
-  {
-    "success": true,
-    "repo": "Joy",
-    "branch": "main",
-    "hash": "4351b8d",
-    "message": "🤖 Auto Update - 17 Januari 2026",
-    "filesChanged": 2,
-    "duration": "1.31",
-    "timestamp": "2026-01-16T17:00:01.358Z"
   }
 ]
