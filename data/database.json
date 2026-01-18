@@ -63,6 +63,22 @@
       "regTime": -1,
       "premiumDate": -1,
       "bannedDate": -1
+    },
+    "274062534299882@lid": {
+      "name": "Joy",
+      "age": -1,
+      "level": 0,
+      "exp": 0,
+      "limit": null,
+      "afk": false,
+      "afkReason": "",
+      "register": false,
+      "premium": false,
+      "banned": false,
+      "afkTime": -1,
+      "regTime": -1,
+      "premiumDate": -1,
+      "bannedDate": -1
     }
   },
   "chats": {
