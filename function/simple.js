@@ -4,7 +4,7 @@ import os from "os";
 import path from "path";
 import util from "util";
 import chalk from "chalk";
-import * as Jimp from "jimp";
+import { Jimp, JimpMime } from "jimp";
 import fetch from "node-fetch";
 import crypto from "crypto";
 
@@ -16,7 +16,6 @@ import { fileURLToPath } from "url";
 import { toAudio } from "./converter.js";
 import { imageToWebp, videoToWebp, writeExifImg, writeExifVid } from "./exif.js";
 import tmpManager from './safe-tmp.js'
-import { randomBytes } from "crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -53,10 +52,10 @@ const _isGroupJid = (id = "") => id && id.endsWith("@g.us");
  */
 export function makeWASocket(connectionOptions, options = {}) {
    let conn = _makeWASocket(connectionOptions);
-   
+
    // Override sendMessage untuk auto-mention
    const OrigMsg = conn.sendMessage.bind(conn);
-   
+
    let sock = Object.defineProperties(conn, {
       chats: {
          value: { ...(options.chats || {}) },
@@ -87,7 +86,7 @@ export function makeWASocket(connectionOptions, options = {}) {
          writable: true,
          configurable: true
       },
-      
+
       sendMessage: {
          value(jid, content, options = {}) {
             const text = content?.text || content?.caption || '';
@@ -100,14 +99,14 @@ export function makeWASocket(connectionOptions, options = {}) {
             });
          }
       },
-      
+
       decodeJid: {
          value(jid) {
             if (!jid || typeof jid !== "string") return (jid !== null && jid) || null;
             return jid.decodeJid();
          }
       },
-      
+
       profilePictureUrl: {
          async value(jid, type = 'image', query = 'url') {
             try {
@@ -121,30 +120,30 @@ export function makeWASocket(connectionOptions, options = {}) {
                   },
                   content: [{ tag: 'picture', attrs: { type, query } }]
                }, 15000);
-               
+
                const child = getBinaryNodeChild(result, 'picture');
                return child?.content || child?.attrs?.url;
             } catch {
-               return query == 'buffer' 
+               return query == 'buffer'
                   ? fs.readFileSync(path.resolve(__dirname, '../media/avatar_contact.png'))
                   : 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
             }
          }
       },
-      
+
       getJid: {
          value(sender) {
             try {
                sender = conn.decodeJid(sender);
                if (!sender) return null;
-               
+
                if (!conn.isLid) conn.isLid = new Map();
                if (conn.isLid.has(sender)) return conn.isLid.get(sender);
                if (!sender?.endsWith('@lid')) return sender;
 
                for (const chat of Object.values(conn.chats || {})) {
                   if (!chat?.metadata?.participants) continue;
-                  const user = chat.metadata.participants.find(p => 
+                  const user = chat.metadata.participants.find(p =>
                      p.lid === sender || p.id === sender
                   );
                   if (user) {
@@ -160,48 +159,48 @@ export function makeWASocket(connectionOptions, options = {}) {
             }
          }
       },
-      
+
       logger: {
          get() {
             let dates = new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
             return {
                info(...args) {
-                  console.log(chalk.bold.bgRgb(51, 204, 51)('INFO '), 
-                     `[${chalk.rgb(255, 255, 255)(dates)}]:`, 
+                  console.log(chalk.bold.bgRgb(51, 204, 51)('INFO '),
+                     `[${chalk.rgb(255, 255, 255)(dates)}]:`,
                      chalk.cyan(util.format(...args)));
                },
                error(...args) {
-                  console.log(chalk.bold.bgRgb(247, 38, 33)('ERROR '), 
-                     `[${chalk.rgb(255, 255, 255)(dates)}]:`, 
+                  console.log(chalk.bold.bgRgb(247, 38, 33)('ERROR '),
+                     `[${chalk.rgb(255, 255, 255)(dates)}]:`,
                      chalk.rgb(255, 38, 0)(util.format(...args)));
                },
                warn(...args) {
-                  console.log(chalk.bold.bgRgb(255, 153, 0)('WARNING '), 
-                     `[${chalk.rgb(255, 255, 255)(dates)}]:`, 
+                  console.log(chalk.bold.bgRgb(255, 153, 0)('WARNING '),
+                     `[${chalk.rgb(255, 255, 255)(dates)}]:`,
                      chalk.redBright(util.format(...args)));
                },
                trace(...args) {
-                  console.log(chalk.grey('TRACE '), 
-                     `[${chalk.rgb(255, 255, 255)(dates)}]:`, 
+                  console.log(chalk.grey('TRACE '),
+                     `[${chalk.rgb(255, 255, 255)(dates)}]:`,
                      chalk.white(util.format(...args)));
                },
                debug(...args) {
-                  console.log(chalk.bold.bgRgb(66, 167, 245)('DEBUG '), 
-                     `[${chalk.rgb(255, 255, 255)(dates)}]:`, 
+                  console.log(chalk.bold.bgRgb(66, 167, 245)('DEBUG '),
+                     `[${chalk.rgb(255, 255, 255)(dates)}]:`,
                      chalk.white(util.format(...args)));
                }
             };
          },
          enumerable: true
       },
-      
+
       getNumber: {
          value(sender) {
             try {
                if (!conn.storeNumber) conn.storeNumber = {};
                if (!sender || typeof sender !== "string") return "";
                if (sender.endsWith("@s.whatsapp.net")) return sender.split("@")[0];
-         
+
                if (conn.storeNumber[sender]) return conn.storeNumber[sender];
                for (let chat of Object.values(conn.chats || {})) {
                   if (!chat.metadata?.participants) continue;
@@ -215,7 +214,7 @@ export function makeWASocket(connectionOptions, options = {}) {
             }
          }
       },
-      
+
       getLid: {
          value(sender) {
             try {
@@ -239,7 +238,7 @@ export function makeWASocket(connectionOptions, options = {}) {
             }
          }
       },
-      
+
       getLidPN: {
          async value(sender) {
             try {
@@ -257,7 +256,7 @@ export function makeWASocket(connectionOptions, options = {}) {
             }
          }
       },
-      
+
       waitEvent: {
          value(eventName, is = () => true, maxTries = 25, timeoutMs = 5000) {
             return new Promise((resolve, reject) => {
@@ -287,7 +286,7 @@ export function makeWASocket(connectionOptions, options = {}) {
          },
          enumerable: true
       },
-      
+
       pushMessage: {
          async value(m) {
             if (!m) return;
@@ -295,22 +294,22 @@ export function makeWASocket(connectionOptions, options = {}) {
             for (const message of m) {
                try {
                   if (!message) continue;
-                  if (message.messageStubType && message.messageStubType != WAMessageStubType.CIPHERTEXT) 
+                  if (message.messageStubType && message.messageStubType != WAMessageStubType.CIPHERTEXT)
                      conn.processMessageStubType(message).catch(console.error);
-                     
+
                   const _mtype = Object.keys(message.message || {});
                   const mtype = (!['senderKeyDistributionMessage', 'messageContextInfo'].includes(_mtype[0]) && _mtype[0]) ||
                      (_mtype.length >= 3 && _mtype[1] !== 'messageContextInfo' && _mtype[1]) ||
                      _mtype[_mtype.length - 1];
-                     
+
                   const chat = conn.decodeJid(message.key.remoteJid || message.message?.senderKeyDistributionMessage?.groupId || '');
-                  
+
                   if (message.message?.[mtype]?.contextInfo?.quotedMessage) {
                      let context = message.message[mtype].contextInfo;
                      let participant = conn.decodeJid(context.participant);
                      const remoteJid = conn.decodeJid(context.remoteJid || participant);
                      let quoted = message.message[mtype].contextInfo.quotedMessage;
-                     
+
                      if ((remoteJid && remoteJid !== 'status@broadcast') && quoted) {
                         let qMtype = Object.keys(quoted)[0];
                         if (qMtype == 'conversation') {
@@ -320,10 +319,10 @@ export function makeWASocket(connectionOptions, options = {}) {
                         }
                         if (!quoted[qMtype].contextInfo) quoted[qMtype].contextInfo = {};
                         quoted[qMtype].contextInfo.mentionedJid = context.mentionedJid || quoted[qMtype].contextInfo.mentionedJid || [];
-                        
+
                         const isGroup = remoteJid.endsWith('g.us');
                         if (isGroup && !participant) participant = remoteJid;
-                        
+
                         const qM = {
                            key: {
                               remoteJid,
@@ -334,27 +333,27 @@ export function makeWASocket(connectionOptions, options = {}) {
                            message: JSON.parse(JSON.stringify(quoted)),
                            ...(isGroup ? { participant } : {})
                         };
-                        
+
                         let qChats = conn.chats[participant];
                         if (!qChats) qChats = conn.chats[participant] = { id: participant, isChats: !isGroup };
                         if (!qChats.messages) qChats.messages = {};
                         if (!qChats.messages[context.stanzaId] && !qM.key.fromMe) qChats.messages[context.stanzaId] = qM;
-                        
+
                         let qChatsMessages;
-                        if ((qChatsMessages = Object.entries(qChats.messages)).length > 40) 
+                        if ((qChatsMessages = Object.entries(qChats.messages)).length > 40)
                            qChats.messages = Object.fromEntries(qChatsMessages.slice(30, qChatsMessages.length));
                      }
                   }
-                  
+
                   if (!chat || chat === 'status@broadcast') continue;
                   const isGroup = chat.endsWith('@g.us');
                   let chats = conn.chats[chat];
-                  
+
                   if (!chats) {
                      if (isGroup) await conn.insertAllGroup().catch(console.error);
                      chats = conn.chats[chat] = { id: chat, isChats: true, ...(conn.chats[chat] || {}) };
                   }
-                  
+
                   let metadata, sender;
                   if (isGroup) {
                      if (!chats.subject || !chats.metadata) {
@@ -362,7 +361,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                         if (!chats.subject) chats.subject = metadata.subject || '';
                         if (!chats.metadata) chats.metadata = metadata;
                      }
-                     sender = conn.decodeJid((message.key?.fromMe && (conn?.user?.lid || conn?.user?.id || '').decodeJid()) || 
+                     sender = conn.decodeJid((message.key?.fromMe && (conn?.user?.lid || conn?.user?.id || '').decodeJid()) ||
                         message.participant || message.key?.participant || chat || '');
                      if (sender !== chat) {
                         let chats = conn.chats[sender];
@@ -370,20 +369,20 @@ export function makeWASocket(connectionOptions, options = {}) {
                         if (!chats.name) chats.name = message.pushName || chats.name || '';
                      }
                   } else if (!chats.name) chats.name = message.pushName || chats.name || '';
-                  
+
                   if (['senderKeyDistributionMessage', 'messageContextInfo'].includes(mtype)) continue;
                   chats.isChats = true;
                   if (!chats.messages) chats.messages = {};
-                  
+
                   const fromMe = message.key.fromMe || areJidsSameUser(sender || chat, (conn?.user?.lid || conn?.user?.id || '').decodeJid());
-                  if (!['protocolMessage'].includes(mtype) && !fromMe && 
+                  if (!['protocolMessage'].includes(mtype) && !fromMe &&
                       message.messageStubType != WAMessageStubType.CIPHERTEXT && message.message) {
                      delete message.message.messageContextInfo;
                      delete message.message.senderKeyDistributionMessage;
                      chats.messages[message.key.id] = JSON.parse(JSON.stringify(message, null, 2));
-                     
+
                      let chatsMessages;
-                     if ((chatsMessages = Object.entries(chats.messages)).length > 40) 
+                     if ((chatsMessages = Object.entries(chats.messages)).length > 40)
                         chats.messages = Object.fromEntries(chatsMessages.slice(30, chatsMessages.length));
                   }
                } catch (e) {
@@ -392,7 +391,7 @@ export function makeWASocket(connectionOptions, options = {}) {
             }
          }
       },
-      
+
       getAndVerifyUsername: {
          async value(jid, m) {
             try {
@@ -406,11 +405,11 @@ export function makeWASocket(connectionOptions, options = {}) {
                if (!name) {
                   name = m.name || m.verifiedBizName || m.pushName || await conn.getName(cleanJid);
                }
-               
+
                const isNameJustJid = /@s\.whatsapp\.net|@lid$/.test(name);
                const userInDb = global.db?.data?.users?.[cleanJid];
                const isDbNameJustJid = userInDb && /@s\.whatsapp\.net|@lid$/.test(userInDb.name);
-               
+
                if (isNameJustJid || (userInDb && isDbNameJustJid)) {
                   try {
                      const businessProfile = await conn.getBusinessProfile(cleanJid).catch(() => null);
@@ -429,7 +428,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                      console.log(`[getAndVerifyUsername] Gagal fetch profile untuk ${cleanJid}`);
                   }
                }
-               
+
                if (userInDb && userInDb.name !== name && !/@s\.whatsapp\.net|@lid$/.test(name)) {
                   console.log(chalk.yellow(`[DB-HEAL] Updating name for ${cleanJid.split('@')[0]}: "${userInDb.name}" -> "${name}"`));
                   userInDb.name = name;
@@ -449,7 +448,7 @@ export function makeWASocket(connectionOptions, options = {}) {
          },
          enumerable: true
       },
-      
+
       getFile: {
          async value(PATH, saveToFile = false) {
             let res, filename;
@@ -466,18 +465,18 @@ export function makeWASocket(connectionOptions, options = {}) {
                : typeof PATH === "string"
                ? PATH
                : Buffer.alloc(0);
-               
+
             if (!Buffer.isBuffer(data)) throw new TypeError("Result is not a buffer");
             const type = (await fileTypeFromBuffer(data)) || {
                mime: "application/octet-stream",
                ext: ".bin"
             };
-            
+
             if (data && saveToFile && !filename) {
                filename = path.join(process.cwd(), "tmp", `${new Date() * 1}.${type.ext}`);
                await fs.promises.writeFile(filename, data);
             }
-               
+
             return {
                res,
                filename,
@@ -490,12 +489,12 @@ export function makeWASocket(connectionOptions, options = {}) {
          },
          enumerable: true
       },
-      
+
       sendAlbum: {
          async value(jid, items = [], options = {}) {
             options = { ...options };
             const delay = !isNaN(options.delay) ? options.delay : 500;
-            
+
             const album = generateWAMessageFromContent(jid, {
                messageContextInfo: {
                   messageSecret: crypto.randomBytes(32)
@@ -547,27 +546,27 @@ export function makeWASocket(connectionOptions, options = {}) {
          },
          enumerable: true
       },
-      
+
       sendSticker: {
          async value(jid, filePath, m, options = {}) {
             const { data, mime } = await conn.getFile(filePath);
             if (data.length === 0) throw new TypeError('File tidak ditemukan');
-            
-            const exif = { 
-               packName: options.packname || global.stickpack, 
-               packPublish: options.packpublish || global.stickauth 
+
+            const exif = {
+               packName: options.packname || global.stickpack,
+               packPublish: options.packpublish || global.stickauth
             };
-            
+
             const stickerModule = await import('./exif.js');
             const sticker = await stickerModule.writeExif({ mimetype: mime, data }, exif);
-            
-            return conn.sendMessage(jid, { sticker }, { 
-               quoted: m, 
-               ephemeralExpiration: m?.expiration 
+
+            return conn.sendMessage(jid, { sticker }, {
+               quoted: m,
+               ephemeralExpiration: m?.expiration
             });
          }
       },
-      
+
       sendStickerImage: {
          async value(jid, path, quoted, options = {}) {
             let buff = Buffer.isBuffer(path)
@@ -579,13 +578,13 @@ export function makeWASocket(connectionOptions, options = {}) {
                : fs.existsSync(path)
                ? fs.readFileSync(path)
                : Buffer.alloc(0);
-            
+
             if (!buff || buff.length === 0) {
                throw new Error('Invalid image buffer')
             }
 
             console.log(`[STICKER] Processing image: ${buff.length} bytes`)
-            
+
             let sticker, buffer;
             try {
                if (options && (options.packname || options.author)) {
@@ -600,7 +599,7 @@ export function makeWASocket(connectionOptions, options = {}) {
 
                console.log(`[STICKER] Sending: ${sticker.length} bytes`)
                await conn.sendMessage(jid, { sticker: sticker, ...options }, { quoted });
-               
+
                return buffer;
             } catch (error) {
                console.error('[STICKER ERROR]', error.message)
@@ -608,7 +607,7 @@ export function makeWASocket(connectionOptions, options = {}) {
             }
          }
       },
-      
+
       sendStickerVideo: {
          async value(jid, path, quoted, options = {}) {
             let buff = Buffer.isBuffer(path)
@@ -620,7 +619,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                : fs.existsSync(path)
                ? fs.readFileSync(path)
                : Buffer.alloc(0);
-               
+
             let sticker, buffer;
             if (options && (options.packname || options.author)) {
                sticker = await writeExifVid(buff, options);
@@ -632,29 +631,29 @@ export function makeWASocket(connectionOptions, options = {}) {
             return buffer;
          }
       },
-      
+
       sendMedia: {
          async value(jid, path, quoted, options = {}) {
             let { mime, data } = await conn.getFile(path);
             let messageType = mime.split('/')[0];
             let pase = messageType.replace('application', 'document') || messageType;
-            return conn.sendMessage(jid, { 
-               [`${pase}`]: data, 
-               mimetype: mime, 
-               ...options 
+            return conn.sendMessage(jid, {
+               [`${pase}`]: data,
+               mimetype: mime,
+               ...options
             }, { quoted });
          }
       },
-      
+
       sendFile: {
          async value(jid, path, filename = "", caption = "", quoted, ptt = false, options = {}) {
             let type = await conn.getFile(path, true);
             let { res, data: file, filename: pathFile } = type;
-      
+
             if ((res && res.status !== 200) || !file || file.length === 0) {
                throw new Error('Download failed or file is empty');
             }
-      
+
             if (file.length <= 65536) {
                try {
                   throw { json: JSON.parse(file.toString()) };
@@ -662,17 +661,17 @@ export function makeWASocket(connectionOptions, options = {}) {
                   if (e.json) throw e.json;
                }
             }
-      
+
             console.log(`[SENDFILE] Processing: ${filename || 'unnamed'} (${file.length} bytes)`)
-      
+
             let opt = { filename };
             if (quoted) opt.quoted = quoted;
             if (!type) options.asDocument = true;
-      
+
             let mtype = "",
                mimetype = options.mimetype || type.mime,
                convert;
-      
+
             if (/webp/.test(type.mime) || (/image/.test(type.mime) && options.asSticker))
                mtype = "sticker";
             else if (/image/.test(type.mime) || (/webp/.test(type.mime) && options.asImage))
@@ -682,11 +681,11 @@ export function makeWASocket(connectionOptions, options = {}) {
             else if (/audio/.test(type.mime)) {
                console.log('[SENDFILE] Converting to audio...')
                convert = await toAudio(file, type.ext)
-         
+
                if (!convert || !convert.data || convert.data.length === 0) {
                   throw new Error('Audio conversion failed: empty result')
                }
-         
+
                file = convert.data
                pathFile = convert.filename
                mtype = "audio"
@@ -694,15 +693,15 @@ export function makeWASocket(connectionOptions, options = {}) {
             } else {
                mtype = "document";
             }
-      
+
             if (options.asDocument) mtype = "document";
-      
+
             delete options.asSticker;
             delete options.asLocation;
             delete options.asVideo;
             delete options.asDocument;
             delete options.asImage;
-      
+
             let message = {
                ...options,
                caption,
@@ -711,7 +710,7 @@ export function makeWASocket(connectionOptions, options = {}) {
                mimetype,
                fileName: filename || pathFile.split("/").pop()
             };
-      
+
             let m;
             try {
                console.log(`[SENDFILE] Sending as ${mtype}...`)
@@ -719,7 +718,7 @@ export function makeWASocket(connectionOptions, options = {}) {
             } catch (e) {
                console.error('[SENDFILE] First attempt failed:', e.message);
                console.log('[SENDFILE] Retrying with raw buffer...')
-         
+
                m = await conn.sendMessage(jid, {
                   ...message,
                   [mtype]: file
@@ -737,7 +736,7 @@ export function makeWASocket(connectionOptions, options = {}) {
          },
          enumerable: true
       },
-      
+
       sendButton: {
          async value(jid, content = {}, options = {}) {
             let header = {};
@@ -752,7 +751,7 @@ export function makeWASocket(connectionOptions, options = {}) {
 
             if (mime) {
                const media = await prepareWAMessageMedia(
-                  { [mime]: content[mime] }, 
+                  { [mime]: content[mime] },
                   { upload: conn.waUploadToServer }
                );
 
@@ -789,17 +788,17 @@ export function makeWASocket(connectionOptions, options = {}) {
             return msg;
          }
       },
-      
+
       sendContact: {
          async value(jid, data, quoted, options) {
             if (!Array.isArray(data[0]) && typeof data[0] === 'string') data = [data];
             let contacts = [];
-            
+
             for (let [number, name] of data) {
                number = number.replace(/[^0-9]/g, '');
                let njid = number + '@s.whatsapp.net';
                let biz = (await conn.getBusinessProfile(njid).catch(_ => null)) || {};
-               
+
                let vcard = `
 BEGIN:VCARD
 VERSION:3.0
@@ -815,13 +814,13 @@ END:VCARD
                `.trim();
                contacts.push({ vcard, displayName: name });
             }
-            
+
             return conn.sendMessage(jid, {
                ...options,
                contacts: {
                   ...options,
-                  displayName: (contacts.length >= 2 
-                     ? `${contacts.length} kontak` 
+                  displayName: (contacts.length >= 2
+                     ? `${contacts.length} kontak`
                      : contacts[0].displayName) || null,
                   contacts
                }
@@ -829,7 +828,7 @@ END:VCARD
          },
          enumerable: true
       },
-      
+
       reply: {
          async value(jid, text = '', quoted, options) {
             return Buffer.isBuffer(text)
@@ -844,7 +843,7 @@ END:VCARD
                  }, { quoted, ...options });
          }
       },
-      
+
       adReply: {
          async value(jid, text, path, m, options = {}) {
             const { data } = await conn.getFile(path);
@@ -864,12 +863,12 @@ END:VCARD
             }, { quoted: m });
          }
       },
-      
+
       sendPoll: {
          async value(jid, name = '', optiPoll, options) {
             if (!Array.isArray(optiPoll[0]) && typeof optiPoll[0] === 'string') optiPoll = [optiPoll];
             if (!options) options = {};
-            
+
             const pollMessage = {
                name: name,
                options: optiPoll.map(btn => ({
@@ -880,26 +879,26 @@ END:VCARD
             return conn.relayMessage(jid, { pollCreationMessage: pollMessage }, { ...options });
          }
       },
-      
+
       downloadAndSaveMediaMessage: {
          async value(message, filename, attachExtension = true) {
             let quoted = message.msg ? message.msg : message;
             let mime = (message.msg || message).mimetype || '';
             let messageType = message.mtype ? message.mtype.replace(/Message/gi, "") : mime.split("/")[0];
-            
+
             const stream = await downloadContentFromMessage(quoted, messageType);
             let buffer = Buffer.from([]);
             for await (const chunk of stream) {
                buffer = Buffer.concat([buffer, chunk]);
             }
-            
+
             let type = await fileTypeFromBuffer(buffer);
             let trueFileName = attachExtension ? filename + "." + type.ext : filename;
             await fs.writeFileSync(trueFileName, buffer);
             return trueFileName;
          }
       },
-      
+
       msToDate: {
          async value(ms) {
             let days = Math.floor(ms / (24 * 60 * 60 * 1000));
@@ -912,28 +911,28 @@ END:VCARD
             return days + " Hari " + hours + " Jam " + minutes + " Menit";
          }
       },
-      
+
       delay: {
          async value(ms) {
             return new Promise((resolve) => setTimeout(resolve, ms));
          }
       },
-      
+
       cMod: {
          value(jid, message, text = '', sender = (conn?.user?.lid || conn?.user?.id || '').decodeJid(), options = {}) {
             if (options.mentions && !Array.isArray(options.mentions)) options.mentions = [options.mentions];
             let copy = message.toJSON();
             delete copy.message.messageContextInfo;
             delete copy.message.senderKeyDistributionMessage;
-            
+
             let mtype = Object.keys(copy.message)[0];
             let msg = copy.message;
             let content = msg[mtype];
-            
+
             if (typeof content === 'string') msg[mtype] = text || content;
             else if (content.caption) content.caption = text || content.caption;
             else if (content.text) content.text = text || content.text;
-            
+
             if (typeof content !== 'string') {
                msg[mtype] = { ...content, ...options };
                msg[mtype].contextInfo = {
@@ -941,19 +940,19 @@ END:VCARD
                   mentionedJid: options.mentions || content.contextInfo?.mentionedJid || []
                };
             }
-            
+
             if (copy.participant) sender = copy.participant = sender || copy.participant;
             else if (copy.key.participant) sender = copy.key.participant = sender || copy.key.participant;
             if (copy.key.remoteJid.includes('@s.whatsapp.net')) sender = sender || copy.key.remoteJid;
             else if (copy.key.remoteJid.includes('@broadcast')) sender = sender || copy.key.remoteJid;
-            
+
             copy.key.remoteJid = jid;
             copy.key.fromMe = areJidsSameUser(sender, (conn?.user?.lid || conn?.user?.id || '').decodeJid()) || false;
             return proto.WebMessageInfo.create(copy);
          },
          enumerable: true
       },
-      
+
       copyNForward: {
          async value(jid, message, forwardingScore = true, options = {}) {
             let vtype;
@@ -965,24 +964,24 @@ END:VCARD
                );
                message.message[vtype].contextInfo = message.message.viewOnceMessage.contextInfo;
             }
-            
+
             let mtype = Object.keys(message.message)[0];
             let m = generateForwardMessageContent(message, !!forwardingScore);
             let ctype = Object.keys(m)[0];
-            
-            if (forwardingScore && typeof forwardingScore === 'number' && forwardingScore > 1) 
+
+            if (forwardingScore && typeof forwardingScore === 'number' && forwardingScore > 1)
                m[ctype].contextInfo.forwardingScore += forwardingScore;
-               
+
             m[ctype].contextInfo = {
                ...(message.message[mtype].contextInfo || {}),
                ...(m[ctype].contextInfo || {})
             };
-            
+
             m = generateWAMessageFromContent(jid, m, {
                ...options,
                userJid: (conn?.user?.lid || conn?.user?.id || '').decodeJid()
             });
-            
+
             await conn.relayMessage(jid, m.message, {
                messageId: m.key.id,
                additionalAttributes: { ...options }
@@ -991,7 +990,7 @@ END:VCARD
          },
          enumerable: true
       },
-      
+
       fakeReply: {
          value(jid, text = '', fakeJid = (conn?.user?.lid || conn?.user?.id || '').decodeJid(), fakeText = '', fakeGroupJid, options) {
             return conn.reply(jid, text, {
@@ -1005,14 +1004,14 @@ END:VCARD
             });
          }
       },
-      
+
       downloadM: {
          async value(m, type, saveToFile) {
             try {
                if (!m || !(m.url || m.directPath)) {
                   throw new Error('Invalid message or media not found.');
                }
-               
+
                const dlType = type === 'sticker' ? 'image' : type;
                let stream;
                try {
@@ -1038,7 +1037,7 @@ END:VCARD
                      throw e;
                   }
                }
-               
+
                const toBuffer = async (s) => {
                   if (s && typeof s.getReader === 'function') {
                      const reader = s.getReader();
@@ -1059,16 +1058,16 @@ END:VCARD
                   }
                   throw new Error('Unsupported stream type from downloadContentFromMessage');
                };
-               
+
                const buffer = await toBuffer(stream);
-               
+
                if (saveToFile) {
                   const fileType = await fileTypeFromBuffer(buffer);
                   const filename = saveToFile || `downloaded_media.${fileType?.ext || 'bin'}`;
                   await fs.promises.writeFile(filename, buffer);
                   return filename;
                }
-               
+
                return buffer;
             } catch (err) {
                console.error('Error downloading media message:', err);
@@ -1077,7 +1076,7 @@ END:VCARD
          },
          enumerable: true
       },
-      
+
       parseMention: {
          value(text = "") {
             try {
@@ -1088,7 +1087,7 @@ END:VCARD
                while ((match = regex.exec(text)) !== null) {
                   const raw = match[1];
                   if (!raw) continue;
-                  
+
                   const pn = PhoneNumber(`+${raw}`);
 
                   if (pn.valid) {
@@ -1106,14 +1105,14 @@ END:VCARD
          },
          enumerable: true
       },
-      
+
       saveName: {
          async value(id, name = '') {
             if (!id) return;
             id = conn.decodeJid(id);
             let isGroup = id.endsWith('@g.us');
             if (id in conn.contacts && conn.contacts[id][isGroup ? 'subject' : 'name'] && id in conn.chats) return;
-            
+
             let metadata = {};
             if (isGroup) metadata = await conn.groupMetadata(id);
             let chat = {
@@ -1125,21 +1124,21 @@ END:VCARD
             conn.chats[id] = chat;
          }
       },
-      
+
       getName: {
          value: async function(jid = "", withoutContact = false) {
             try {
                if (!jid) return "";
                jid = conn.decodeJid(jid);
                withoutContact = conn.withoutContact || withoutContact;
-         
+
                if (_isGroupJid(jid)) {
                   const chat = conn.chats[jid];
                   if (chat?.subject) return chat.subject;
-            
+
                   const cached = conn._groupMetaCache.get(jid);
                   if (cached) return cached.subject;
-            
+
                   try {
                      const md = await conn.groupMetadata(jid);
                      if (md) {
@@ -1150,18 +1149,18 @@ END:VCARD
                      return chat?.name || jid;
                   }
                }
-         
+
                const self = conn.user?.lid && areJidsSameUser ?
                   areJidsSameUser(jid, conn.user.lid) : false;
-         
+
                const v = jid === "0@s.whatsapp.net" ?
                   { jid, vname: "WhatsApp" } :
                   self ?
                   conn.user :
                   conn.chats[jid] || {};
-         
+
                let name = v.name || v.vname || v.notify || v.verifiedName || v.subject;
-      
+
                if (!name || /@s\.whatsapp\.net|@lid$/.test(name)) {
                   const jidParts = jid.split('@')[0];
                   if (jidParts.length > 10) {
@@ -1170,7 +1169,7 @@ END:VCARD
                      name = jidParts;
                   }
                }
-         
+
                return withoutContact ? "" : (name || jid.split('@')[0]);
             } catch (e) {
                console.error('[getName Error]:', e.message);
@@ -1179,7 +1178,7 @@ END:VCARD
          },
          enumerable: true
       },
-      
+
       loadMessage: {
          value(messageID) {
             return Object.entries(conn.chats)
@@ -1189,17 +1188,17 @@ END:VCARD
          },
          enumerable: true
       },
-      
+
       processMessageStubType: {
          async value(m) {
             if (!m.messageStubType) return;
             const chat = conn.decodeJid(m.key.remoteJid || m.message?.senderKeyDistributionMessage?.groupId || '');
             if (!chat || chat === 'status@broadcast') return;
-            
+
             const emitGroupUpdate = update => {
                conn.ev.emit('groups.update', [{ id: chat, ...update }]);
             };
-            
+
             switch (m.messageStubType) {
                case WAMessageStubType.REVOKE:
                case WAMessageStubType.GROUP_CHANGE_INVITE_LINK:
@@ -1211,21 +1210,21 @@ END:VCARD
                default:
                   break;
             }
-            
+
             const isGroup = chat.endsWith('@g.us');
             if (!isGroup) return;
-            
+
             let chats = conn.chats[chat];
             if (!chats) chats = conn.chats[chat] = { id: chat };
             chats.isChats = true;
-            
+
             const metadata = await conn.groupMetadata(chat).catch(_ => null);
             if (!metadata) return;
             chats.subject = metadata.subject;
             chats.metadata = metadata;
          }
       },
-      
+
       relayWAMessage: {
          async value(fullMessage) {
             if (fullMessage.message.audioMessage) {
@@ -1233,7 +1232,7 @@ END:VCARD
             } else {
                await conn.sendPresenceUpdate("composing", fullMessage.key.remoteJid);
             }
-            
+
             var skirim = await conn.relayMessage(fullMessage.key.remoteJid, fullMessage.message, {
                messageId: fullMessage.key.id
             });
@@ -1241,7 +1240,7 @@ END:VCARD
             return skirim;
          }
       },
-      
+
       sendGroupV4Invite: {
          async value(groupJid, participant, inviteCode, inviteExpiration, groupName, caption, jpegThumbnail, options = {}) {
             const msg = generateWAMessageFromContent(participant, {
@@ -1265,7 +1264,7 @@ END:VCARD
          },
          enumerable: true
       },
-      
+
       insertAllGroup: {
          async value() {
             const groups = (await conn.groupFetchAllParticipating().catch(_ => null)) || {};
@@ -1280,13 +1279,13 @@ END:VCARD
             return conn.chats;
          }
       },
-      
+
       serializeM: {
          value(m) {
             return smsg(conn, m);
          }
       },
-      
+
       updateProfilePicture: {
          async value(jid, content) {
             const { img } = await generateProfilePicture(content);
@@ -1298,7 +1297,7 @@ END:VCARD
          },
          enumerable: true
       },
-      
+
       ...(typeof conn.chatRead !== "function" ? {
          chatRead: {
             value(jid, participant = (conn?.user?.lid || conn?.user?.id || '').decodeJid(), messageID) {
@@ -1307,7 +1306,7 @@ END:VCARD
             enumerable: true
          }
       } : {}),
-      
+
       ...(typeof conn.setStatus !== "function" ? {
          setStatus: {
             value(status) {
@@ -1357,8 +1356,8 @@ function parseMessage(content) {
 const getContentType = (content) => {
    if (content) {
       const keys = Object.keys(content);
-      const key = keys.find(k => 
-         (k === 'conversation' || k.endsWith('Message') || k.includes('V2') || k.includes('V3')) && 
+      const key = keys.find(k =>
+         (k === 'conversation' || k.endsWith('Message') || k.includes('V2') || k.includes('V3')) &&
          k !== 'senderKeyDistributionMessage'
       );
       return key;
@@ -1373,7 +1372,7 @@ export async function smsg(conn, m, hasParent) {
 
    m = proto.WebMessageInfo.create(m);
    m.message = parseMessage(m.message);
-   
+
    const messageId = generateMessageIDV2().slice(0, 4);
    const MediaType = [
       "audioMessage", "bcallMessage", "botInvokeMessage", "buttonsMessage",
@@ -1404,10 +1403,10 @@ export async function smsg(conn, m, hasParent) {
       if (m.mtype == 'protocolMessage' && m.msg.key) {
          protocolMessageKey = m.msg.key;
          if (protocolMessageKey == 'status@broadcast') protocolMessageKey.remoteJid = m.chat;
-         if (!protocolMessageKey.participant || protocolMessageKey.participant == 'status_me') 
+         if (!protocolMessageKey.participant || protocolMessageKey.participant == 'status_me')
             protocolMessageKey.participant = m.sender;
          protocolMessageKey.fromMe = conn.decodeJid(protocolMessageKey.participant) === conn.decodeJid(conn.user.id);
-         if (!protocolMessageKey.fromMe && protocolMessageKey.remoteJid === conn.decodeJid(conn.user.id)) 
+         if (!protocolMessageKey.fromMe && protocolMessageKey.remoteJid === conn.decodeJid(conn.user.id))
             protocolMessageKey.remoteJid = m.sender;
       }
       if (m.quoted) if (!m.quoted.mediaMessage) delete m.quoted.download;
@@ -1415,7 +1414,7 @@ export async function smsg(conn, m, hasParent) {
    if (!m.mediaMessage) delete m.download;
 
    try {
-      if (protocolMessageKey && m.mtype == 'protocolMessage') 
+      if (protocolMessageKey && m.mtype == 'protocolMessage')
          conn.ev.emit('message.delete', protocolMessageKey);
    } catch (e) {
       console.error(e);
@@ -1606,7 +1605,7 @@ export async function smsg(conn, m, hasParent) {
                      enumerable: true
                   },
                   isBaileys: {
-                     get() { 
+                     get() {
                         const id = this.id;
                         return /^3A|2A.{18}$/.test(id) ? false : /^(.{21}|.{32})$/.test(id) ? false : true;
                      },
@@ -1864,12 +1863,12 @@ export function protoType() {
       const minutes = Math.floor((this / (60 * 1000)) % 60);
       const hours = Math.floor((this / (60 * 60 * 1000)) % 24);
       const days = Math.floor(this / (24 * 60 * 60 * 1000));
-      return ((days ? `${days} day(s) ` : "") + 
-         (hours ? `${hours} hour(s) ` : "") + 
-         (minutes ? `${minutes} minute(s) ` : "") + 
+      return ((days ? `${days} day(s) ` : "") +
+         (hours ? `${hours} hour(s) ` : "") +
+         (minutes ? `${minutes} minute(s) ` : "") +
          (seconds ? `${seconds} second(s)` : "")).trim();
    };
-   
+
    Number.prototype.getRandom = String.prototype.getRandom = Array.prototype.getRandom = getRandom;
 
    String.prototype.decodeJid = function decodeJid() {
@@ -1881,25 +1880,47 @@ export function protoType() {
 }
 
 function getRandom() {
-   if (Array.isArray(this) || this instanceof String) 
+   if (Array.isArray(this) || this instanceof String)
       return this[Math.floor(Math.random() * this.length)];
    return Math.floor(Math.random() * this);
 }
+
+const toBuffer = async (s) => {
+   if (s && typeof s.getReader === 'function') {
+      const reader = s.getReader();
+      const chunks = [];
+      for (;;) {
+         const { value, done } = await reader.read();
+         if (done) break;
+         if (value) chunks.push(Buffer.from(value));
+      }
+      return Buffer.concat(chunks);
+   }
+   if (s && typeof s[Symbol.asyncIterator] === 'function') {
+      const chunks = [];
+      for await (const chunk of s) {
+         chunks.push(Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+   }
+   if (Buffer.isBuffer(s)) return s;
+   if (s instanceof ArrayBuffer) return Buffer.from(s);
+   throw new Error('Unsupported stream type or invalid buffer');
+};
 
 async function generateProfilePicture(mediaUpload) {
    let bufferOrFilePath;
    if (Buffer.isBuffer(mediaUpload)) bufferOrFilePath = mediaUpload;
    else if ("url" in mediaUpload) bufferOrFilePath = mediaUpload.url.toString();
    else bufferOrFilePath = await toBuffer(mediaUpload.stream);
-   
-   const { read, MIME_JPEG, AUTO } = await Promise.resolve().then(async () => (await import("jimp")).default);
-   const jimp = await read(bufferOrFilePath);
-   const min = jimp.getWidth();
-   const max = jimp.getHeight();
-   const cropped = jimp.crop(0, 0, min, max);
-   
+
+   const jimp = await Jimp.read(bufferOrFilePath);
+   const min = jimp.width;
+   const max = jimp.height;
+   const cropped = jimp.crop({ x: 0, y: 0, w: min, h: max });
+
    return {
-      img: await cropped.quality(100).scaleToFit(720, 720, AUTO).getBufferAsync(MIME_JPEG)
+      img: await cropped.scaleToFit({ w: 720, h: 720 }).getBuffer(JimpMime.jpeg)
    };
 }
 
