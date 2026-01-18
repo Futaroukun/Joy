@@ -4,7 +4,7 @@ import os from "os";
 import path from "path";
 import util from "util";
 import chalk from "chalk";
-import * as Jimp from "jimp";
+import { Jimp, JimpMime } from "jimp";
 import fetch from "node-fetch";
 import crypto from "crypto";
 
@@ -16,7 +16,6 @@ import { fileURLToPath } from "url";
 import { toAudio } from "./converter.js";
 import { imageToWebp, videoToWebp, writeExifImg, writeExifVid } from "./exif.js";
 import tmpManager from './safe-tmp.js'
-import { randomBytes } from "crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -1886,20 +1885,42 @@ function getRandom() {
    return Math.floor(Math.random() * this);
 }
 
+const toBuffer = async (s) => {
+   if (s && typeof s.getReader === 'function') {
+      const reader = s.getReader();
+      const chunks = [];
+      for (;;) {
+         const { value, done } = await reader.read();
+         if (done) break;
+         if (value) chunks.push(Buffer.from(value));
+      }
+      return Buffer.concat(chunks);
+   }
+   if (s && typeof s[Symbol.asyncIterator] === 'function') {
+      const chunks = [];
+      for await (const chunk of s) {
+         chunks.push(Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+   }
+   if (Buffer.isBuffer(s)) return s;
+   if (s instanceof ArrayBuffer) return Buffer.from(s);
+   throw new Error('Unsupported stream type or invalid buffer');
+};
+
 async function generateProfilePicture(mediaUpload) {
    let bufferOrFilePath;
    if (Buffer.isBuffer(mediaUpload)) bufferOrFilePath = mediaUpload;
    else if ("url" in mediaUpload) bufferOrFilePath = mediaUpload.url.toString();
    else bufferOrFilePath = await toBuffer(mediaUpload.stream);
    
-   const { read, MIME_JPEG, AUTO } = await Promise.resolve().then(async () => (await import("jimp")).default);
-   const jimp = await read(bufferOrFilePath);
-   const min = jimp.getWidth();
-   const max = jimp.getHeight();
-   const cropped = jimp.crop(0, 0, min, max);
+   const jimp = await Jimp.read(bufferOrFilePath);
+   const min = jimp.width;
+   const max = jimp.height;
+   const cropped = jimp.crop({ x: 0, y: 0, w: min, h: max });
    
    return {
-      img: await cropped.quality(100).scaleToFit(720, 720, AUTO).getBufferAsync(MIME_JPEG)
+      img: await cropped.scaleToFit({ w: 720, h: 720 }).getBuffer(JimpMime.jpeg)
    };
 }
 
