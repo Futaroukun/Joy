@@ -9,26 +9,28 @@
 import fetch from 'node-fetch'
 import crypto from 'crypto'
 
-let activeChats = {};
-
 let handler = async (m, { conn, text, usedPrefix, command, args }) => {
     // --- MODE ON ---
     if (args[0] === 'on') {
+        let chat = global.db.data.chats[m.chat]
+        if (!chat) chat = global.db.data.chats[m.chat] = {}
+
         // Cek dulu, sudah aktif belum?
-        if (activeChats[m.chat]) {
+        if (chat.isCiciOn) {
             return m.reply('⚠️ *Auto-Reply Sudah Aktif!*\nBot sudah dalam mode membalas otomatis kok.');
         }
-        activeChats[m.chat] = true;
+        chat.isCiciOn = true;
         return m.reply('✅ *Cici AI Auto-Reply Aktif!*\nSekarang bot akan membalas semua pesan di chat ini.');
     }
 
     // --- MODE OFF ---
     if (args[0] === 'off') {
+        let chat = global.db.data.chats[m.chat]
         // Cek dulu, sudah mati belum?
-        if (!activeChats[m.chat]) {
+        if (!chat || !chat.isCiciOn) {
             return m.reply('⚠️ *Auto-Reply Sudah Mati!*\nTidak perlu dimatikan lagi.');
         }
-        delete activeChats[m.chat];
+        chat.isCiciOn = false;
         return m.reply('❌ *Cici AI Auto-Reply Mati.*');
     }
 
@@ -41,7 +43,8 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
 // --- LOGIKA AUTO-REPLY ---
 handler.before = async (m, { conn }) => {
     if (m.isBaileys || m.fromMe) return;
-    if (!activeChats[m.chat]) return;
+    let chat = global.db.data.chats[m.chat]
+    if (!chat || !chat.isCiciOn) return;
     
     const prefixRegex = /^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^]/;
     if (m.text && !prefixRegex.test(m.text)) {
