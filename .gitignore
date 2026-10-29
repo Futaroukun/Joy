@@ -1,0 +1,22 @@
+# Sessions, Modules & Runtime
+sessions/
+node_modules/
+tmp/
+*.log
+.codebase_graph.db
+data/gsmarena-index.json
+
+# Environment
+.env
+
+# Database & Backups
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/backups/
+
+# Dynamic data, caches, accounts & cookies
+data/*.json
+!data/.gitkeep
+!data/wilayah_kota.json
+!data/*.example.json

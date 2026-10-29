@@ -1,0 +1,4178 @@
+[
+  {
+    "id": "11.01",
+    "name": "KAB. ACEH SELATAN",
+    "clean": "aceh selatan",
+    "isKota": false,
+    "adm4": "11.01.01.2001",
+    "desa": "Keude Bakongan"
+  },
+  {
+    "id": "11.02",
+    "name": "KAB. ACEH TENGGARA",
+    "clean": "aceh tenggara",
+    "isKota": false,
+    "adm4": "11.02.01.2001",
+    "desa": "Engkeran"
+  },
+  {
+    "id": "11.03",
+    "name": "KAB. ACEH TIMUR",
+    "clean": "aceh timur",
+    "isKota": false,
+    "adm4": "11.03.01.2001",
+    "desa": "Alue Luddin Sa"
+  },
+  {
+    "id": "11.04",
+    "name": "KAB. ACEH TENGAH",
+    "clean": "aceh tengah",
+    "isKota": false,
+    "adm4": "11.04.01.2003",
+    "desa": "Delung Sekinel"
+  },
+  {
+    "id": "11.05",
+    "name": "KAB. ACEH BARAT",
+    "clean": "aceh barat",
+    "isKota": false,
+    "adm4": "11.05.01.2001",
+    "desa": "Suak Indrapuri"
+  },
+  {
+    "id": "11.06",
+    "name": "KAB. ACEH BESAR",
+    "clean": "aceh besar",
+    "isKota": false,
+    "adm4": "11.06.01.2001",
+    "desa": "Meunasah Krueng Kala"
+  },
+  {
+    "id": "11.07",
+    "name": "KAB. PIDIE",
+    "clean": "pidie",
+    "isKota": false,
+    "adm4": "11.07.03.2001",
+    "desa": "Dayah Tuha"
+  },
+  {
+    "id": "11.08",
+    "name": "KAB. ACEH UTARA",
+    "clean": "aceh utara",
+    "isKota": false,
+    "adm4": "11.08.01.2001",
+    "desa": "Keude Alue Ie Puteh"
+  },
+  {
+    "id": "11.09",
+    "name": "KAB. SIMEULUE",
+    "clean": "simeulue",
+    "isKota": false,
+    "adm4": "11.09.01.2007",
+    "desa": "Wel Wel"
+  },
+  {
+    "id": "11.10",
+    "name": "KAB. ACEH SINGKIL",
+    "clean": "aceh singkil",
+    "isKota": false,
+    "adm4": "11.10.01.2001",
+    "desa": "Pulau Balai"
+  },
+  {
+    "id": "11.11",
+    "name": "KAB. BIREUEN",
+    "clean": "bireuen",
+    "isKota": false,
+    "adm4": "11.11.01.2001",
+    "desa": "Keude Aceh"
+  },
+  {
+    "id": "11.12",
+    "name": "KAB. ACEH BARAT DAYA",
+    "clean": "aceh barat daya",
+    "isKota": false,
+    "adm4": "11.12.01.2006",
+    "desa": "Guhang"
+  },
+  {
+    "id": "11.13",
+    "name": "KAB. GAYO LUES",
+    "clean": "gayo lues",
+    "isKota": false,
+    "adm4": "11.13.01.2001",
+    "desa": "Kota Blangkejeren"
+  },
+  {
+    "id": "11.14",
+    "name": "KAB. ACEH JAYA",
+    "clean": "aceh jaya",
+    "isKota": false,
+    "adm4": "11.14.01.2001",
+    "desa": "Keude Teunom"
+  },
+  {
+    "id": "11.15",
+    "name": "KAB. NAGAN RAYA",
+    "clean": "nagan raya",
+    "isKota": false,
+    "adm4": "11.15.01.2003",
+    "desa": "Lawa Batu"
+  },
+  {
+    "id": "11.16",
+    "name": "KAB. ACEH TAMIANG",
+    "clean": "aceh tamiang",
+    "isKota": false,
+    "adm4": "11.16.01.2001",
+    "desa": "Simpang Lhee"
+  },
+  {
+    "id": "11.17",
+    "name": "KAB. BENER MERIAH",
+    "clean": "bener meriah",
+    "isKota": false,
+    "adm4": "11.17.01.2001",
+    "desa": "Blang Rakal"
+  },
+  {
+    "id": "11.18",
+    "name": "KAB. PIDIE JAYA",
+    "clean": "pidie jaya",
+    "isKota": false,
+    "adm4": "11.18.01.2001",
+    "desa": "Meunasah Balek"
+  },
+  {
+    "id": "11.71",
+    "name": "KOTA BANDA ACEH",
+    "clean": "banda aceh",
+    "isKota": true,
+    "adm4": "11.71.01.2001",
+    "desa": "Kampung Baru"
+  },
+  {
+    "id": "11.72",
+    "name": "KOTA SABANG",
+    "clean": "sabang",
+    "isKota": true,
+    "adm4": "11.72.01.2001",
+    "desa": "Iboih"
+  },
+  {
+    "id": "11.73",
+    "name": "KOTA LHOKSEUMAWE",
+    "clean": "lhokseumawe",
+    "isKota": true,
+    "adm4": "11.73.01.2002",
+    "desa": "Alue Awe"
+  },
+  {
+    "id": "11.74",
+    "name": "KOTA LANGSA",
+    "clean": "langsa",
+    "isKota": true,
+    "adm4": "11.74.01.2007",
+    "desa": "Buket Medang Ara"
+  },
+  {
+    "id": "11.75",
+    "name": "KOTA SUBULUSSALAM",
+    "clean": "subulussalam",
+    "isKota": true,
+    "adm4": "11.75.01.2001",
+    "desa": "Subulussalam"
+  },
+  {
+    "id": "12.01",
+    "name": "KAB. TAPANULI TENGAH",
+    "clean": "tapanuli tengah",
+    "isKota": false,
+    "adm4": "12.01.01.1001",
+    "desa": "Pasar Batu Gerigis"
+  },
+  {
+    "id": "12.02",
+    "name": "KAB. TAPANULI UTARA",
+    "clean": "tapanuli utara",
+    "isKota": false,
+    "adm4": "12.02.01.1001",
+    "desa": "Partoli Toruan"
+  },
+  {
+    "id": "12.03",
+    "name": "KAB. TAPANULI SELATAN",
+    "clean": "tapanuli selatan",
+    "isKota": false,
+    "adm4": "12.03.01.1001",
+    "desa": "Sitinjak"
+  },
+  {
+    "id": "12.04",
+    "name": "KAB. NIAS",
+    "clean": "nias",
+    "isKota": false,
+    "adm4": "12.04.05.2001",
+    "desa": "Ononamolo I Bot"
+  },
+  {
+    "id": "12.05",
+    "name": "KAB. LANGKAT",
+    "clean": "langkat",
+    "isKota": false,
+    "adm4": "12.05.01.1001",
+    "desa": "Pekan Bahorok"
+  },
+  {
+    "id": "12.06",
+    "name": "KAB. KARO",
+    "clean": "karo",
+    "isKota": false,
+    "adm4": "12.06.01.2001",
+    "desa": "Rumah Kabanjahe"
+  },
+  {
+    "id": "12.07",
+    "name": "KAB. DELI SERDANG",
+    "clean": "deli serdang",
+    "isKota": false,
+    "adm4": "12.07.01.2001",
+    "desa": "Kuta Bayu"
+  },
+  {
+    "id": "12.08",
+    "name": "KAB. SIMALUNGUN",
+    "clean": "simalungun",
+    "isKota": false,
+    "adm4": "12.08.01.2001",
+    "desa": "Silampuyang"
+  },
+  {
+    "id": "12.09",
+    "name": "KAB. ASAHAN",
+    "clean": "asahan",
+    "isKota": false,
+    "adm4": "12.09.08.2002",
+    "desa": "Meranti"
+  },
+  {
+    "id": "12.10",
+    "name": "KAB. LABUHANBATU",
+    "clean": "labuhanbatu",
+    "isKota": false,
+    "adm4": "12.10.01.1001",
+    "desa": "Padang Matinggi"
+  },
+  {
+    "id": "12.11",
+    "name": "KAB. DAIRI",
+    "clean": "dairi",
+    "isKota": false,
+    "adm4": "12.11.01.1005",
+    "desa": "Kuta Gambir"
+  },
+  {
+    "id": "12.12",
+    "name": "KAB. TOBA SAMOSIR",
+    "clean": "toba samosir",
+    "isKota": false,
+    "adm4": "12.12.01.2003",
+    "desa": "Hutanamora"
+  },
+  {
+    "id": "12.13",
+    "name": "KAB. MANDAILING NATAL",
+    "clean": "mandailing natal",
+    "isKota": false,
+    "adm4": "12.13.01.2001",
+    "desa": "Adian Jior"
+  },
+  {
+    "id": "12.14",
+    "name": "KAB. NIAS SELATAN",
+    "clean": "nias selatan",
+    "isKota": false,
+    "adm4": "12.14.01.2002",
+    "desa": "Hilisangowola"
+  },
+  {
+    "id": "12.15",
+    "name": "KAB. PAKPAK BHARAT",
+    "clean": "pakpak bharat",
+    "isKota": false,
+    "adm4": "12.15.01.2001",
+    "desa": "Tanjung Meriah"
+  },
+  {
+    "id": "12.16",
+    "name": "KAB. HUMBANG HASUNDUTAN",
+    "clean": "humbang hasundutan",
+    "isKota": false,
+    "adm4": "12.16.01.2002",
+    "desa": "Pusuk II Simaninggir"
+  },
+  {
+    "id": "12.17",
+    "name": "KAB. SAMOSIR",
+    "clean": "samosir",
+    "isKota": false,
+    "adm4": "12.17.01.2001",
+    "desa": "Tomok"
+  },
+  {
+    "id": "12.18",
+    "name": "KAB. SERDANG BEDAGAI",
+    "clean": "serdang bedagai",
+    "isKota": false,
+    "adm4": "12.18.01.2001",
+    "desa": "Pantai Cermin Kanan"
+  },
+  {
+    "id": "12.19",
+    "name": "KAB. BATU BARA",
+    "clean": "batu bara",
+    "isKota": false,
+    "adm4": "12.19.01.1001",
+    "desa": "Pangkalan Dodek"
+  },
+  {
+    "id": "12.20",
+    "name": "KAB. PADANG LAWAS UTARA",
+    "clean": "padang lawas utara",
+    "isKota": false,
+    "adm4": "12.20.01.2001",
+    "desa": "Janji Manahan GNT"
+  },
+  {
+    "id": "12.21",
+    "name": "KAB. PADANG LAWAS",
+    "clean": "padang lawas",
+    "isKota": false,
+    "adm4": "12.21.01.2001",
+    "desa": "Pagaranbira Jae"
+  },
+  {
+    "id": "12.22",
+    "name": "KAB. LABUHANBATU SELATAN",
+    "clean": "labuhanbatu selatan",
+    "isKota": false,
+    "adm4": "12.22.01.1001",
+    "desa": "Kotapinang"
+  },
+  {
+    "id": "12.23",
+    "name": "KAB. LABUHANBATU UTARA",
+    "clean": "labuhanbatu utara",
+    "isKota": false,
+    "adm4": "12.23.01.1001",
+    "desa": "Aek Kanopan"
+  },
+  {
+    "id": "12.24",
+    "name": "KAB. NIAS UTARA",
+    "clean": "nias utara",
+    "isKota": false,
+    "adm4": "12.24.01.2001",
+    "desa": "Hilidundra"
+  },
+  {
+    "id": "12.25",
+    "name": "KAB. NIAS BARAT",
+    "clean": "nias barat",
+    "isKota": false,
+    "adm4": "12.25.01.2001",
+    "desa": "Sisobaoho"
+  },
+  {
+    "id": "12.71",
+    "name": "KOTA MEDAN",
+    "clean": "medan",
+    "isKota": true,
+    "adm4": "12.71.01.1001",
+    "desa": "Pasar Baru"
+  },
+  {
+    "id": "12.72",
+    "name": "KOTA PEMATANGSIANTAR",
+    "clean": "pematangsiantar",
+    "isKota": true,
+    "adm4": "12.72.01.1001",
+    "desa": "Kebun Sayur"
+  },
+  {
+    "id": "12.73",
+    "name": "KOTA SIBOLGA",
+    "clean": "sibolga",
+    "isKota": true,
+    "adm4": "12.73.01.1001",
+    "desa": "Huta Barangan"
+  },
+  {
+    "id": "12.74",
+    "name": "KOTA TANJUNG BALAI",
+    "clean": "tanjung balai",
+    "isKota": true,
+    "adm4": "12.74.01.1001",
+    "desa": "Tanjung Balai Kota I"
+  },
+  {
+    "id": "12.75",
+    "name": "KOTA BINJAI",
+    "clean": "binjai",
+    "isKota": true,
+    "adm4": "12.75.01.1001",
+    "desa": "Pahlawan"
+  },
+  {
+    "id": "12.76",
+    "name": "KOTA TEBING TINGGI",
+    "clean": "tebing tinggi",
+    "isKota": true,
+    "adm4": "12.76.01.1001",
+    "desa": "Pabatu"
+  },
+  {
+    "id": "12.77",
+    "name": "KOTA PADANG SIDEMPUAN",
+    "clean": "padang sidempuan",
+    "isKota": true,
+    "adm4": "12.77.01.1001",
+    "desa": "Wek I"
+  },
+  {
+    "id": "12.78",
+    "name": "KOTA GUNUNGSITOLI",
+    "clean": "gunungsitoli",
+    "isKota": true,
+    "adm4": "12.78.01.2001",
+    "desa": "Bawodesolo"
+  },
+  {
+    "id": "13.01",
+    "name": "KAB. PESISIR SELATAN",
+    "clean": "pesisir selatan",
+    "isKota": false,
+    "adm4": "13.01.01.2001",
+    "desa": "Inderapura"
+  },
+  {
+    "id": "13.02",
+    "name": "KAB. SOLOK",
+    "clean": "solok",
+    "isKota": false,
+    "adm4": "13.02.02.1036",
+    "desa": "Ikua Koto Dibalai"
+  },
+  {
+    "id": "13.03",
+    "name": "KAB. SIJUNJUNG",
+    "clean": "sijunjung",
+    "isKota": false,
+    "adm4": "13.03.03.2001",
+    "desa": "Timbulun"
+  },
+  {
+    "id": "13.04",
+    "name": "KAB. TANAH DATAR",
+    "clean": "tanah datar",
+    "isKota": false,
+    "adm4": "13.04.01.2001",
+    "desa": "Tambangan"
+  },
+  {
+    "id": "13.05",
+    "name": "KAB. PADANG PARIAMAN",
+    "clean": "padang pariaman",
+    "isKota": false,
+    "adm4": "13.05.01.2001",
+    "desa": "Lubuk Alung"
+  },
+  {
+    "id": "13.06",
+    "name": "KAB. AGAM",
+    "clean": "agam",
+    "isKota": false,
+    "adm4": "13.06.01.2001",
+    "desa": "Tiku Selatan"
+  },
+  {
+    "id": "13.07",
+    "name": "KAB. LIMA PULUH KOTA",
+    "clean": "lima puluh kota",
+    "isKota": false,
+    "adm4": "13.07.01.2001",
+    "desa": "Kurai"
+  },
+  {
+    "id": "13.08",
+    "name": "KAB. PASAMAN",
+    "clean": "pasaman",
+    "isKota": false,
+    "adm4": "13.08.04.2001",
+    "desa": "Limo Koto"
+  },
+  {
+    "id": "13.09",
+    "name": "KAB. KEPULAUAN MENTAWAI",
+    "clean": "kepulauan mentawai",
+    "isKota": false,
+    "adm4": "13.09.01.2007",
+    "desa": "Betumonga"
+  },
+  {
+    "id": "13.10",
+    "name": "KAB. DHARMASRAYA",
+    "clean": "dharmasraya",
+    "isKota": false,
+    "adm4": "13.10.01.2002",
+    "desa": "Koto Baru"
+  },
+  {
+    "id": "13.11",
+    "name": "KAB. SOLOK SELATAN",
+    "clean": "solok selatan",
+    "isKota": false,
+    "adm4": "13.11.01.2001",
+    "desa": "Lubuk Gadang"
+  },
+  {
+    "id": "13.12",
+    "name": "KAB. PASAMAN BARAT",
+    "clean": "pasaman barat",
+    "isKota": false,
+    "adm4": "13.12.01.2001",
+    "desa": "Aia Bangih"
+  },
+  {
+    "id": "13.71",
+    "name": "KOTA PADANG",
+    "clean": "padang",
+    "isKota": true,
+    "adm4": "13.71.01.1001",
+    "desa": "Belakang Pondok"
+  },
+  {
+    "id": "13.72",
+    "name": "KOTA SOLOK",
+    "clean": "solok",
+    "isKota": true,
+    "adm4": "13.72.01.1001",
+    "desa": "Tanah Garam"
+  },
+  {
+    "id": "13.73",
+    "name": "KOTA SAWAHLUNTO",
+    "clean": "sawahlunto",
+    "isKota": true,
+    "adm4": "13.73.01.1001",
+    "desa": "Aur Mulio"
+  },
+  {
+    "id": "13.74",
+    "name": "KOTA PADANG PANJANG",
+    "clean": "padang panjang",
+    "isKota": true,
+    "adm4": "13.74.01.1001",
+    "desa": "Ganting"
+  },
+  {
+    "id": "13.75",
+    "name": "KOTA BUKITTINGGI",
+    "clean": "bukittinggi",
+    "isKota": true,
+    "adm4": "13.75.01.1001",
+    "desa": "Tarok Dipo"
+  },
+  {
+    "id": "13.76",
+    "name": "KOTA PAYAKUMBUH",
+    "clean": "payakumbuh",
+    "isKota": true,
+    "adm4": "13.76.01.1002",
+    "desa": "Pakan Sinayan"
+  },
+  {
+    "id": "13.77",
+    "name": "KOTA PARIAMAN",
+    "clean": "pariaman",
+    "isKota": true,
+    "adm4": "13.77.01.1001",
+    "desa": "Karan Aur"
+  },
+  {
+    "id": "14.01",
+    "name": "KAB. KAMPAR",
+    "clean": "kampar",
+    "isKota": false,
+    "adm4": "14.01.01.2009",
+    "desa": "Kumantan"
+  },
+  {
+    "id": "14.02",
+    "name": "KAB. INDRAGIRI HULU",
+    "clean": "indragiri hulu",
+    "isKota": false,
+    "adm4": "14.02.01.2001",
+    "desa": "Sungai Guntung Tengah"
+  },
+  {
+    "id": "14.03",
+    "name": "KAB. BENGKALIS",
+    "clean": "bengkalis",
+    "isKota": false,
+    "adm4": "14.03.01.1001",
+    "desa": "Kota Bengkalis"
+  },
+  {
+    "id": "14.04",
+    "name": "KAB. INDRAGIRI HILIR",
+    "clean": "indragiri hilir",
+    "isKota": false,
+    "adm4": "14.04.01.1001",
+    "desa": "Pulaukijang"
+  },
+  {
+    "id": "14.05",
+    "name": "KAB. PELALAWAN",
+    "clean": "pelalawan",
+    "isKota": false,
+    "adm4": "14.05.01.2001",
+    "desa": "Air Hitam"
+  },
+  {
+    "id": "14.06",
+    "name": "KAB. ROKAN HULU",
+    "clean": "rokan hulu",
+    "isKota": false,
+    "adm4": "14.06.01.1001",
+    "desa": "Ujung Batu"
+  },
+  {
+    "id": "14.07",
+    "name": "KAB. ROKAN HILIR",
+    "clean": "rokan hilir",
+    "isKota": false,
+    "adm4": "14.07.01.2002",
+    "desa": "Tanjungleban"
+  },
+  {
+    "id": "14.08",
+    "name": "KAB. SIAK",
+    "clean": "siak",
+    "isKota": false,
+    "adm4": "14.08.01.1001",
+    "desa": "Kampung Dalam"
+  },
+  {
+    "id": "14.09",
+    "name": "KAB. KUANTAN SINGINGI",
+    "clean": "kuantan singingi",
+    "isKota": false,
+    "adm4": "14.09.01.2004",
+    "desa": "Air Buluh"
+  },
+  {
+    "id": "14.10",
+    "name": "KAB. KEPULAUAN MERANTI",
+    "clean": "kepulauan meranti",
+    "isKota": false,
+    "adm4": "14.10.01.1001",
+    "desa": "Selatpanjang Kota"
+  },
+  {
+    "id": "14.71",
+    "name": "KOTA PEKANBARU",
+    "clean": "pekanbaru",
+    "isKota": true,
+    "adm4": "14.71.01.1002",
+    "desa": "Jadirejo"
+  },
+  {
+    "id": "14.72",
+    "name": "KOTA DUMAI",
+    "clean": "dumai",
+    "isKota": true,
+    "adm4": "14.72.01.1003",
+    "desa": "Pangkalan Sesai"
+  },
+  {
+    "id": "15.01",
+    "name": "KAB. KERINCI",
+    "clean": "kerinci",
+    "isKota": false,
+    "adm4": "15.01.01.2001",
+    "desa": "Selam Paung"
+  },
+  {
+    "id": "15.02",
+    "name": "KAB. MERANGIN",
+    "clean": "merangin",
+    "isKota": false,
+    "adm4": "15.02.01.2001",
+    "desa": "Renah Kemumu"
+  },
+  {
+    "id": "15.03",
+    "name": "KAB. SAROLANGUN",
+    "clean": "sarolangun",
+    "isKota": false,
+    "adm4": "15.03.01.2001",
+    "desa": "Tambak Ratu"
+  },
+  {
+    "id": "15.04",
+    "name": "KAB. BATANGHARI",
+    "clean": "batanghari",
+    "isKota": false,
+    "adm4": "15.04.01.1001",
+    "desa": "Kembang Paseban"
+  },
+  {
+    "id": "15.05",
+    "name": "KAB. MUARO JAMBI",
+    "clean": "muaro jambi",
+    "isKota": false,
+    "adm4": "15.05.01.2002",
+    "desa": "Sungai Bertam"
+  },
+  {
+    "id": "15.06",
+    "name": "KAB. TANJUNG JABUNG BARAT",
+    "clean": "tanjung jabung barat",
+    "isKota": false,
+    "adm4": "15.06.01.2001",
+    "desa": "Badang"
+  },
+  {
+    "id": "15.07",
+    "name": "KAB. TANJUNG JABUNG TIMUR",
+    "clean": "tanjung jabung timur",
+    "isKota": false,
+    "adm4": "15.07.01.2001",
+    "desa": "Alang-Alang"
+  },
+  {
+    "id": "15.08",
+    "name": "KAB. BUNGO",
+    "clean": "bungo",
+    "isKota": false,
+    "adm4": "15.08.01.2001",
+    "desa": "Pedukun"
+  },
+  {
+    "id": "15.09",
+    "name": "KAB. TEBO",
+    "clean": "tebo",
+    "isKota": false,
+    "adm4": "15.09.01.1001",
+    "desa": "Matebo"
+  },
+  {
+    "id": "15.71",
+    "name": "KOTA JAMBI",
+    "clean": "jambi",
+    "isKota": true,
+    "adm4": "15.71.01.1001",
+    "desa": "Simpang IV Sipin"
+  },
+  {
+    "id": "15.72",
+    "name": "KOTA SUNGAI PENUH",
+    "clean": "sungai penuh",
+    "isKota": true,
+    "adm4": "15.72.01.1001",
+    "desa": "Sungai Penuh"
+  },
+  {
+    "id": "16.01",
+    "name": "KAB. OGAN KOMERING ULU",
+    "clean": "ogan komering ulu",
+    "isKota": false,
+    "adm4": "16.01.07.2001",
+    "desa": "Negeri Sindang"
+  },
+  {
+    "id": "16.02",
+    "name": "KAB. OGAN KOMERING ILIR",
+    "clean": "ogan komering ilir",
+    "isKota": false,
+    "adm4": "16.02.02.2001",
+    "desa": "Ulak Kapal"
+  },
+  {
+    "id": "16.03",
+    "name": "KAB. MUARA ENIM",
+    "clean": "muara enim",
+    "isKota": false,
+    "adm4": "16.03.01.2011",
+    "desa": "Embawang"
+  },
+  {
+    "id": "16.04",
+    "name": "KAB. LAHAT",
+    "clean": "lahat",
+    "isKota": false,
+    "adm4": "16.04.01.2001",
+    "desa": "Kembang Ayun"
+  },
+  {
+    "id": "16.05",
+    "name": "KAB. MUSI RAWAS",
+    "clean": "musi rawas",
+    "isKota": false,
+    "adm4": "16.05.01.1001",
+    "desa": "B. Srikaton"
+  },
+  {
+    "id": "16.06",
+    "name": "KAB. MUSI BANYUASIN",
+    "clean": "musi banyuasin",
+    "isKota": false,
+    "adm4": "16.06.01.2001",
+    "desa": "Sukarami"
+  },
+  {
+    "id": "16.07",
+    "name": "KAB. BANYUASIN",
+    "clean": "banyuasin",
+    "isKota": false,
+    "adm4": "16.07.01.2001",
+    "desa": "Sungai Rebo"
+  },
+  {
+    "id": "16.08",
+    "name": "KAB. OGAN KOMERING ULUTIMUR",
+    "clean": "ogan komering ulutimur",
+    "isKota": false,
+    "adm4": "16.08.01.2006",
+    "desa": "Tanjung Kemala"
+  },
+  {
+    "id": "16.09",
+    "name": "KAB. OGAN KOMERING ULUSELATAN",
+    "clean": "ogan komering uluselatan",
+    "isKota": false,
+    "adm4": "16.09.01.2002",
+    "desa": "Gedung Lepihan"
+  },
+  {
+    "id": "16.10",
+    "name": "KAB. OGAN ILIR",
+    "clean": "ogan ilir",
+    "isKota": false,
+    "adm4": "16.10.01.2005",
+    "desa": "Munggu"
+  },
+  {
+    "id": "16.11",
+    "name": "KAB. EMPAT LAWANG",
+    "clean": "empat lawang",
+    "isKota": false,
+    "adm4": "16.11.01.2001",
+    "desa": "Batu Jungul"
+  },
+  {
+    "id": "16.12",
+    "name": "KAB. PENUKAL ABAB LEMATANGILIR",
+    "clean": "penukal abab lematangilir",
+    "isKota": false,
+    "adm4": "16.12.01.2001",
+    "desa": "Talang Bulang"
+  },
+  {
+    "id": "16.13",
+    "name": "KAB. MUSI RAWAS UTARA",
+    "clean": "musi rawas utara",
+    "isKota": false,
+    "adm4": "16.13.01.2001",
+    "desa": "Tanjung Beringin"
+  },
+  {
+    "id": "16.71",
+    "name": "KOTA PALEMBANG",
+    "clean": "palembang",
+    "isKota": true,
+    "adm4": "16.71.01.1001",
+    "desa": "35 Ilir"
+  },
+  {
+    "id": "16.72",
+    "name": "KOTA PAGAR ALAM",
+    "clean": "pagar alam",
+    "isKota": true,
+    "adm4": "16.72.01.1001",
+    "desa": "Sukorejo"
+  },
+  {
+    "id": "16.73",
+    "name": "KOTA LUBUK LINGGAU",
+    "clean": "lubuk linggau",
+    "isKota": true,
+    "adm4": "16.73.01.1001",
+    "desa": "Air Kuti"
+  },
+  {
+    "id": "16.74",
+    "name": "KOTA PRABUMULIH",
+    "clean": "prabumulih",
+    "isKota": true,
+    "adm4": "16.74.01.1001",
+    "desa": "Prabumulih"
+  },
+  {
+    "id": "17.01",
+    "name": "KAB. BENGKULU SELATAN",
+    "clean": "bengkulu selatan",
+    "isKota": false,
+    "adm4": "17.01.01.2001",
+    "desa": "Batu Ampar"
+  },
+  {
+    "id": "17.02",
+    "name": "KAB. REJANG LEBONG",
+    "clean": "rejang lebong",
+    "isKota": false,
+    "adm4": "17.02.06.2001",
+    "desa": "Derati"
+  },
+  {
+    "id": "17.03",
+    "name": "KAB. BENGKULU UTARA",
+    "clean": "bengkulu utara",
+    "isKota": false,
+    "adm4": "17.03.01.2001",
+    "desa": "Banjar Sari"
+  },
+  {
+    "id": "17.04",
+    "name": "KAB. KAUR",
+    "clean": "kaur",
+    "isKota": false,
+    "adm4": "17.04.01.2001",
+    "desa": "Gedung Wani"
+  },
+  {
+    "id": "17.05",
+    "name": "KAB. SELUMA",
+    "clean": "seluma",
+    "isKota": false,
+    "adm4": "17.05.01.1001",
+    "desa": "Babatan"
+  },
+  {
+    "id": "17.06",
+    "name": "KAB. MUKO MUKO",
+    "clean": "muko muko",
+    "isKota": false,
+    "adm4": "17.06.01.2005",
+    "desa": "Suka Pindah"
+  },
+  {
+    "id": "17.07",
+    "name": "KAB. LEBONG",
+    "clean": "lebong",
+    "isKota": false,
+    "adm4": "17.07.01.2002",
+    "desa": "Gandung"
+  },
+  {
+    "id": "17.08",
+    "name": "KAB. KEPAHIANG",
+    "clean": "kepahiang",
+    "isKota": false,
+    "adm4": "17.08.01.2001",
+    "desa": "Kota Agung"
+  },
+  {
+    "id": "17.09",
+    "name": "KAB. BENGKULU TENGAH",
+    "clean": "bengkulu tengah",
+    "isKota": false,
+    "adm4": "17.09.01.2001",
+    "desa": "Taba Terunjam"
+  },
+  {
+    "id": "17.71",
+    "name": "KOTA BENGKULU",
+    "clean": "bengkulu",
+    "isKota": true,
+    "adm4": "17.71.01.1001",
+    "desa": "Pagar Dewa"
+  },
+  {
+    "id": "18.01",
+    "name": "KAB. LAMPUNG SELATAN",
+    "clean": "lampung selatan",
+    "isKota": false,
+    "adm4": "18.01.04.2001",
+    "desa": "Hajimena"
+  },
+  {
+    "id": "18.02",
+    "name": "KAB. LAMPUNG TENGAH",
+    "clean": "lampung tengah",
+    "isKota": false,
+    "adm4": "18.02.01.2001",
+    "desa": "Sri Way Langsep"
+  },
+  {
+    "id": "18.03",
+    "name": "KAB. LAMPUNG UTARA",
+    "clean": "lampung utara",
+    "isKota": false,
+    "adm4": "18.03.01.1001",
+    "desa": "Bukit Kemuning"
+  },
+  {
+    "id": "18.04",
+    "name": "KAB. LAMPUNG BARAT",
+    "clean": "lampung barat",
+    "isKota": false,
+    "adm4": "18.04.04.1001",
+    "desa": "Pasar Liwa"
+  },
+  {
+    "id": "18.05",
+    "name": "KAB. TULANG BAWANG",
+    "clean": "tulang bawang",
+    "isKota": false,
+    "adm4": "18.05.02.2001",
+    "desa": "Bujung Tenuk"
+  },
+  {
+    "id": "18.06",
+    "name": "KAB. TANGGAMUS",
+    "clean": "tanggamus",
+    "isKota": false,
+    "adm4": "18.06.01.1001",
+    "desa": "Baros"
+  },
+  {
+    "id": "18.07",
+    "name": "KAB. LAMPUNG TIMUR",
+    "clean": "lampung timur",
+    "isKota": false,
+    "adm4": "18.07.01.2001",
+    "desa": "Sukadana"
+  },
+  {
+    "id": "18.08",
+    "name": "KAB. WAY KANAN",
+    "clean": "way kanan",
+    "isKota": false,
+    "adm4": "18.08.01.2001",
+    "desa": "Rambang Jaya"
+  },
+  {
+    "id": "18.09",
+    "name": "KAB. PESAWARAN",
+    "clean": "pesawaran",
+    "isKota": false,
+    "adm4": "18.09.01.2001",
+    "desa": "Padang Ratu"
+  },
+  {
+    "id": "18.10",
+    "name": "KAB. PRINGSEWU",
+    "clean": "pringsewu",
+    "isKota": false,
+    "adm4": "18.10.01.1001",
+    "desa": "Fajaresuk"
+  },
+  {
+    "id": "18.11",
+    "name": "KAB. MESUJI",
+    "clean": "mesuji",
+    "isKota": false,
+    "adm4": "18.11.01.2001",
+    "desa": "Wiralaga I"
+  },
+  {
+    "id": "18.12",
+    "name": "KAB. TULANG BAWANG BARAT",
+    "clean": "tulang bawang barat",
+    "isKota": false,
+    "adm4": "18.12.01.1001",
+    "desa": "Mulyo Asri"
+  },
+  {
+    "id": "18.13",
+    "name": "KAB. PESISIR BARAT",
+    "clean": "pesisir barat",
+    "isKota": false,
+    "adm4": "18.13.01.2001",
+    "desa": "Way Redak"
+  },
+  {
+    "id": "18.71",
+    "name": "KOTA BANDAR LAMPUNG",
+    "clean": "bandar lampung",
+    "isKota": true,
+    "adm4": "18.71.01.1003",
+    "desa": "Kedaton"
+  },
+  {
+    "id": "18.72",
+    "name": "KOTA METRO",
+    "clean": "metro",
+    "isKota": true,
+    "adm4": "18.72.01.1001",
+    "desa": "Metro"
+  },
+  {
+    "id": "19.01",
+    "name": "KAB. BANGKA",
+    "clean": "bangka",
+    "isKota": false,
+    "adm4": "19.01.01.1001",
+    "desa": "Sungailiat"
+  },
+  {
+    "id": "19.02",
+    "name": "KAB. BELITUNG",
+    "clean": "belitung",
+    "isKota": false,
+    "adm4": "19.02.01.1001",
+    "desa": "Kota"
+  },
+  {
+    "id": "19.03",
+    "name": "KAB. BANGKA SELATAN",
+    "clean": "bangka selatan",
+    "isKota": false,
+    "adm4": "19.03.01.1001",
+    "desa": "Toboali"
+  },
+  {
+    "id": "19.04",
+    "name": "KAB. BANGKA TENGAH",
+    "clean": "bangka tengah",
+    "isKota": false,
+    "adm4": "19.04.01.1001",
+    "desa": "Koba"
+  },
+  {
+    "id": "19.05",
+    "name": "KAB. BANGKA BARAT",
+    "clean": "bangka barat",
+    "isKota": false,
+    "adm4": "19.05.01.1001",
+    "desa": "Tanjung"
+  },
+  {
+    "id": "19.06",
+    "name": "KAB. BELITUNG TIMUR",
+    "clean": "belitung timur",
+    "isKota": false,
+    "adm4": "19.06.01.2001",
+    "desa": "Lalang Jaya"
+  },
+  {
+    "id": "19.71",
+    "name": "KOTA PANGKAL PINANG",
+    "clean": "pangkal pinang",
+    "isKota": true,
+    "adm4": "19.71.01.1004",
+    "desa": "Semabung Lama"
+  },
+  {
+    "id": "21.01",
+    "name": "KAB. BINTAN",
+    "clean": "bintan",
+    "isKota": false,
+    "adm4": "21.01.04.2001",
+    "desa": "Gunung Kijang"
+  },
+  {
+    "id": "21.02",
+    "name": "KAB. KARIMUN",
+    "clean": "karimun",
+    "isKota": false,
+    "adm4": "21.02.01.1003",
+    "desa": "Moro"
+  },
+  {
+    "id": "21.03",
+    "name": "KAB. NATUNA",
+    "clean": "natuna",
+    "isKota": false,
+    "adm4": "21.03.04.2001",
+    "desa": "Sebelat"
+  },
+  {
+    "id": "21.04",
+    "name": "KAB. LINGGA",
+    "clean": "lingga",
+    "isKota": false,
+    "adm4": "21.04.01.1001",
+    "desa": "Dabo"
+  },
+  {
+    "id": "21.05",
+    "name": "KAB. KEPULAUAN ANAMBAS",
+    "clean": "kepulauan anambas",
+    "isKota": false,
+    "adm4": "21.05.01.1001",
+    "desa": "Terempa"
+  },
+  {
+    "id": "21.71",
+    "name": "KOTA BATAM",
+    "clean": "batam",
+    "isKota": true,
+    "adm4": "21.71.01.1002",
+    "desa": "Pemping"
+  },
+  {
+    "id": "21.72",
+    "name": "KOTA TANJUNG PINANG",
+    "clean": "tanjung pinang",
+    "isKota": true,
+    "adm4": "21.72.01.1001",
+    "desa": "Tanjung Pinang Barat"
+  },
+  {
+    "id": "31.01",
+    "name": "KAB. ADM. KEP. SERIBU",
+    "clean": "adm. kep. seribu",
+    "isKota": false,
+    "adm4": "31.01.01.1001",
+    "desa": "Pulau Panggang"
+  },
+  {
+    "id": "31.71",
+    "name": "KOTA ADM. JAKARTA PUSAT",
+    "clean": "jakarta pusat",
+    "isKota": true,
+    "adm4": "31.71.01.1001",
+    "desa": "Gambir"
+  },
+  {
+    "id": "31.72",
+    "name": "KOTA ADM. JAKARTA UTARA",
+    "clean": "jakarta utara",
+    "isKota": true,
+    "adm4": "31.72.01.1001",
+    "desa": "Penjaringan"
+  },
+  {
+    "id": "31.73",
+    "name": "KOTA ADM. JAKARTA BARAT",
+    "clean": "jakarta barat",
+    "isKota": true,
+    "adm4": "31.73.01.1001",
+    "desa": "Cengkareng Barat"
+  },
+  {
+    "id": "31.74",
+    "name": "KOTA ADM. JAKARTA SELATAN",
+    "clean": "jakarta selatan",
+    "isKota": true,
+    "adm4": "31.74.01.1001",
+    "desa": "Tebet Timur"
+  },
+  {
+    "id": "31.75",
+    "name": "KOTA ADM. JAKARTA TIMUR",
+    "clean": "jakarta timur",
+    "isKota": true,
+    "adm4": "31.75.01.1001",
+    "desa": "Pisangan Baru"
+  },
+  {
+    "id": "32.01",
+    "name": "KAB. BOGOR",
+    "clean": "bogor",
+    "isKota": false,
+    "adm4": "32.01.01.1001",
+    "desa": "Pondok Rajeg"
+  },
+  {
+    "id": "32.02",
+    "name": "KAB. SUKABUMI",
+    "clean": "sukabumi",
+    "isKota": false,
+    "adm4": "32.02.01.1001",
+    "desa": "Palabuhanratu"
+  },
+  {
+    "id": "32.03",
+    "name": "KAB. CIANJUR",
+    "clean": "cianjur",
+    "isKota": false,
+    "adm4": "32.03.01.2001",
+    "desa": "Babakan Karet"
+  },
+  {
+    "id": "32.04",
+    "name": "KAB. BANDUNG",
+    "clean": "bandung",
+    "isKota": false,
+    "adm4": "32.04.05.2001",
+    "desa": "Cileunyi Kulon"
+  },
+  {
+    "id": "32.05",
+    "name": "KAB. GARUT",
+    "clean": "garut",
+    "isKota": false,
+    "adm4": "32.05.01.1001",
+    "desa": "Kota Kulon"
+  },
+  {
+    "id": "32.06",
+    "name": "KAB. TASIKMALAYA",
+    "clean": "tasikmalaya",
+    "isKota": false,
+    "adm4": "32.06.01.2001",
+    "desa": "Ciheras"
+  },
+  {
+    "id": "32.07",
+    "name": "KAB. CIAMIS",
+    "clean": "ciamis",
+    "isKota": false,
+    "adm4": "32.07.01.1001",
+    "desa": "Ciamis"
+  },
+  {
+    "id": "32.08",
+    "name": "KAB. KUNINGAN",
+    "clean": "kuningan",
+    "isKota": false,
+    "adm4": "32.08.01.2001",
+    "desa": "Sindangjawa"
+  },
+  {
+    "id": "32.09",
+    "name": "KAB. CIREBON",
+    "clean": "cirebon",
+    "isKota": false,
+    "adm4": "32.09.01.2008",
+    "desa": "Waled Desa"
+  },
+  {
+    "id": "32.10",
+    "name": "KAB. MAJALENGKA",
+    "clean": "majalengka",
+    "isKota": false,
+    "adm4": "32.10.01.2001",
+    "desa": "Cipasung"
+  },
+  {
+    "id": "32.11",
+    "name": "KAB. SUMEDANG",
+    "clean": "sumedang",
+    "isKota": false,
+    "adm4": "32.11.01.2001",
+    "desa": "Cimungkal"
+  },
+  {
+    "id": "32.12",
+    "name": "KAB. INDRAMAYU",
+    "clean": "indramayu",
+    "isKota": false,
+    "adm4": "32.12.01.2007",
+    "desa": "Haurkolot"
+  },
+  {
+    "id": "32.13",
+    "name": "KAB. SUBANG",
+    "clean": "subang",
+    "isKota": false,
+    "adm4": "32.13.01.2003",
+    "desa": "Sukamandi"
+  },
+  {
+    "id": "32.14",
+    "name": "KAB. PURWAKARTA",
+    "clean": "purwakarta",
+    "isKota": false,
+    "adm4": "32.14.01.1001",
+    "desa": "Nagri Kidul"
+  },
+  {
+    "id": "32.15",
+    "name": "KAB. KARAWANG",
+    "clean": "karawang",
+    "isKota": false,
+    "adm4": "32.15.01.1001",
+    "desa": "Karawang Kulon"
+  },
+  {
+    "id": "32.16",
+    "name": "KAB. BEKASI",
+    "clean": "bekasi",
+    "isKota": false,
+    "adm4": "32.16.01.2001",
+    "desa": "Sagara Makmur"
+  },
+  {
+    "id": "32.17",
+    "name": "KAB. BANDUNG BARAT",
+    "clean": "bandung barat",
+    "isKota": false,
+    "adm4": "32.17.01.2001",
+    "desa": "Pagerwangi"
+  },
+  {
+    "id": "32.18",
+    "name": "KAB. PANGANDARAN",
+    "clean": "pangandaran",
+    "isKota": false,
+    "adm4": "32.18.01.2001",
+    "desa": "Parigi"
+  },
+  {
+    "id": "32.71",
+    "name": "KOTA BOGOR",
+    "clean": "bogor",
+    "isKota": true,
+    "adm4": "32.71.01.1001",
+    "desa": "Batu Tulis"
+  },
+  {
+    "id": "32.72",
+    "name": "KOTA SUKABUMI",
+    "clean": "sukabumi",
+    "isKota": true,
+    "adm4": "32.72.01.1001",
+    "desa": "Gunung Puyuh"
+  },
+  {
+    "id": "32.73",
+    "name": "KOTA BANDUNG",
+    "clean": "bandung",
+    "isKota": true,
+    "adm4": "32.73.01.1001",
+    "desa": "Sukarasa"
+  },
+  {
+    "id": "32.74",
+    "name": "KOTA CIREBON",
+    "clean": "cirebon",
+    "isKota": true,
+    "adm4": "32.74.01.1001",
+    "desa": "Kejaksan"
+  },
+  {
+    "id": "32.75",
+    "name": "KOTA BEKASI",
+    "clean": "bekasi",
+    "isKota": true,
+    "adm4": "32.75.01.1001",
+    "desa": "Bekasijaya"
+  },
+  {
+    "id": "32.76",
+    "name": "KOTA DEPOK",
+    "clean": "depok",
+    "isKota": true,
+    "adm4": "32.76.01.1006",
+    "desa": "Depok"
+  },
+  {
+    "id": "32.77",
+    "name": "KOTA CIMAHI",
+    "clean": "cimahi",
+    "isKota": true,
+    "adm4": "32.77.01.1001",
+    "desa": "Melong"
+  },
+  {
+    "id": "32.78",
+    "name": "KOTA TASIKMALAYA",
+    "clean": "tasikmalaya",
+    "isKota": true,
+    "adm4": "32.78.01.1001",
+    "desa": "Yudanagara"
+  },
+  {
+    "id": "32.79",
+    "name": "KOTA BANJAR",
+    "clean": "banjar",
+    "isKota": true,
+    "adm4": "32.79.01.1001",
+    "desa": "Banjar"
+  },
+  {
+    "id": "33.01",
+    "name": "KAB. CILACAP",
+    "clean": "cilacap",
+    "isKota": false,
+    "adm4": "33.01.01.2001",
+    "desa": "Tambakreja"
+  },
+  {
+    "id": "33.02",
+    "name": "KAB. BANYUMAS",
+    "clean": "banyumas",
+    "isKota": false,
+    "adm4": "33.02.01.2001",
+    "desa": "Cirahab"
+  },
+  {
+    "id": "33.03",
+    "name": "KAB. PURBALINGGA",
+    "clean": "purbalingga",
+    "isKota": false,
+    "adm4": "33.03.01.2001",
+    "desa": "Kedungbenda"
+  },
+  {
+    "id": "33.04",
+    "name": "KAB. BANJARNEGARA",
+    "clean": "banjarnegara",
+    "isKota": false,
+    "adm4": "33.04.01.2001",
+    "desa": "Berta"
+  },
+  {
+    "id": "33.05",
+    "name": "KAB. KEBUMEN",
+    "clean": "kebumen",
+    "isKota": false,
+    "adm4": "33.05.01.2001",
+    "desa": "Argopeni"
+  },
+  {
+    "id": "33.06",
+    "name": "KAB. PURWOREJO",
+    "clean": "purworejo",
+    "isKota": false,
+    "adm4": "33.06.01.2001",
+    "desa": "Harjobinangun"
+  },
+  {
+    "id": "33.07",
+    "name": "KAB. WONOSOBO",
+    "clean": "wonosobo",
+    "isKota": false,
+    "adm4": "33.07.01.2001",
+    "desa": "Kaligowong"
+  },
+  {
+    "id": "33.08",
+    "name": "KAB. MAGELANG",
+    "clean": "magelang",
+    "isKota": false,
+    "adm4": "33.08.01.2001",
+    "desa": "Ngargoretno"
+  },
+  {
+    "id": "33.09",
+    "name": "KAB. BOYOLALI",
+    "clean": "boyolali",
+    "isKota": false,
+    "adm4": "33.09.01.2001",
+    "desa": "Tlogolele"
+  },
+  {
+    "id": "33.10",
+    "name": "KAB. KLATEN",
+    "clean": "klaten",
+    "isKota": false,
+    "adm4": "33.10.01.2001",
+    "desa": "Sengon"
+  },
+  {
+    "id": "33.11",
+    "name": "KAB. SUKOHARJO",
+    "clean": "sukoharjo",
+    "isKota": false,
+    "adm4": "33.11.01.2001",
+    "desa": "Grogol"
+  },
+  {
+    "id": "33.12",
+    "name": "KAB. WONOGIRI",
+    "clean": "wonogiri",
+    "isKota": false,
+    "adm4": "33.12.01.2001",
+    "desa": "Sumberagung"
+  },
+  {
+    "id": "33.13",
+    "name": "KAB. KARANGANYAR",
+    "clean": "karanganyar",
+    "isKota": false,
+    "adm4": "33.13.01.2001",
+    "desa": "Ngepungsari"
+  },
+  {
+    "id": "33.14",
+    "name": "KAB. SRAGEN",
+    "clean": "sragen",
+    "isKota": false,
+    "adm4": "33.14.01.2001",
+    "desa": "Keden"
+  },
+  {
+    "id": "33.15",
+    "name": "KAB. GROBOGAN",
+    "clean": "grobogan",
+    "isKota": false,
+    "adm4": "33.15.01.2001",
+    "desa": "Karanglangu"
+  },
+  {
+    "id": "33.16",
+    "name": "KAB. BLORA",
+    "clean": "blora",
+    "isKota": false,
+    "adm4": "33.16.01.2001",
+    "desa": "Bangkleyan"
+  },
+  {
+    "id": "33.17",
+    "name": "KAB. REMBANG",
+    "clean": "rembang",
+    "isKota": false,
+    "adm4": "33.17.01.2001",
+    "desa": "Ronggo Mulyo"
+  },
+  {
+    "id": "33.18",
+    "name": "KAB. PATI",
+    "clean": "pati",
+    "isKota": false,
+    "adm4": "33.18.01.2001",
+    "desa": "Prawoto"
+  },
+  {
+    "id": "33.19",
+    "name": "KAB. KUDUS",
+    "clean": "kudus",
+    "isKota": false,
+    "adm4": "33.19.01.2001",
+    "desa": "Bakalankrapyak"
+  },
+  {
+    "id": "33.20",
+    "name": "KAB. JEPARA",
+    "clean": "jepara",
+    "isKota": false,
+    "adm4": "33.20.01.2001",
+    "desa": "Kedungmalang"
+  },
+  {
+    "id": "33.21",
+    "name": "KAB. DEMAK",
+    "clean": "demak",
+    "isKota": false,
+    "adm4": "33.21.01.2001",
+    "desa": "Banyumeneng"
+  },
+  {
+    "id": "33.22",
+    "name": "KAB. SEMARANG",
+    "clean": "semarang",
+    "isKota": false,
+    "adm4": "33.22.01.2001",
+    "desa": "Tajuk"
+  },
+  {
+    "id": "33.23",
+    "name": "KAB. TEMANGGUNG",
+    "clean": "temanggung",
+    "isKota": false,
+    "adm4": "33.23.01.2001",
+    "desa": "Bulu"
+  },
+  {
+    "id": "33.24",
+    "name": "KAB. KENDAL",
+    "clean": "kendal",
+    "isKota": false,
+    "adm4": "33.24.01.2001",
+    "desa": "Blumah"
+  },
+  {
+    "id": "33.25",
+    "name": "KAB. BATANG",
+    "clean": "batang",
+    "isKota": false,
+    "adm4": "33.25.01.2001",
+    "desa": "Silurah"
+  },
+  {
+    "id": "33.26",
+    "name": "KAB. PEKALONGAN",
+    "clean": "pekalongan",
+    "isKota": false,
+    "adm4": "33.26.01.2001",
+    "desa": "Klesem"
+  },
+  {
+    "id": "33.27",
+    "name": "KAB. PEMALANG",
+    "clean": "pemalang",
+    "isKota": false,
+    "adm4": "33.27.01.2001",
+    "desa": "Plakaran"
+  },
+  {
+    "id": "33.28",
+    "name": "KAB. TEGAL",
+    "clean": "tegal",
+    "isKota": false,
+    "adm4": "33.28.01.2001",
+    "desa": "Prupuk Selatan"
+  },
+  {
+    "id": "33.29",
+    "name": "KAB. BREBES",
+    "clean": "brebes",
+    "isKota": false,
+    "adm4": "33.29.01.2001",
+    "desa": "Banjaran"
+  },
+  {
+    "id": "33.71",
+    "name": "KOTA MAGELANG",
+    "clean": "magelang",
+    "isKota": true,
+    "adm4": "33.71.01.1003",
+    "desa": "Rejowinangun Selatan"
+  },
+  {
+    "id": "33.72",
+    "name": "KOTA SURAKARTA",
+    "clean": "surakarta",
+    "isKota": true,
+    "adm4": "33.72.01.1001",
+    "desa": "Pajang"
+  },
+  {
+    "id": "33.73",
+    "name": "KOTA SALATIGA",
+    "clean": "salatiga",
+    "isKota": true,
+    "adm4": "33.73.01.1001",
+    "desa": "Blotongan"
+  },
+  {
+    "id": "33.74",
+    "name": "KOTA SEMARANG",
+    "clean": "semarang",
+    "isKota": true,
+    "adm4": "33.74.01.1001",
+    "desa": "Miroto"
+  },
+  {
+    "id": "33.75",
+    "name": "KOTA PEKALONGAN",
+    "clean": "pekalongan",
+    "isKota": true,
+    "adm4": "33.75.01.1002",
+    "desa": "Medono"
+  },
+  {
+    "id": "33.76",
+    "name": "KOTA TEGAL",
+    "clean": "tegal",
+    "isKota": true,
+    "adm4": "33.76.01.1001",
+    "desa": "Pesurungan Kidul"
+  },
+  {
+    "id": "34.01",
+    "name": "KAB. KULON PROGO",
+    "clean": "kulon progo",
+    "isKota": false,
+    "adm4": "34.01.01.2001",
+    "desa": "Jangkaran"
+  },
+  {
+    "id": "34.02",
+    "name": "KAB. BANTUL",
+    "clean": "bantul",
+    "isKota": false,
+    "adm4": "34.02.01.2001",
+    "desa": "Poncosari"
+  },
+  {
+    "id": "34.03",
+    "name": "KAB. GUNUNGKIDUL",
+    "clean": "gunungkidul",
+    "isKota": false,
+    "adm4": "34.03.01.2001",
+    "desa": "Wonosari"
+  },
+  {
+    "id": "34.04",
+    "name": "KAB. SLEMAN",
+    "clean": "sleman",
+    "isKota": false,
+    "adm4": "34.04.01.2001",
+    "desa": "Balecatur"
+  },
+  {
+    "id": "34.71",
+    "name": "KOTA YOGYAKARTA",
+    "clean": "yogyakarta",
+    "isKota": true,
+    "adm4": "34.71.01.1001",
+    "desa": "Kricak"
+  },
+  {
+    "id": "35.01",
+    "name": "KAB. PACITAN",
+    "clean": "pacitan",
+    "isKota": false,
+    "adm4": "35.01.01.2001",
+    "desa": "Widoro"
+  },
+  {
+    "id": "35.02",
+    "name": "KAB. PONOROGO",
+    "clean": "ponorogo",
+    "isKota": false,
+    "adm4": "35.02.01.2001",
+    "desa": "Tugurejo"
+  },
+  {
+    "id": "35.03",
+    "name": "KAB. TRENGGALEK",
+    "clean": "trenggalek",
+    "isKota": false,
+    "adm4": "35.03.01.2001",
+    "desa": "Besuki"
+  },
+  {
+    "id": "35.04",
+    "name": "KAB. TULUNGAGUNG",
+    "clean": "tulungagung",
+    "isKota": false,
+    "adm4": "35.04.01.1001",
+    "desa": "Kedungsoko"
+  },
+  {
+    "id": "35.05",
+    "name": "KAB. BLITAR",
+    "clean": "blitar",
+    "isKota": false,
+    "adm4": "35.05.01.2001",
+    "desa": "Jaten"
+  },
+  {
+    "id": "35.06",
+    "name": "KAB. KEDIRI",
+    "clean": "kediri",
+    "isKota": false,
+    "adm4": "35.06.01.2001",
+    "desa": "Bulu"
+  },
+  {
+    "id": "35.07",
+    "name": "KAB. MALANG",
+    "clean": "malang",
+    "isKota": false,
+    "adm4": "35.07.01.2001",
+    "desa": "Tulungrejo"
+  },
+  {
+    "id": "35.08",
+    "name": "KAB. LUMAJANG",
+    "clean": "lumajang",
+    "isKota": false,
+    "adm4": "35.08.01.2001",
+    "desa": "Tegalrejo"
+  },
+  {
+    "id": "35.09",
+    "name": "KAB. JEMBER",
+    "clean": "jember",
+    "isKota": false,
+    "adm4": "35.09.01.2001",
+    "desa": "Padomasan"
+  },
+  {
+    "id": "35.10",
+    "name": "KAB. BANYUWANGI",
+    "clean": "banyuwangi",
+    "isKota": false,
+    "adm4": "35.10.01.2001",
+    "desa": "Sarongan"
+  },
+  {
+    "id": "35.11",
+    "name": "KAB. BONDOWOSO",
+    "clean": "bondowoso",
+    "isKota": false,
+    "adm4": "35.11.01.2001",
+    "desa": "Sucolor"
+  },
+  {
+    "id": "35.12",
+    "name": "KAB. SITUBONDO",
+    "clean": "situbondo",
+    "isKota": false,
+    "adm4": "35.12.01.2001",
+    "desa": "Pategalan"
+  },
+  {
+    "id": "35.13",
+    "name": "KAB. PROBOLINGGO",
+    "clean": "probolinggo",
+    "isKota": false,
+    "adm4": "35.13.01.2001",
+    "desa": "Ngadisari"
+  },
+  {
+    "id": "35.14",
+    "name": "KAB. PASURUAN",
+    "clean": "pasuruan",
+    "isKota": false,
+    "adm4": "35.14.01.2001",
+    "desa": "Gerbo"
+  },
+  {
+    "id": "35.15",
+    "name": "KAB. SIDOARJO",
+    "clean": "sidoarjo",
+    "isKota": false,
+    "adm4": "35.15.01.2001",
+    "desa": "Miriprowo"
+  },
+  {
+    "id": "35.16",
+    "name": "KAB. MOJOKERTO",
+    "clean": "mojokerto",
+    "isKota": false,
+    "adm4": "35.16.01.2001",
+    "desa": "Tawangrejo"
+  },
+  {
+    "id": "35.17",
+    "name": "KAB. JOMBANG",
+    "clean": "jombang",
+    "isKota": false,
+    "adm4": "35.17.01.2001",
+    "desa": "Jantiganggong"
+  },
+  {
+    "id": "35.18",
+    "name": "KAB. NGANJUK",
+    "clean": "nganjuk",
+    "isKota": false,
+    "adm4": "35.18.01.2001",
+    "desa": "Bendolo"
+  },
+  {
+    "id": "35.19",
+    "name": "KAB. MADIUN",
+    "clean": "madiun",
+    "isKota": false,
+    "adm4": "35.19.01.2001",
+    "desa": "Tambakmas"
+  },
+  {
+    "id": "35.20",
+    "name": "KAB. MAGETAN",
+    "clean": "magetan",
+    "isKota": false,
+    "adm4": "35.20.01.2001",
+    "desa": "Poncol"
+  },
+  {
+    "id": "35.21",
+    "name": "KAB. NGAWI",
+    "clean": "ngawi",
+    "isKota": false,
+    "adm4": "35.21.01.2001",
+    "desa": "Wonosari"
+  },
+  {
+    "id": "35.22",
+    "name": "KAB. BOJONEGORO",
+    "clean": "bojonegoro",
+    "isKota": false,
+    "adm4": "35.22.01.2001",
+    "desa": "Luwihaji"
+  },
+  {
+    "id": "35.23",
+    "name": "KAB. TUBAN",
+    "clean": "tuban",
+    "isKota": false,
+    "adm4": "35.23.01.2001",
+    "desa": "Jlodro"
+  },
+  {
+    "id": "35.24",
+    "name": "KAB. LAMONGAN",
+    "clean": "lamongan",
+    "isKota": false,
+    "adm4": "35.24.01.2001",
+    "desa": "Sembung"
+  },
+  {
+    "id": "35.25",
+    "name": "KAB. GRESIK",
+    "clean": "gresik",
+    "isKota": false,
+    "adm4": "35.25.01.2001",
+    "desa": "Sawo"
+  },
+  {
+    "id": "35.26",
+    "name": "KAB. BANGKALAN",
+    "clean": "bangkalan",
+    "isKota": false,
+    "adm4": "35.26.01.1001",
+    "desa": "Mlajah"
+  },
+  {
+    "id": "35.27",
+    "name": "KAB. SAMPANG",
+    "clean": "sampang",
+    "isKota": false,
+    "adm4": "35.27.01.2001",
+    "desa": "Noreh"
+  },
+  {
+    "id": "35.28",
+    "name": "KAB. PAMEKASAN",
+    "clean": "pamekasan",
+    "isKota": false,
+    "adm4": "35.28.01.2001",
+    "desa": "Dabuan"
+  },
+  {
+    "id": "35.29",
+    "name": "KAB. SUMENEP",
+    "clean": "sumenep",
+    "isKota": false,
+    "adm4": "35.29.01.2005",
+    "desa": "Kolor"
+  },
+  {
+    "id": "35.71",
+    "name": "KOTA KEDIRI",
+    "clean": "kediri",
+    "isKota": true,
+    "adm4": "35.71.01.1001",
+    "desa": "Bandar Lor"
+  },
+  {
+    "id": "35.72",
+    "name": "KOTA BLITAR",
+    "clean": "blitar",
+    "isKota": true,
+    "adm4": "35.72.01.1001",
+    "desa": "Kepanjenkidul"
+  },
+  {
+    "id": "35.73",
+    "name": "KOTA MALANG",
+    "clean": "malang",
+    "isKota": true,
+    "adm4": "35.73.01.1001",
+    "desa": "Balearjosari"
+  },
+  {
+    "id": "35.74",
+    "name": "KOTA PROBOLINGGO",
+    "clean": "probolinggo",
+    "isKota": true,
+    "adm4": "35.74.01.1001",
+    "desa": "Ketapang"
+  },
+  {
+    "id": "35.75",
+    "name": "KOTA PASURUAN",
+    "clean": "pasuruan",
+    "isKota": true,
+    "adm4": "35.75.01.1001",
+    "desa": "Karangketug"
+  },
+  {
+    "id": "35.76",
+    "name": "KOTA MOJOKERTO",
+    "clean": "mojokerto",
+    "isKota": true,
+    "adm4": "35.76.01.1003",
+    "desa": "Mentikan"
+  },
+  {
+    "id": "35.77",
+    "name": "KOTA MADIUN",
+    "clean": "madiun",
+    "isKota": true,
+    "adm4": "35.77.01.1001",
+    "desa": "Oro-oro Ombo"
+  },
+  {
+    "id": "35.78",
+    "name": "KOTA SURABAYA",
+    "clean": "surabaya",
+    "isKota": true,
+    "adm4": "35.78.01.1001",
+    "desa": "Karang Pilang"
+  },
+  {
+    "id": "35.79",
+    "name": "KOTA BATU",
+    "clean": "batu",
+    "isKota": true,
+    "adm4": "35.79.01.1001",
+    "desa": "Temas"
+  },
+  {
+    "id": "36.01",
+    "name": "KAB. PANDEGLANG",
+    "clean": "pandeglang",
+    "isKota": false,
+    "adm4": "36.01.01.2001",
+    "desa": "Sumberjaya"
+  },
+  {
+    "id": "36.02",
+    "name": "KAB. LEBAK",
+    "clean": "lebak",
+    "isKota": false,
+    "adm4": "36.02.01.2002",
+    "desa": "Cilangkahan"
+  },
+  {
+    "id": "36.03",
+    "name": "KAB. TANGERANG",
+    "clean": "tangerang",
+    "isKota": false,
+    "adm4": "36.03.01.1001",
+    "desa": "Balaraja"
+  },
+  {
+    "id": "36.04",
+    "name": "KAB. SERANG",
+    "clean": "serang",
+    "isKota": false,
+    "adm4": "36.04.05.2001",
+    "desa": "Kramatwatu"
+  },
+  {
+    "id": "36.71",
+    "name": "KOTA TANGERANG",
+    "clean": "tangerang",
+    "isKota": true,
+    "adm4": "36.71.01.1001",
+    "desa": "Sukarasa"
+  },
+  {
+    "id": "36.72",
+    "name": "KOTA CILEGON",
+    "clean": "cilegon",
+    "isKota": true,
+    "adm4": "36.72.01.1001",
+    "desa": "Cibeber"
+  },
+  {
+    "id": "36.73",
+    "name": "KOTA SERANG",
+    "clean": "serang",
+    "isKota": true,
+    "adm4": "36.73.01.1001",
+    "desa": "Serang"
+  },
+  {
+    "id": "36.74",
+    "name": "KOTA TANGERANG SELATAN",
+    "clean": "tangerang selatan",
+    "isKota": true,
+    "adm4": "36.74.01.1001",
+    "desa": "Ciater"
+  },
+  {
+    "id": "51.01",
+    "name": "KAB. JEMBRANA",
+    "clean": "jembrana",
+    "isKota": false,
+    "adm4": "51.01.01.2001",
+    "desa": "Cupel"
+  },
+  {
+    "id": "51.02",
+    "name": "KAB. TABANAN",
+    "clean": "tabanan",
+    "isKota": false,
+    "adm4": "51.02.01.2001",
+    "desa": "Bajera"
+  },
+  {
+    "id": "51.03",
+    "name": "KAB. BADUNG",
+    "clean": "badung",
+    "isKota": false,
+    "adm4": "51.03.01.1001",
+    "desa": "Tuban"
+  },
+  {
+    "id": "51.04",
+    "name": "KAB. GIANYAR",
+    "clean": "gianyar",
+    "isKota": false,
+    "adm4": "51.04.01.2001",
+    "desa": "Batubulan"
+  },
+  {
+    "id": "51.05",
+    "name": "KAB. KLUNGKUNG",
+    "clean": "klungkung",
+    "isKota": false,
+    "adm4": "51.05.01.2001",
+    "desa": "Sakti"
+  },
+  {
+    "id": "51.06",
+    "name": "KAB. BANGLI",
+    "clean": "bangli",
+    "isKota": false,
+    "adm4": "51.06.01.2001",
+    "desa": "Apuan"
+  },
+  {
+    "id": "51.07",
+    "name": "KAB. KARANGASEM",
+    "clean": "karangasem",
+    "isKota": false,
+    "adm4": "51.07.01.2001",
+    "desa": "Nongan"
+  },
+  {
+    "id": "51.08",
+    "name": "KAB. BULELENG",
+    "clean": "buleleng",
+    "isKota": false,
+    "adm4": "51.08.01.2001",
+    "desa": "Sumberklampok"
+  },
+  {
+    "id": "51.71",
+    "name": "KOTA DENPASAR",
+    "clean": "denpasar",
+    "isKota": true,
+    "adm4": "51.71.01.1001",
+    "desa": "Serangan"
+  },
+  {
+    "id": "52.01",
+    "name": "KAB. LOMBOK BARAT",
+    "clean": "lombok barat",
+    "isKota": false,
+    "adm4": "52.01.01.1001",
+    "desa": "Gerung Utara"
+  },
+  {
+    "id": "52.02",
+    "name": "KAB. LOMBOK TENGAH",
+    "clean": "lombok tengah",
+    "isKota": false,
+    "adm4": "52.02.01.1001",
+    "desa": "Praya"
+  },
+  {
+    "id": "52.03",
+    "name": "KAB. LOMBOK TIMUR",
+    "clean": "lombok timur",
+    "isKota": false,
+    "adm4": "52.03.01.2001",
+    "desa": "Tanjung Luar"
+  },
+  {
+    "id": "52.04",
+    "name": "KAB. SUMBAWA",
+    "clean": "sumbawa",
+    "isKota": false,
+    "adm4": "52.04.02.2001",
+    "desa": "Lunyuk Rea"
+  },
+  {
+    "id": "52.05",
+    "name": "KAB. DOMPU",
+    "clean": "dompu",
+    "isKota": false,
+    "adm4": "52.05.01.1001",
+    "desa": "Bada"
+  },
+  {
+    "id": "52.06",
+    "name": "KAB. BIMA",
+    "clean": "bima",
+    "isKota": false,
+    "adm4": "52.06.01.2005",
+    "desa": "Tolotangga"
+  },
+  {
+    "id": "52.07",
+    "name": "KAB. SUMBAWA BARAT",
+    "clean": "sumbawa barat",
+    "isKota": false,
+    "adm4": "52.07.01.2001",
+    "desa": "Goa"
+  },
+  {
+    "id": "52.08",
+    "name": "KAB. LOMBOK UTARA",
+    "clean": "lombok utara",
+    "isKota": false,
+    "adm4": "52.08.01.2001",
+    "desa": "Tanjung"
+  },
+  {
+    "id": "52.71",
+    "name": "KOTA MATARAM",
+    "clean": "mataram",
+    "isKota": true,
+    "adm4": "52.71.01.1004",
+    "desa": "Ampenan Selatan"
+  },
+  {
+    "id": "52.72",
+    "name": "KOTA BIMA",
+    "clean": "bima",
+    "isKota": true,
+    "adm4": "52.72.01.1001",
+    "desa": "Paruga"
+  },
+  {
+    "id": "53.01",
+    "name": "KAB. KUPANG",
+    "clean": "kupang",
+    "isKota": false,
+    "adm4": "53.01.04.2003",
+    "desa": "Bokonusan"
+  },
+  {
+    "id": "53.02",
+    "name": "KAB TIMOR TENGAH SELATAN",
+    "clean": "kab timor tengah selatan",
+    "isKota": false,
+    "adm4": "53.02.01.1001",
+    "desa": "SoE"
+  },
+  {
+    "id": "53.03",
+    "name": "KAB. TIMOR TENGAH UTARA",
+    "clean": "timor tengah utara",
+    "isKota": false,
+    "adm4": "53.03.01.2005",
+    "desa": "Bokon"
+  },
+  {
+    "id": "53.04",
+    "name": "KAB. BELU",
+    "clean": "belu",
+    "isKota": false,
+    "adm4": "53.04.01.2001",
+    "desa": "Kewar"
+  },
+  {
+    "id": "53.05",
+    "name": "KAB. ALOR",
+    "clean": "alor",
+    "isKota": false,
+    "adm4": "53.05.01.1001",
+    "desa": "Kalabahi Barat"
+  },
+  {
+    "id": "53.06",
+    "name": "KAB. FLORES TIMUR",
+    "clean": "flores timur",
+    "isKota": false,
+    "adm4": "53.06.01.2001",
+    "desa": "Ojandetun"
+  },
+  {
+    "id": "53.07",
+    "name": "KAB. SIKKA",
+    "clean": "sikka",
+    "isKota": false,
+    "adm4": "53.07.01.2001",
+    "desa": "Masabewa"
+  },
+  {
+    "id": "53.08",
+    "name": "KAB. ENDE",
+    "clean": "ende",
+    "isKota": false,
+    "adm4": "53.08.01.1001",
+    "desa": "Ndorurea"
+  },
+  {
+    "id": "53.09",
+    "name": "KAB. NGADA",
+    "clean": "ngada",
+    "isKota": false,
+    "adm4": "53.09.01.2001",
+    "desa": "Keligejo"
+  },
+  {
+    "id": "53.10",
+    "name": "KAB. MANGGARAI",
+    "clean": "manggarai",
+    "isKota": false,
+    "adm4": "53.10.01.2001",
+    "desa": "Satar Ngkeling"
+  },
+  {
+    "id": "53.11",
+    "name": "KAB. SUMBA TIMUR",
+    "clean": "sumba timur",
+    "isKota": false,
+    "adm4": "53.11.01.1001",
+    "desa": "Kambajawa"
+  },
+  {
+    "id": "53.12",
+    "name": "KAB. SUMBA BARAT",
+    "clean": "sumba barat",
+    "isKota": false,
+    "adm4": "53.12.04.2001",
+    "desa": "Loko Ry"
+  },
+  {
+    "id": "53.13",
+    "name": "KAB. LEMBATA",
+    "clean": "lembata",
+    "isKota": false,
+    "adm4": "53.13.01.2001",
+    "desa": "Pasir Putih"
+  },
+  {
+    "id": "53.14",
+    "name": "KAB. ROTE NDAO",
+    "clean": "rote ndao",
+    "isKota": false,
+    "adm4": "53.14.01.2005",
+    "desa": "Oeseli"
+  },
+  {
+    "id": "53.15",
+    "name": "KAB. MANGGARAI BARAT",
+    "clean": "manggarai barat",
+    "isKota": false,
+    "adm4": "53.15.01.2001",
+    "desa": "Bari"
+  },
+  {
+    "id": "53.16",
+    "name": "KAB. NAGEKEO",
+    "clean": "nagekeo",
+    "isKota": false,
+    "adm4": "53.16.01.1001",
+    "desa": "Dhawe"
+  },
+  {
+    "id": "53.17",
+    "name": "KAB. SUMBA TENGAH",
+    "clean": "sumba tengah",
+    "isKota": false,
+    "adm4": "53.17.01.2001",
+    "desa": "Makata Keri"
+  },
+  {
+    "id": "53.18",
+    "name": "KAB. SUMBA BARAT DAYA",
+    "clean": "sumba barat daya",
+    "isKota": false,
+    "adm4": "53.18.01.2001",
+    "desa": "Bondo Boghila"
+  },
+  {
+    "id": "53.19",
+    "name": "KAB. MANGGARAI TIMUR",
+    "clean": "manggarai timur",
+    "isKota": false,
+    "adm4": "53.19.01.2001",
+    "desa": "Nanga Labang"
+  },
+  {
+    "id": "53.20",
+    "name": "KAB. SABU RAIJUA",
+    "clean": "sabu raijua",
+    "isKota": false,
+    "adm4": "53.20.01.1001",
+    "desa": "Mebba"
+  },
+  {
+    "id": "53.21",
+    "name": "KAB. MALAKA",
+    "clean": "malaka",
+    "isKota": false,
+    "adm4": "53.21.01.2001",
+    "desa": "Barene"
+  },
+  {
+    "id": "53.71",
+    "name": "KOTA KUPANG",
+    "clean": "kupang",
+    "isKota": true,
+    "adm4": "53.71.01.1001",
+    "desa": "Namosain"
+  },
+  {
+    "id": "61.01",
+    "name": "KAB. SAMBAS",
+    "clean": "sambas",
+    "isKota": false,
+    "adm4": "61.01.01.2001",
+    "desa": "Dalam Kaum"
+  },
+  {
+    "id": "61.02",
+    "name": "KAB. MEMPAWAH",
+    "clean": "mempawah",
+    "isKota": false,
+    "adm4": "61.02.01.2001",
+    "desa": "Sengkubang"
+  },
+  {
+    "id": "61.03",
+    "name": "KAB. SANGGAU",
+    "clean": "sanggau",
+    "isKota": false,
+    "adm4": "61.03.01.1001",
+    "desa": "Tanjung Kapuas"
+  },
+  {
+    "id": "61.04",
+    "name": "KAB. KETAPANG",
+    "clean": "ketapang",
+    "isKota": false,
+    "adm4": "61.04.01.2011",
+    "desa": "Sungai Putri"
+  },
+  {
+    "id": "61.05",
+    "name": "KAB. SINTANG",
+    "clean": "sintang",
+    "isKota": false,
+    "adm4": "61.05.01.1001",
+    "desa": "Ladang"
+  },
+  {
+    "id": "61.06",
+    "name": "KAB. KAPUAS HULU",
+    "clean": "kapuas hulu",
+    "isKota": false,
+    "adm4": "61.06.01.1001",
+    "desa": "Putussibau Kota"
+  },
+  {
+    "id": "61.07",
+    "name": "KAB. BENGKAYANG",
+    "clean": "bengkayang",
+    "isKota": false,
+    "adm4": "61.07.01.2001",
+    "desa": "Sungai Duri"
+  },
+  {
+    "id": "61.08",
+    "name": "KAB. LANDAK",
+    "clean": "landak",
+    "isKota": false,
+    "adm4": "61.08.01.2001",
+    "desa": "Hilir Kantor"
+  },
+  {
+    "id": "61.09",
+    "name": "KAB. SEKADAU",
+    "clean": "sekadau",
+    "isKota": false,
+    "adm4": "61.09.01.2001",
+    "desa": "Sungai Ringin"
+  },
+  {
+    "id": "61.10",
+    "name": "KAB. MELAWI",
+    "clean": "melawi",
+    "isKota": false,
+    "adm4": "61.10.01.2001",
+    "desa": "Pemuar"
+  },
+  {
+    "id": "61.11",
+    "name": "KAB. KAYONG UTARA",
+    "clean": "kayong utara",
+    "isKota": false,
+    "adm4": "61.11.01.2001",
+    "desa": "Sutera"
+  },
+  {
+    "id": "61.12",
+    "name": "KAB. KUBU RAYA",
+    "clean": "kubu raya",
+    "isKota": false,
+    "adm4": "61.12.01.2001",
+    "desa": "Sungai Raya"
+  },
+  {
+    "id": "61.71",
+    "name": "KOTA PONTIANAK",
+    "clean": "pontianak",
+    "isKota": true,
+    "adm4": "61.71.01.1002",
+    "desa": "Benuamelayu Laut"
+  },
+  {
+    "id": "61.72",
+    "name": "KOTA SINGKAWANG",
+    "clean": "singkawang",
+    "isKota": true,
+    "adm4": "61.72.01.1001",
+    "desa": "Roban"
+  },
+  {
+    "id": "62.01",
+    "name": "KAB. KOTAWARINGIN BARAT",
+    "clean": "kotawaringin barat",
+    "isKota": false,
+    "adm4": "62.01.01.2001",
+    "desa": "Sungai Cabang"
+  },
+  {
+    "id": "62.02",
+    "name": "KAB. KOTAWARINGIN TIMUR",
+    "clean": "kotawaringin timur",
+    "isKota": false,
+    "adm4": "62.02.01.2003",
+    "desa": "Palangan"
+  },
+  {
+    "id": "62.03",
+    "name": "KAB. KAPUAS",
+    "clean": "kapuas",
+    "isKota": false,
+    "adm4": "62.03.01.1006",
+    "desa": "Murung Keramat"
+  },
+  {
+    "id": "62.04",
+    "name": "KAB. BARITO SELATAN",
+    "clean": "barito selatan",
+    "isKota": false,
+    "adm4": "62.04.01.2001",
+    "desa": "Tampulang"
+  },
+  {
+    "id": "62.05",
+    "name": "KAB. BARITO UTARA",
+    "clean": "barito utara",
+    "isKota": false,
+    "adm4": "62.05.01.1001",
+    "desa": "Montallat I"
+  },
+  {
+    "id": "62.06",
+    "name": "KAB. KATINGAN",
+    "clean": "katingan",
+    "isKota": false,
+    "adm4": "62.06.01.2001",
+    "desa": "Galinggang"
+  },
+  {
+    "id": "62.07",
+    "name": "KAB. SERUYAN",
+    "clean": "seruyan",
+    "isKota": false,
+    "adm4": "62.07.01.1001",
+    "desa": "Kuala Pembuang I"
+  },
+  {
+    "id": "62.08",
+    "name": "KAB. SUKAMARA",
+    "clean": "sukamara",
+    "isKota": false,
+    "adm4": "62.08.01.2001",
+    "desa": "Natai Sedawak"
+  },
+  {
+    "id": "62.09",
+    "name": "KAB. LAMANDAU",
+    "clean": "lamandau",
+    "isKota": false,
+    "adm4": "62.09.01.2001",
+    "desa": "Sungai Tuat"
+  },
+  {
+    "id": "62.10",
+    "name": "KAB. GUNUNG MAS",
+    "clean": "gunung mas",
+    "isKota": false,
+    "adm4": "62.10.01.1001",
+    "desa": "Sepang Simin"
+  },
+  {
+    "id": "62.11",
+    "name": "KAB. PULANG PISAU",
+    "clean": "pulang pisau",
+    "isKota": false,
+    "adm4": "62.11.01.2001",
+    "desa": "Dandang"
+  },
+  {
+    "id": "62.12",
+    "name": "KAB. MURUNG RAYA",
+    "clean": "murung raya",
+    "isKota": false,
+    "adm4": "62.12.01.2001",
+    "desa": "Dirung"
+  },
+  {
+    "id": "62.13",
+    "name": "KAB. BARITO TIMUR",
+    "clean": "barito timur",
+    "isKota": false,
+    "adm4": "62.13.01.2003",
+    "desa": "Pulau Patai"
+  },
+  {
+    "id": "62.71",
+    "name": "KOTA PALANGKARAYA",
+    "clean": "palangkaraya",
+    "isKota": true,
+    "adm4": "62.71.01.1001",
+    "desa": "Pahandut"
+  },
+  {
+    "id": "63.01",
+    "name": "KAB. TANAH LAUT",
+    "clean": "tanah laut",
+    "isKota": false,
+    "adm4": "63.01.01.2001",
+    "desa": "Banua lawas"
+  },
+  {
+    "id": "63.02",
+    "name": "KAB. KOTABARU",
+    "clean": "kotabaru",
+    "isKota": false,
+    "adm4": "63.02.01.2001",
+    "desa": "Labuan Barat"
+  },
+  {
+    "id": "63.03",
+    "name": "KAB. BANJAR",
+    "clean": "banjar",
+    "isKota": false,
+    "adm4": "63.03.01.2001",
+    "desa": "Bakambat"
+  },
+  {
+    "id": "63.04",
+    "name": "KAB. BARITO KUALA",
+    "clean": "barito kuala",
+    "isKota": false,
+    "adm4": "63.04.01.2001",
+    "desa": "Kuala Lupak"
+  },
+  {
+    "id": "63.05",
+    "name": "KAB. TAPIN",
+    "clean": "tapin",
+    "isKota": false,
+    "adm4": "63.05.01.1001",
+    "desa": "Binuang"
+  },
+  {
+    "id": "63.06",
+    "name": "KAB. HULU SUNGAI SELATAN",
+    "clean": "hulu sungai selatan",
+    "isKota": false,
+    "adm4": "63.06.01.2001",
+    "desa": "Hamalau"
+  },
+  {
+    "id": "63.07",
+    "name": "KAB. HULU SUNGAI TENGAH",
+    "clean": "hulu sungai tengah",
+    "isKota": false,
+    "adm4": "63.07.01.2001",
+    "desa": "Pengambau Hilir Luar"
+  },
+  {
+    "id": "63.08",
+    "name": "KAB. HULU SUNGAI UTARA",
+    "clean": "hulu sungai utara",
+    "isKota": false,
+    "adm4": "63.08.01.2003",
+    "desa": "Sungai Namang"
+  },
+  {
+    "id": "63.09",
+    "name": "KAB. TABALONG",
+    "clean": "tabalong",
+    "isKota": false,
+    "adm4": "63.09.01.2001",
+    "desa": "Hapalah"
+  },
+  {
+    "id": "63.10",
+    "name": "KAB. TANAH BUMBU",
+    "clean": "tanah bumbu",
+    "isKota": false,
+    "adm4": "63.10.01.2005",
+    "desa": "Segumbang"
+  },
+  {
+    "id": "63.11",
+    "name": "KAB. BALANGAN",
+    "clean": "balangan",
+    "isKota": false,
+    "adm4": "63.11.01.2001",
+    "desa": "Muara Ninian"
+  },
+  {
+    "id": "63.71",
+    "name": "KOTA BANJARMASIN",
+    "clean": "banjarmasin",
+    "isKota": true,
+    "adm4": "63.71.01.1001",
+    "desa": "Mantuil"
+  },
+  {
+    "id": "63.72",
+    "name": "KOTA BANJARBARU",
+    "clean": "banjarbaru",
+    "isKota": true,
+    "adm4": "63.72.02.1003",
+    "desa": "Landasan Ulin Timur"
+  },
+  {
+    "id": "64.01",
+    "name": "KAB. PASER",
+    "clean": "paser",
+    "isKota": false,
+    "adm4": "64.01.01.2009",
+    "desa": "Samuranggau"
+  },
+  {
+    "id": "64.02",
+    "name": "KAB. KUTAI KARTANEGARA",
+    "clean": "kutai kartanegara",
+    "isKota": false,
+    "adm4": "64.02.01.2001",
+    "desa": "Perian"
+  },
+  {
+    "id": "64.03",
+    "name": "KAB. BERAU",
+    "clean": "berau",
+    "isKota": false,
+    "adm4": "64.03.01.2001",
+    "desa": "Merabu"
+  },
+  {
+    "id": "64.07",
+    "name": "KAB. KUTAI BARAT",
+    "clean": "kutai barat",
+    "isKota": false,
+    "adm4": "64.07.05.2008",
+    "desa": "Linggang Muara Leban"
+  },
+  {
+    "id": "64.08",
+    "name": "KAB. KUTAI TIMUR",
+    "clean": "kutai timur",
+    "isKota": false,
+    "adm4": "64.08.01.2001",
+    "desa": "Senyiur"
+  },
+  {
+    "id": "64.09",
+    "name": "KAB. PENAJAM PASER UTARA",
+    "clean": "penajam paser utara",
+    "isKota": false,
+    "adm4": "64.09.01.1001",
+    "desa": "Tanjung Tengah"
+  },
+  {
+    "id": "64.11",
+    "name": "KAB. MAHAKAM ULU",
+    "clean": "mahakam ulu",
+    "isKota": false,
+    "adm4": "64.11.01.2001",
+    "desa": "Long Hurai"
+  },
+  {
+    "id": "64.71",
+    "name": "KOTA BALIKPAPAN",
+    "clean": "balikpapan",
+    "isKota": true,
+    "adm4": "64.71.01.1001",
+    "desa": "Manggar"
+  },
+  {
+    "id": "64.72",
+    "name": "KOTA SAMARINDA",
+    "clean": "samarinda",
+    "isKota": true,
+    "adm4": "64.72.01.1001",
+    "desa": "Rawa Makmur"
+  },
+  {
+    "id": "64.74",
+    "name": "KOTA BONTANG",
+    "clean": "bontang",
+    "isKota": true,
+    "adm4": "64.74.01.1001",
+    "desa": "Bontang Kuala"
+  },
+  {
+    "id": "65.01",
+    "name": "KAB. BULUNGAN",
+    "clean": "bulungan",
+    "isKota": false,
+    "adm4": "65.01.01.1001",
+    "desa": "Tanjung Palas Hulu"
+  },
+  {
+    "id": "65.02",
+    "name": "KAB. MALINAU",
+    "clean": "malinau",
+    "isKota": false,
+    "adm4": "65.02.01.2001",
+    "desa": "Long Gafid"
+  },
+  {
+    "id": "65.03",
+    "name": "KAB. NUNUKAN",
+    "clean": "nunukan",
+    "isKota": false,
+    "adm4": "65.03.01.2001",
+    "desa": "Tanjungkarang"
+  },
+  {
+    "id": "65.04",
+    "name": "KAB. TANA TIDUNG",
+    "clean": "tana tidung",
+    "isKota": false,
+    "adm4": "65.04.01.2001",
+    "desa": "Tideng Pale"
+  },
+  {
+    "id": "65.71",
+    "name": "KOTA TARAKAN",
+    "clean": "tarakan",
+    "isKota": true,
+    "adm4": "65.71.01.1001",
+    "desa": "Karang Anyar"
+  },
+  {
+    "id": "71.01",
+    "name": "KAB. BOLAANG MONGONDOW",
+    "clean": "bolaang mongondow",
+    "isKota": false,
+    "adm4": "71.01.05.2001",
+    "desa": "Ayong"
+  },
+  {
+    "id": "71.02",
+    "name": "KAB. MINAHASA",
+    "clean": "minahasa",
+    "isKota": false,
+    "adm4": "71.02.01.1007",
+    "desa": "Masarang"
+  },
+  {
+    "id": "71.03",
+    "name": "KAB. KEPULAUAN SANGIHE",
+    "clean": "kepulauan sangihe",
+    "isKota": false,
+    "adm4": "71.03.08.2001",
+    "desa": "Kalasuge"
+  },
+  {
+    "id": "71.04",
+    "name": "KAB. KEPULAUAN TALAUD",
+    "clean": "kepulauan talaud",
+    "isKota": false,
+    "adm4": "71.04.01.1005",
+    "desa": "Lirung"
+  },
+  {
+    "id": "71.05",
+    "name": "KAB. MINAHASA SELATAN",
+    "clean": "minahasa selatan",
+    "isKota": false,
+    "adm4": "71.05.01.2001",
+    "desa": "Sinisir"
+  },
+  {
+    "id": "71.06",
+    "name": "KAB. MINAHASA UTARA",
+    "clean": "minahasa utara",
+    "isKota": false,
+    "adm4": "71.06.01.2001",
+    "desa": "Makalisung"
+  },
+  {
+    "id": "71.07",
+    "name": "KAB. MINAHASA TENGGARA",
+    "clean": "minahasa tenggara",
+    "isKota": false,
+    "adm4": "71.07.01.2003",
+    "desa": "Rasi"
+  },
+  {
+    "id": "71.08",
+    "name": "KAB. BOLAANG MONGONDOWUTARA",
+    "clean": "bolaang mongondowutara",
+    "isKota": false,
+    "adm4": "71.08.01.2001",
+    "desa": "Sangkub I"
+  },
+  {
+    "id": "71.09",
+    "name": "KAB. KEP. SIAU TAGULANDANGBIARO",
+    "clean": "kep. siau tagulandangbiaro",
+    "isKota": false,
+    "adm4": "71.09.01.2001",
+    "desa": "Bukide"
+  },
+  {
+    "id": "71.10",
+    "name": "KAB. BOLAANG MONGONDOWTIMUR",
+    "clean": "bolaang mongondowtimur",
+    "isKota": false,
+    "adm4": "71.10.01.2001",
+    "desa": "Kayumoyondi"
+  },
+  {
+    "id": "71.11",
+    "name": "KAB. BOLAANG MONGONDOWSELATAN",
+    "clean": "bolaang mongondowselatan",
+    "isKota": false,
+    "adm4": "71.11.01.2004",
+    "desa": "Tangagah"
+  },
+  {
+    "id": "71.71",
+    "name": "KOTA MANADO",
+    "clean": "manado",
+    "isKota": true,
+    "adm4": "71.71.01.1001",
+    "desa": "Molas"
+  },
+  {
+    "id": "71.72",
+    "name": "KOTA BITUNG",
+    "clean": "bitung",
+    "isKota": true,
+    "adm4": "71.72.01.1001",
+    "desa": "Pasir Panjang"
+  },
+  {
+    "id": "71.73",
+    "name": "KOTA TOMOHON",
+    "clean": "tomohon",
+    "isKota": true,
+    "adm4": "71.73.01.1001",
+    "desa": "Pinaras"
+  },
+  {
+    "id": "71.74",
+    "name": "KOTA KOTAMOBAGU",
+    "clean": "kotamobagu",
+    "isKota": true,
+    "adm4": "71.74.01.2001",
+    "desa": "Bilalang Satu"
+  },
+  {
+    "id": "72.01",
+    "name": "KAB. BANGGAI",
+    "clean": "banggai",
+    "isKota": false,
+    "adm4": "72.01.01.2002",
+    "desa": "Nonong"
+  },
+  {
+    "id": "72.02",
+    "name": "KAB. POSO",
+    "clean": "poso",
+    "isKota": false,
+    "adm4": "72.02.01.1001",
+    "desa": "Moengko Lama"
+  },
+  {
+    "id": "72.03",
+    "name": "KAB. DONGGALA",
+    "clean": "donggala",
+    "isKota": false,
+    "adm4": "72.03.04.2001",
+    "desa": "Pantolobete"
+  },
+  {
+    "id": "72.04",
+    "name": "KAB. TOLI TOLI",
+    "clean": "toli toli",
+    "isKota": false,
+    "adm4": "72.04.01.2001",
+    "desa": "Kombo"
+  },
+  {
+    "id": "72.05",
+    "name": "KAB. BUOL",
+    "clean": "buol",
+    "isKota": false,
+    "adm4": "72.05.01.2001",
+    "desa": "Momunu"
+  },
+  {
+    "id": "72.06",
+    "name": "KAB. MOROWALI",
+    "clean": "morowali",
+    "isKota": false,
+    "adm4": "72.06.05.2010",
+    "desa": "Puungkoilu"
+  },
+  {
+    "id": "72.07",
+    "name": "KAB. BANGGAI KEPULAUAN",
+    "clean": "banggai kepulauan",
+    "isKota": false,
+    "adm4": "72.07.03.2007",
+    "desa": "Sobonon"
+  },
+  {
+    "id": "72.08",
+    "name": "KAB. PARIGI MOUTONG",
+    "clean": "parigi moutong",
+    "isKota": false,
+    "adm4": "72.08.01.2011",
+    "desa": "Olaya"
+  },
+  {
+    "id": "72.09",
+    "name": "KAB. TOJO UNA UNA",
+    "clean": "tojo una una",
+    "isKota": false,
+    "adm4": "72.09.01.2005",
+    "desa": "Taningkola"
+  },
+  {
+    "id": "72.10",
+    "name": "KAB. SIGI",
+    "clean": "sigi",
+    "isKota": false,
+    "adm4": "72.10.01.2001",
+    "desa": "Sidondo II"
+  },
+  {
+    "id": "72.11",
+    "name": "KAB. BANGGAI LAUT",
+    "clean": "banggai laut",
+    "isKota": false,
+    "adm4": "72.11.01.2001",
+    "desa": "Lambako"
+  },
+  {
+    "id": "72.12",
+    "name": "KAB. MOROWALI UTARA",
+    "clean": "morowali utara",
+    "isKota": false,
+    "adm4": "72.12.01.1001",
+    "desa": "Kolonodale"
+  },
+  {
+    "id": "72.71",
+    "name": "KOTA PALU",
+    "clean": "palu",
+    "isKota": true,
+    "adm4": "72.71.01.1004",
+    "desa": "Besusu Barat"
+  },
+  {
+    "id": "73.01",
+    "name": "KAB. KEPULAUAN SELAYAR",
+    "clean": "kepulauan selayar",
+    "isKota": false,
+    "adm4": "73.01.01.1001",
+    "desa": "Benteng Utara"
+  },
+  {
+    "id": "73.02",
+    "name": "KAB. BULUKUMBA",
+    "clean": "bulukumba",
+    "isKota": false,
+    "adm4": "73.02.01.1001",
+    "desa": "Matekko"
+  },
+  {
+    "id": "73.03",
+    "name": "KAB. BANTAENG",
+    "clean": "bantaeng",
+    "isKota": false,
+    "adm4": "73.03.01.1001",
+    "desa": "Bonto Manai"
+  },
+  {
+    "id": "73.04",
+    "name": "KAB. JENEPONTO",
+    "clean": "jeneponto",
+    "isKota": false,
+    "adm4": "73.04.01.1001",
+    "desa": "Benteng"
+  },
+  {
+    "id": "73.05",
+    "name": "KAB. TAKALAR",
+    "clean": "takalar",
+    "isKota": false,
+    "adm4": "73.05.01.1001",
+    "desa": "Takalar"
+  },
+  {
+    "id": "73.06",
+    "name": "KAB. GOWA",
+    "clean": "gowa",
+    "isKota": false,
+    "adm4": "73.06.01.1001",
+    "desa": "Bontonompo"
+  },
+  {
+    "id": "73.07",
+    "name": "KAB. SINJAI",
+    "clean": "sinjai",
+    "isKota": false,
+    "adm4": "73.07.01.1001",
+    "desa": "Tassililu"
+  },
+  {
+    "id": "73.08",
+    "name": "KAB. BONE",
+    "clean": "bone",
+    "isKota": false,
+    "adm4": "73.08.01.1001",
+    "desa": "Kahu"
+  },
+  {
+    "id": "73.09",
+    "name": "KAB. MAROS",
+    "clean": "maros",
+    "isKota": false,
+    "adm4": "73.09.01.1001",
+    "desa": "Hasanuddin"
+  },
+  {
+    "id": "73.10",
+    "name": "KAB. PANGKAJENE KEPULAUAN",
+    "clean": "pangkajene kepulauan",
+    "isKota": false,
+    "adm4": "73.10.01.1001",
+    "desa": "Sapuka"
+  },
+  {
+    "id": "73.11",
+    "name": "KAB. BARRU",
+    "clean": "barru",
+    "isKota": false,
+    "adm4": "73.11.01.1001",
+    "desa": "Lompo Riaja"
+  },
+  {
+    "id": "73.12",
+    "name": "KAB. SOPPENG",
+    "clean": "soppeng",
+    "isKota": false,
+    "adm4": "73.12.01.1001",
+    "desa": "Labessi"
+  },
+  {
+    "id": "73.13",
+    "name": "KAB. WAJO",
+    "clean": "wajo",
+    "isKota": false,
+    "adm4": "73.13.01.1001",
+    "desa": "Walennae"
+  },
+  {
+    "id": "73.14",
+    "name": "KAB. SIDENRENG RAPPANG",
+    "clean": "sidenreng rappang",
+    "isKota": false,
+    "adm4": "73.14.01.1001",
+    "desa": "Bilokka"
+  },
+  {
+    "id": "73.15",
+    "name": "KAB. PINRANG",
+    "clean": "pinrang",
+    "isKota": false,
+    "adm4": "73.15.01.1001",
+    "desa": "Langnga"
+  },
+  {
+    "id": "73.16",
+    "name": "KAB. ENREKANG",
+    "clean": "enrekang",
+    "isKota": false,
+    "adm4": "73.16.01.1001",
+    "desa": "Bangkala"
+  },
+  {
+    "id": "73.17",
+    "name": "KAB. LUWU",
+    "clean": "luwu",
+    "isKota": false,
+    "adm4": "73.17.01.2005",
+    "desa": "Kanna"
+  },
+  {
+    "id": "73.18",
+    "name": "KAB. TANA TORAJA",
+    "clean": "tana toraja",
+    "isKota": false,
+    "adm4": "73.18.01.1009",
+    "desa": "Pattan Ulusalu"
+  },
+  {
+    "id": "73.22",
+    "name": "KAB. LUWU UTARA",
+    "clean": "luwu utara",
+    "isKota": false,
+    "adm4": "73.22.01.2001",
+    "desa": "Pattimang"
+  },
+  {
+    "id": "73.24",
+    "name": "KAB. LUWU TIMUR",
+    "clean": "luwu timur",
+    "isKota": false,
+    "adm4": "73.24.01.2001",
+    "desa": "Maleku"
+  },
+  {
+    "id": "73.26",
+    "name": "KAB. TORAJA UTARA",
+    "clean": "toraja utara",
+    "isKota": false,
+    "adm4": "73.26.01.1001",
+    "desa": "Laang Tanduk"
+  },
+  {
+    "id": "73.71",
+    "name": "KOTA MAKASSAR",
+    "clean": "makassar",
+    "isKota": true,
+    "adm4": "73.71.01.1001",
+    "desa": "Bontorannu"
+  },
+  {
+    "id": "73.72",
+    "name": "KOTA PARE PARE",
+    "clean": "pare pare",
+    "isKota": true,
+    "adm4": "73.72.01.1004",
+    "desa": "Lompoe"
+  },
+  {
+    "id": "73.73",
+    "name": "KOTA PALOPO",
+    "clean": "palopo",
+    "isKota": true,
+    "adm4": "73.73.01.1001",
+    "desa": "Tompotikka"
+  },
+  {
+    "id": "74.01",
+    "name": "KAB. KOLAKA",
+    "clean": "kolaka",
+    "isKota": false,
+    "adm4": "74.01.01.1001",
+    "desa": "19 Nopember"
+  },
+  {
+    "id": "74.02",
+    "name": "KAB. KONAWE",
+    "clean": "konawe",
+    "isKota": false,
+    "adm4": "74.02.01.1001",
+    "desa": "Lambuya"
+  },
+  {
+    "id": "74.03",
+    "name": "KAB. MUNA",
+    "clean": "muna",
+    "isKota": false,
+    "adm4": "74.03.06.2003",
+    "desa": "Napalakura"
+  },
+  {
+    "id": "74.04",
+    "name": "KAB. BUTON",
+    "clean": "buton",
+    "isKota": false,
+    "adm4": "74.04.11.2002",
+    "desa": "Waangu-angu"
+  },
+  {
+    "id": "74.05",
+    "name": "KAB. KONAWE SELATAN",
+    "clean": "konawe selatan",
+    "isKota": false,
+    "adm4": "74.05.01.1001",
+    "desa": "Tinanggea"
+  },
+  {
+    "id": "74.06",
+    "name": "KAB. BOMBANA",
+    "clean": "bombana",
+    "isKota": false,
+    "adm4": "74.06.01.1007",
+    "desa": "Boeara"
+  },
+  {
+    "id": "74.07",
+    "name": "KAB. WAKATOBI",
+    "clean": "wakatobi",
+    "isKota": false,
+    "adm4": "74.07.01.1002",
+    "desa": "Pongo"
+  },
+  {
+    "id": "74.08",
+    "name": "KAB. KOLAKA UTARA",
+    "clean": "kolaka utara",
+    "isKota": false,
+    "adm4": "74.08.01.1001",
+    "desa": "Lasusua"
+  },
+  {
+    "id": "74.09",
+    "name": "KAB. KONAWE UTARA",
+    "clean": "konawe utara",
+    "isKota": false,
+    "adm4": "74.09.01.1005",
+    "desa": "Wanggudu"
+  },
+  {
+    "id": "74.10",
+    "name": "KAB. BUTON UTARA",
+    "clean": "buton utara",
+    "isKota": false,
+    "adm4": "74.10.01.2001",
+    "desa": "Tri Wacu-Wacu"
+  },
+  {
+    "id": "74.11",
+    "name": "KAB. KOLAKA TIMUR",
+    "clean": "kolaka timur",
+    "isKota": false,
+    "adm4": "74.11.01.2001",
+    "desa": "Simbune"
+  },
+  {
+    "id": "74.12",
+    "name": "KAB. KONAWE KEPULAUAN",
+    "clean": "konawe kepulauan",
+    "isKota": false,
+    "adm4": "74.12.01.1001",
+    "desa": "Langara Laut"
+  },
+  {
+    "id": "74.13",
+    "name": "KAB. MUNA BARAT",
+    "clean": "muna barat",
+    "isKota": false,
+    "adm4": "74.13.01.2001",
+    "desa": "Wakoila"
+  },
+  {
+    "id": "74.14",
+    "name": "KAB. BUTON TENGAH",
+    "clean": "buton tengah",
+    "isKota": false,
+    "adm4": "74.14.01.2001",
+    "desa": "Metere"
+  },
+  {
+    "id": "74.15",
+    "name": "KAB. BUTON SELATAN",
+    "clean": "buton selatan",
+    "isKota": false,
+    "adm4": "74.15.01.2001",
+    "desa": "Lawela"
+  },
+  {
+    "id": "74.71",
+    "name": "KOTA KENDARI",
+    "clean": "kendari",
+    "isKota": true,
+    "adm4": "74.71.01.1005",
+    "desa": "Mandonga"
+  },
+  {
+    "id": "74.72",
+    "name": "KOTA BAU BAU",
+    "clean": "bau bau",
+    "isKota": true,
+    "adm4": "74.72.01.1007",
+    "desa": "Katobengke"
+  },
+  {
+    "id": "75.01",
+    "name": "KAB. GORONTALO",
+    "clean": "gorontalo",
+    "isKota": false,
+    "adm4": "75.01.01.1001",
+    "desa": "Kayubulan"
+  },
+  {
+    "id": "75.02",
+    "name": "KAB. BOALEMO",
+    "clean": "boalemo",
+    "isKota": false,
+    "adm4": "75.02.01.2004",
+    "desa": "Bongo Nol"
+  },
+  {
+    "id": "75.03",
+    "name": "KAB. BONE BOLANGO",
+    "clean": "bone bolango",
+    "isKota": false,
+    "adm4": "75.03.01.2004",
+    "desa": "Talumopatu"
+  },
+  {
+    "id": "75.04",
+    "name": "KAB. PAHUWATO",
+    "clean": "pahuwato",
+    "isKota": false,
+    "adm4": "75.04.01.2003",
+    "desa": "Torosiaje Jaya"
+  },
+  {
+    "id": "75.05",
+    "name": "KAB. GORONTALO UTARA",
+    "clean": "gorontalo utara",
+    "isKota": false,
+    "adm4": "75.05.01.2003",
+    "desa": "Imana"
+  },
+  {
+    "id": "75.71",
+    "name": "KOTA GORONTALO",
+    "clean": "gorontalo",
+    "isKota": true,
+    "adm4": "75.71.01.1001",
+    "desa": "Dembe I"
+  },
+  {
+    "id": "76.01",
+    "name": "KAB. PASANGKAYU",
+    "clean": "pasangkayu",
+    "isKota": false,
+    "adm4": "76.01.01.2003",
+    "desa": "Polewali"
+  },
+  {
+    "id": "76.02",
+    "name": "KAB. MAMUJU",
+    "clean": "mamuju",
+    "isKota": false,
+    "adm4": "76.02.01.1002",
+    "desa": "Binanga"
+  },
+  {
+    "id": "76.03",
+    "name": "KAB. MAMASA",
+    "clean": "mamasa",
+    "isKota": false,
+    "adm4": "76.03.01.1001",
+    "desa": "Mambi"
+  },
+  {
+    "id": "76.04",
+    "name": "KAB. POLEWALI MANDAR",
+    "clean": "polewali mandar",
+    "isKota": false,
+    "adm4": "76.04.01.1001",
+    "desa": "Tinambung"
+  },
+  {
+    "id": "76.05",
+    "name": "KAB. MAJENE",
+    "clean": "majene",
+    "isKota": false,
+    "adm4": "76.05.01.1001",
+    "desa": "Banggae"
+  },
+  {
+    "id": "76.06",
+    "name": "KAB. MAMUJU TENGAH",
+    "clean": "mamuju tengah",
+    "isKota": false,
+    "adm4": "76.06.01.2001",
+    "desa": "Mahahe"
+  },
+  {
+    "id": "81.01",
+    "name": "KAB. MALUKU TENGAH",
+    "clean": "maluku tengah",
+    "isKota": false,
+    "adm4": "81.01.01.2001",
+    "desa": "Tamilouw"
+  },
+  {
+    "id": "81.02",
+    "name": "KAB. MALUKU TENGGARA",
+    "clean": "maluku tenggara",
+    "isKota": false,
+    "adm4": "81.02.01.1013",
+    "desa": "Ohoijang Watdek"
+  },
+  {
+    "id": "81.03",
+    "name": "KAB. KEPULAUAN TANIMBAR",
+    "clean": "kepulauan tanimbar",
+    "isKota": false,
+    "adm4": "81.03.01.1001",
+    "desa": "Saumlaki"
+  },
+  {
+    "id": "81.04",
+    "name": "KAB. BURU",
+    "clean": "buru",
+    "isKota": false,
+    "adm4": "81.04.01.2001",
+    "desa": "Namlea"
+  },
+  {
+    "id": "81.05",
+    "name": "KAB. SERAM BAGIAN TIMUR",
+    "clean": "seram bagian timur",
+    "isKota": false,
+    "adm4": "81.05.01.2003",
+    "desa": "Bula"
+  },
+  {
+    "id": "81.06",
+    "name": "KAB. SERAM BAGIAN BARAT",
+    "clean": "seram bagian barat",
+    "isKota": false,
+    "adm4": "81.06.01.2008",
+    "desa": "Kamarian"
+  },
+  {
+    "id": "81.07",
+    "name": "KAB. KEPULAUAN ARU",
+    "clean": "kepulauan aru",
+    "isKota": false,
+    "adm4": "81.07.01.2001",
+    "desa": "Ujir"
+  },
+  {
+    "id": "81.08",
+    "name": "KAB. MALUKU BARAT DAYA",
+    "clean": "maluku barat daya",
+    "isKota": false,
+    "adm4": "81.08.01.1001",
+    "desa": "Tiakur"
+  },
+  {
+    "id": "81.09",
+    "name": "KAB. BURU SELATAN",
+    "clean": "buru selatan",
+    "isKota": false,
+    "adm4": "81.09.01.2001",
+    "desa": "Wamkana"
+  },
+  {
+    "id": "81.71",
+    "name": "KOTA AMBON",
+    "clean": "ambon",
+    "isKota": true,
+    "adm4": "81.71.01.2001",
+    "desa": "Latuhalat"
+  },
+  {
+    "id": "81.72",
+    "name": "KOTA TUAL",
+    "clean": "tual",
+    "isKota": true,
+    "adm4": "81.72.01.2001",
+    "desa": "Fiditan"
+  },
+  {
+    "id": "82.01",
+    "name": "KAB. HALMAHERA BARAT",
+    "clean": "halmahera barat",
+    "isKota": false,
+    "adm4": "82.01.01.2001",
+    "desa": "Gufasa"
+  },
+  {
+    "id": "82.02",
+    "name": "KAB. HALMAHERA TENGAH",
+    "clean": "halmahera tengah",
+    "isKota": false,
+    "adm4": "82.02.01.2004",
+    "desa": "Nusliko"
+  },
+  {
+    "id": "82.03",
+    "name": "KAB. HALMAHERA UTARA",
+    "clean": "halmahera utara",
+    "isKota": false,
+    "adm4": "82.03.04.2001",
+    "desa": "Soa-Sio"
+  },
+  {
+    "id": "82.04",
+    "name": "KAB. HALMAHERA SELATAN",
+    "clean": "halmahera selatan",
+    "isKota": false,
+    "adm4": "82.04.01.2001",
+    "desa": "Rabutdaiyo"
+  },
+  {
+    "id": "82.05",
+    "name": "KAB. KEPULAUAN SULA",
+    "clean": "kepulauan sula",
+    "isKota": false,
+    "adm4": "82.05.01.2001",
+    "desa": "Waitina"
+  },
+  {
+    "id": "82.06",
+    "name": "KAB. HALMAHERA TIMUR",
+    "clean": "halmahera timur",
+    "isKota": false,
+    "adm4": "82.06.01.2006",
+    "desa": "Subaim"
+  },
+  {
+    "id": "82.07",
+    "name": "KAB. PULAU MOROTAI",
+    "clean": "pulau morotai",
+    "isKota": false,
+    "adm4": "82.07.01.2001",
+    "desa": "Gotalamo"
+  },
+  {
+    "id": "82.08",
+    "name": "KAB. PULAU TALIABU",
+    "clean": "pulau taliabu",
+    "isKota": false,
+    "adm4": "82.08.01.2001",
+    "desa": "Bobong"
+  },
+  {
+    "id": "82.71",
+    "name": "KOTA TERNATE",
+    "clean": "ternate",
+    "isKota": true,
+    "adm4": "82.71.01.1001",
+    "desa": "Jambula"
+  },
+  {
+    "id": "82.72",
+    "name": "KOTA TIDORE KEPULAUAN",
+    "clean": "tidore kepulauan",
+    "isKota": true,
+    "adm4": "82.72.01.1001",
+    "desa": "Soasio"
+  },
+  {
+    "id": "91.01",
+    "name": "KAB. MERAUKE",
+    "clean": "merauke",
+    "isKota": false,
+    "adm4": "91.01.01.2001",
+    "desa": "Nasem"
+  },
+  {
+    "id": "91.02",
+    "name": "KAB. JAYAWIJAYA",
+    "clean": "jayawijaya",
+    "isKota": false,
+    "adm4": "91.02.01.1001",
+    "desa": "Wamena Kota"
+  },
+  {
+    "id": "91.03",
+    "name": "KAB. JAYAPURA",
+    "clean": "jayapura",
+    "isKota": false,
+    "adm4": "91.03.01.1001",
+    "desa": "Sentani Kota"
+  },
+  {
+    "id": "91.04",
+    "name": "KAB. NABIRE",
+    "clean": "nabire",
+    "isKota": false,
+    "adm4": "91.04.01.1001",
+    "desa": "Wonorejo"
+  },
+  {
+    "id": "91.05",
+    "name": "KAB. KEPULAUAN YAPEN",
+    "clean": "kepulauan yapen",
+    "isKota": false,
+    "adm4": "91.05.01.1004",
+    "desa": "Tarau"
+  },
+  {
+    "id": "91.06",
+    "name": "KAB. BIAK NUMFOR",
+    "clean": "biak numfor",
+    "isKota": false,
+    "adm4": "91.06.01.1001",
+    "desa": "Sorido"
+  },
+  {
+    "id": "91.07",
+    "name": "KAB. PUNCAK JAYA",
+    "clean": "puncak jaya",
+    "isKota": false,
+    "adm4": "91.07.01.2001",
+    "desa": "Pruleme"
+  },
+  {
+    "id": "91.08",
+    "name": "KAB. PANIAI",
+    "clean": "paniai",
+    "isKota": false,
+    "adm4": "91.08.01.1003",
+    "desa": "Enarotali"
+  },
+  {
+    "id": "91.09",
+    "name": "KAB. MIMIKA",
+    "clean": "mimika",
+    "isKota": false,
+    "adm4": "91.09.01.1001",
+    "desa": "Koperapoka"
+  },
+  {
+    "id": "91.10",
+    "name": "KAB. SARMI",
+    "clean": "sarmi",
+    "isKota": false,
+    "adm4": "91.10.01.1001",
+    "desa": "Mararena"
+  },
+  {
+    "id": "91.11",
+    "name": "KAB. KEEROM",
+    "clean": "keerom",
+    "isKota": false,
+    "adm4": "91.11.01.2001",
+    "desa": "Banda"
+  },
+  {
+    "id": "91.12",
+    "name": "KAB PEGUNUNGAN BINTANG",
+    "clean": "kab pegunungan bintang",
+    "isKota": false,
+    "adm4": "91.12.01.2001",
+    "desa": "Kabiding"
+  },
+  {
+    "id": "91.13",
+    "name": "KAB. YAHUKIMO",
+    "clean": "yahukimo",
+    "isKota": false,
+    "adm4": "91.13.01.1001",
+    "desa": "Obolma"
+  },
+  {
+    "id": "91.14",
+    "name": "KAB. TOLIKARA",
+    "clean": "tolikara",
+    "isKota": false,
+    "adm4": "91.14.01.1001",
+    "desa": "Karubaga"
+  },
+  {
+    "id": "91.15",
+    "name": "KAB. WAROPEN",
+    "clean": "waropen",
+    "isKota": false,
+    "adm4": "91.15.01.2003",
+    "desa": "Waren I"
+  },
+  {
+    "id": "91.16",
+    "name": "KAB. BOVEN DIGOEL",
+    "clean": "boven digoel",
+    "isKota": false,
+    "adm4": "91.16.01.2003",
+    "desa": "Ampera"
+  },
+  {
+    "id": "91.17",
+    "name": "KAB. MAPPI",
+    "clean": "mappi",
+    "isKota": false,
+    "adm4": "91.17.01.2001",
+    "desa": "Obaa"
+  },
+  {
+    "id": "91.18",
+    "name": "KAB. ASMAT",
+    "clean": "asmat",
+    "isKota": false,
+    "adm4": "91.18.01.2001",
+    "desa": "Yomoth"
+  },
+  {
+    "id": "91.19",
+    "name": "KAB. SUPIORI",
+    "clean": "supiori",
+    "isKota": false,
+    "adm4": "91.19.01.2003",
+    "desa": "Fanindi"
+  },
+  {
+    "id": "91.20",
+    "name": "KAB. MAMBERAMO RAYA",
+    "clean": "mamberamo raya",
+    "isKota": false,
+    "adm4": "91.20.01.2001",
+    "desa": "Burmeso"
+  },
+  {
+    "id": "91.21",
+    "name": "KAB. MAMBERAMO TENGAH",
+    "clean": "mamberamo tengah",
+    "isKota": false,
+    "adm4": "91.21.01.2001",
+    "desa": "Kobagma"
+  },
+  {
+    "id": "91.22",
+    "name": "KAB. YALIMO",
+    "clean": "yalimo",
+    "isKota": false,
+    "adm4": "91.22.01.2001",
+    "desa": "Elelim"
+  },
+  {
+    "id": "91.23",
+    "name": "KAB. LANNY JAYA",
+    "clean": "lanny jaya",
+    "isKota": false,
+    "adm4": "91.23.01.1001",
+    "desa": "Bokon"
+  },
+  {
+    "id": "91.24",
+    "name": "KAB. NDUGA",
+    "clean": "nduga",
+    "isKota": false,
+    "adm4": "91.24.01.2001",
+    "desa": "Kenyam"
+  },
+  {
+    "id": "91.25",
+    "name": "KAB. PUNCAK",
+    "clean": "puncak",
+    "isKota": false,
+    "adm4": "91.25.01.2002",
+    "desa": "Kago"
+  },
+  {
+    "id": "91.26",
+    "name": "KAB. DOGIYAI",
+    "clean": "dogiyai",
+    "isKota": false,
+    "adm4": "91.26.01.2001",
+    "desa": "Ikebo"
+  },
+  {
+    "id": "91.27",
+    "name": "KAB. INTAN JAYA",
+    "clean": "intan jaya",
+    "isKota": false,
+    "adm4": "91.27.01.2001",
+    "desa": "Emondi"
+  },
+  {
+    "id": "91.28",
+    "name": "KAB. DEIYAI",
+    "clean": "deiyai",
+    "isKota": false,
+    "adm4": "91.28.01.2001",
+    "desa": "Waghete I"
+  },
+  {
+    "id": "91.71",
+    "name": "KOTA JAYAPURA",
+    "clean": "jayapura",
+    "isKota": true,
+    "adm4": "91.71.01.1001",
+    "desa": "Gurabesi"
+  },
+  {
+    "id": "92.01",
+    "name": "KAB. SORONG",
+    "clean": "sorong",
+    "isKota": false,
+    "adm4": "92.01.01.1001",
+    "desa": "Makbon"
+  },
+  {
+    "id": "92.02",
+    "name": "KAB. MANOKWARI",
+    "clean": "manokwari",
+    "isKota": false,
+    "adm4": "92.02.03.2001",
+    "desa": "Dindey"
+  },
+  {
+    "id": "92.03",
+    "name": "KAB. FAK FAK",
+    "clean": "fak fak",
+    "isKota": false,
+    "adm4": "92.03.01.1001",
+    "desa": "Fak Fak Selatan"
+  },
+  {
+    "id": "92.04",
+    "name": "KAB. SORONG SELATAN",
+    "clean": "sorong selatan",
+    "isKota": false,
+    "adm4": "92.04.01.2004",
+    "desa": "Wersar"
+  },
+  {
+    "id": "92.05",
+    "name": "KAB. RAJA AMPAT",
+    "clean": "raja ampat",
+    "isKota": false,
+    "adm4": "92.05.01.2001",
+    "desa": "Waigama"
+  },
+  {
+    "id": "92.06",
+    "name": "KAB. TELUK BINTUNI",
+    "clean": "teluk bintuni",
+    "isKota": false,
+    "adm4": "92.06.01.1001",
+    "desa": "Bintuni Timur"
+  },
+  {
+    "id": "92.07",
+    "name": "KAB. TELUK WONDAMA",
+    "clean": "teluk wondama",
+    "isKota": false,
+    "adm4": "92.07.01.1001",
+    "desa": "Wasior I"
+  },
+  {
+    "id": "92.08",
+    "name": "KAB. KAIMANA",
+    "clean": "kaimana",
+    "isKota": false,
+    "adm4": "92.08.01.1001",
+    "desa": "Kaimana Kota"
+  },
+  {
+    "id": "92.09",
+    "name": "KAB. TAMBRAUW",
+    "clean": "tambrauw",
+    "isKota": false,
+    "adm4": "92.09.01.2001",
+    "desa": "Fef"
+  },
+  {
+    "id": "92.10",
+    "name": "KAB. MAYBRAT",
+    "clean": "maybrat",
+    "isKota": false,
+    "adm4": "92.10.01.2001",
+    "desa": "Kumurkek"
+  },
+  {
+    "id": "92.11",
+    "name": "KAB. MANOKWARI SELATAN",
+    "clean": "manokwari selatan",
+    "isKota": false,
+    "adm4": "92.11.01.2001",
+    "desa": "Ransiki"
+  },
+  {
+    "id": "92.12",
+    "name": "KAB. PEGUNUNGAN ARFAK",
+    "clean": "pegunungan arfak",
+    "isKota": false,
+    "adm4": "92.12.01.2001",
+    "desa": "Iraiweri"
+  },
+  {
+    "id": "92.71",
+    "name": "KOTA SORONG",
+    "clean": "sorong",
+    "isKota": true,
+    "adm4": "92.71.01.1001",
+    "desa": "Remu Utara"
+  },
+  {
+    "id": "alias",
+    "name": "DKI Jakarta (Pusat)",
+    "clean": "jakarta",
+    "isKota": true,
+    "adm4": "31.71.01.1001",
+    "desa": "DKI Jakarta (Pusat)"
+  },
+  {
+    "id": "alias",
+    "name": "Kota Adm. Jakarta Pusat",
+    "clean": "jakpus",
+    "isKota": true,
+    "adm4": "31.71.01.1001",
+    "desa": "Kota Adm. Jakarta Pusat"
+  },
+  {
+    "id": "alias",
+    "name": "Kota Adm. Jakarta Selatan",
+    "clean": "jaksel",
+    "isKota": true,
+    "adm4": "31.74.01.1001",
+    "desa": "Kota Adm. Jakarta Selatan"
+  },
+  {
+    "id": "alias",
+    "name": "Kota Adm. Jakarta Timur",
+    "clean": "jaktim",
+    "isKota": true,
+    "adm4": "31.75.01.1001",
+    "desa": "Kota Adm. Jakarta Timur"
+  },
+  {
+    "id": "alias",
+    "name": "Kota Adm. Jakarta Barat",
+    "clean": "jakbar",
+    "isKota": true,
+    "adm4": "31.73.01.1001",
+    "desa": "Kota Adm. Jakarta Barat"
+  },
+  {
+    "id": "alias",
+    "name": "Kota Adm. Jakarta Utara",
+    "clean": "jakut",
+    "isKota": true,
+    "adm4": "31.72.01.1001",
+    "desa": "Kota Adm. Jakarta Utara"
+  },
+  {
+    "id": "alias",
+    "name": "Kota Yogyakarta",
+    "clean": "jogja",
+    "isKota": true,
+    "adm4": "34.71.01.1001",
+    "desa": "Kota Yogyakarta"
+  },
+  {
+    "id": "alias",
+    "name": "Bali (Denpasar)",
+    "clean": "bali",
+    "isKota": true,
+    "adm4": "51.71.01.1001",
+    "desa": "Denpasar (Bali)"
+  }
+]

@@ -1,0 +1,46 @@
+SOURCE CODE PROTECTION & USAGE POLICY (SCPU-NC)
+==================================================
+
+Copyright (c) 2024 - 2026 Rafli (Futaroukun). All Rights Reserved.
+
+PERJANJIAN LISENSI DAN ATURAN PENGGUNAAN RESMI (JOY BOT)
+---------------------------------------------------------
+Dengan mengunduh, menyalin, mengkloning, menyimpan, memodifikasi, atau menggunakan source code ini secara keseluruhan maupun sebagian, Anda secara otomatis terikat dan menyetujui seluruh ketentuan hukum berikut:
+
+1. HAK PENGGUNAAN YANG DIIZINKAN (PERMITTED USE)
+   a. Penggunaan Pribadi & Edukasi: Anda diberikan hak non-eksklusif untuk menggunakan source code ini secara gratis untuk keperluan pribadi, eksperimen mandiri, atau riset edukasi non-komersial.
+   b. Modifikasi Fungsional: Anda diizinkan untuk menyesuaikan berkas konfigurasi, memperbaiki bug internal, serta menambahkan modul/plugin baru di dalam direktori `plugins/` untuk kebutuhan deployment Anda sendiri.
+
+2. LARANGAN KERAS RE-BRANDING & PLAGIARISME (ANTI-PLAGIARISM)
+   a. Dilarang keras mengganti nama proyek, menyamarkan identitas software, mengemas ulang (repackaging), atau merombak source code ini dengan maksud untuk mengklaimnya sebagai karya buatan sendiri atau pihak lain (white-labeling / re-branding).
+   b. Seluruh konsep arsitektur, basis kode, dan identitas proyek ini tetap merupakan kekayaan intelektual murni dari Pencipta Asli (Rafli / Futaroukun).
+
+3. KEHARUSAN ATRIBUSI KREDIT ASLI (STRICT ATTRIBUTION)
+   a. Anda DILARANG KERAS menghapus, mengubah, menyamarkan, atau menyembunyikan:
+      - Nama Creator asli (Rafli / Futaroukun).
+      - Tautan repositori resmi (https://github.com/Futaroukun/Joy).
+      - Header lisensi, copyright notice, watermark kredit sistem, maupun watermark pada respons teks output bot.
+   b. Setiap fork publik atau tampilan publik yang menggunakan source code ini WAJIB mencantumkan kredit yang jelas dan tautan langsung ke repositori sumber asli.
+
+4. LARANGAN KOMERSIALISASI PENUH (STRICTLY NON-COMMERCIAL)
+   a. Source code ini didistribusikan secara cuma-cuma (GRATIS).
+   b. Dilarang keras memperjualbelikan, menyewakan, memaketkan dalam layanan berbayar (paid services/paid hosting), membuat paywall, atau memonetisasi source code ini dalam bentuk apa pun tanpa izin tertulis resmi dari Pemegang Hak Cipta.
+
+5. PENGGUNAAN BERTANGGUNG JAWAB (NON-HARMFUL & ETHICAL USE)
+   a. Dilarang keras memanfaatkan source code ini untuk tindakan yang melanggar hukum, penipuan (scam), spamming massal, peretasan (hacking), penyebaran malware, pelecehan, pelanggaran privasi, atau aktivitas kejahatan siber lainnya.
+
+6. DEPENDENSI PIHAK KETIGA (THIRD-PARTY LICENSES)
+   a. Source code ini memanfaatkan pustaka dan modul pihak ketiga (termasuk namun tidak terbatas pada Baileys, Better-SQLite3, Sharp, Axios) yang masing-masing dilindungi oleh lisensi aslinya (seperti MIT, Apache 2.0, BSD).
+   b. Ketentuan dalam lisensi ini berlaku khusus untuk kode sumber, arsitektur, dan aset asli yang dibuat oleh Pemegang Hak Cipta Joy Bot.
+
+7. PENEGAKAN HUKUM & SANKSI PELANGGARAN
+   a. Pelanggaran terhadap salah satu ketentuan dalam perjanjian ini akan secara otomatis membatalkan seluruh hak penggunaan Anda atas source code ini.
+   b. Pemegang Hak Cipta berhak:
+      - Mengajukan permohonan takedown resmi di bawah Digital Millennium Copyright Act (DMCA) kepada penyedia hosting (seperti GitHub/GitLab).
+      - Melakukan penuntutan hukum berdasarkan Undang-Undang No. 28 Tahun 2014 tentang Hak Cipta (Republik Indonesia) serta traktat internasional perlindungan hak cipta (Berne Convention).
+
+---------------------------------------------------------
+BATASAN TANGGUNG JAWAB & DISCLAIMER:
+SOURCE CODE INI DISEDIAKAN "SEBAGAIMANA ADANYA" (AS IS), TANPA JAMINAN APA PUN BAIK TERSURAT MAUPUN TERSIRAT, TERMASUK NAMUN TIDAK TERBATAS PADA JAMINAN KELAYAKAN UNTUK TUJUAN TERTENTU ATAU KETIADAAN PELANGGARAN.
+
+DALAM KEADAAN APA PUN, PEMEGANG HAK CIPTA ATAU KREATOR TIDAK BERTANGGUNG JAWAB ATAS SEGALA BENTUK TUNTUTAN, KERUSAKAN, KERUGIAN, ATAU TANGGUNG JAWAB HUKUM LAINNYA, BAIK DALAM TINDAKAN KONTRAK MAUPUN KELALAIAN, YANG TIMBUL DARI ATAU SEHUBUNGAN DENGAN PENGGUNAAN, EKSEKUSI, ATAU PENYALAHGUNAAN SOURCE CODE INI OLEH PENGGUNA ATAU PIHAK KETIGA.
