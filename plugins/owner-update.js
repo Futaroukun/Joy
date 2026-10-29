@@ -6,6 +6,8 @@
 
 import cp from 'child_process'
 import { promisify } from 'util'
+import fs from 'fs'
+import path from 'path'
 import cron from 'node-cron'
 import chalk from 'chalk'
 import fetch from 'node-fetch'
@@ -268,6 +270,65 @@ async function getChanges() {
     return { hasChanges: true, stats, total }
 }
 
+function isProtectedDatabaseFile(file) {
+    if (!file) return false
+    const clean = file.trim()
+    if (/\.(db|db-wal|db-shm|safe)($|\.)/i.test(clean)) return true
+    if (clean.startsWith('data/backups/')) return true
+    if (clean === '.codebase_graph.db') return true
+    return false
+}
+
+function backupDataShield() {
+    const shieldDir = path.join(process.cwd(), 'data', 'backups', '.git_shield')
+    try {
+        if (!fs.existsSync(shieldDir)) fs.mkdirSync(shieldDir, { recursive: true })
+        const dataDir = path.join(process.cwd(), 'data')
+        if (!fs.existsSync(dataDir)) return {}
+
+        const files = fs.readdirSync(dataDir).filter(f => {
+            return f.endsWith('.db') || f.endsWith('.safe') || f === 'catatan.json' || f === 'store.json'
+        })
+
+        const backedUp = {}
+        for (const f of files) {
+            const src = path.join(dataDir, f)
+            const dst = path.join(shieldDir, f)
+            try {
+                if (fs.statSync(src).size > 0) {
+                    fs.copyFileSync(src, dst)
+                    backedUp[f] = fs.statSync(src).size
+                }
+            } catch (_) {}
+        }
+        return backedUp
+    } catch (e) {
+        console.error('[GIT SHIELD BACKUP ERROR]', e.message)
+        return {}
+    }
+}
+
+function restoreDataShield(backedUp) {
+    const shieldDir = path.join(process.cwd(), 'data', 'backups', '.git_shield')
+    try {
+        const dataDir = path.join(process.cwd(), 'data')
+        for (const [f, origSize] of Object.entries(backedUp || {})) {
+            const dst = path.join(dataDir, f)
+            const src = path.join(shieldDir, f)
+            try {
+                if (!fs.existsSync(dst) || fs.statSync(dst).size < origSize) {
+                    if (fs.existsSync(src)) {
+                        fs.copyFileSync(src, dst)
+                        console.log(chalk.green(`[GIT SHIELD RESTORE] Memulihkan ${f} (${origSize} bytes)`))
+                    }
+                }
+            } catch (_) {}
+        }
+    } catch (e) {
+        console.error('[GIT SHIELD RESTORE ERROR]', e.message)
+    }
+}
+
 async function smartCommit(stats) {
     await runGit(`git config user.email "${CONFIG.git.email}"`)
     await runGit(`git config user.name "${CONFIG.git.name}"`)
@@ -282,6 +343,7 @@ async function smartCommit(stats) {
 
     for (const { files, type } of groups) {
         for (const file of files) {
+            if (isProtectedDatabaseFile(file)) continue
             const add = await runGit(`git add "${file}"`)
             if (!add.success) continue
             const commit = await runGit(`git commit -m "${sanitize(`${type}: ${file}`)}"`)
@@ -327,81 +389,87 @@ async function gitPull(branch, isForce = false) {
         oldHead = (await exec('git rev-parse HEAD')).stdout.trim()
     } catch {}
 
-    if (isForce) {
-        await runGit('git merge --abort').catch(() => {})
-        await runGit('git rebase --abort').catch(() => {})
-        await runGit(`git fetch origin ${branch}`).catch(() => {})
-        await runGit(`git reset --hard origin/${branch}`).catch(() => {})
-    }
+    const shieldedFiles = backupDataShield()
 
-    let r = await runGit(`git pull --rebase --autostash origin ${branch}`)
-    if (!r.success) {
-        const errMsg = r.error?.message || ''
-        if (/unmerged|conflict|needs merge/i.test(errMsg)) {
-            console.log(chalk.yellow('[GIT PULL] Mendeteksi konflik merge/unmerged files, mereset otomatis ke remote...'))
+    try {
+        if (isForce) {
             await runGit('git merge --abort').catch(() => {})
             await runGit('git rebase --abort').catch(() => {})
             await runGit(`git fetch origin ${branch}`).catch(() => {})
             await runGit(`git reset --hard origin/${branch}`).catch(() => {})
-            r = await runGit(`git pull origin ${branch}`)
-        } else if (/overwritten by merge/i.test(errMsg)) {
-            await runGit('git checkout -- data/')
-            r = await runGit(`git pull origin ${branch}`)
-        } else {
+        }
+
+        let r = await runGit(`git pull --rebase --autostash origin ${branch}`)
+        if (!r.success) {
+            const errMsg = r.error?.message || ''
+            if (/unmerged|conflict|needs merge/i.test(errMsg)) {
+                console.log(chalk.yellow('[GIT PULL] Mendeteksi konflik merge/unmerged files, mereset otomatis ke remote...'))
+                await runGit('git merge --abort').catch(() => {})
+                await runGit('git rebase --abort').catch(() => {})
+                await runGit(`git fetch origin ${branch}`).catch(() => {})
+                await runGit(`git reset --hard origin/${branch}`).catch(() => {})
+                r = await runGit(`git pull origin ${branch}`)
+            } else if (/overwritten by merge/i.test(errMsg)) {
+                await runGit('git rm --cached data/*.db 2>/dev/null').catch(() => {})
+                r = await runGit(`git pull origin ${branch}`)
+            } else {
+                r = await runGit(`git pull origin ${branch}`)
+            }
+        }
+        if (!r.success && /overwritten by merge/i.test(r.error?.message || '')) {
+            await runGit('git rm --cached data/*.db 2>/dev/null').catch(() => {})
             r = await runGit(`git pull origin ${branch}`)
         }
-    }
-    if (!r.success && /overwritten by merge/i.test(r.error?.message || '')) {
-        await runGit('git checkout -- data/')
-        r = await runGit(`git pull origin ${branch}`)
-    }
-    if (!r.success) {
-        throw new Error(r.error?.message || 'Gagal pull dari GitHub.')
-    }
+        if (!r.success) {
+            throw new Error(r.error?.message || 'Gagal pull dari GitHub.')
+        }
 
-    let newHead = ''
-    try {
-        newHead = (await exec('git rev-parse HEAD')).stdout.trim()
-    } catch {}
-
-    const hasUpdate = Boolean(oldHead && newHead && oldHead !== newHead)
-    let commitList = ''
-    let shortStat = ''
-    let fileList = ''
-
-    if (hasUpdate) {
+        let newHead = ''
         try {
-            const logRes = await exec(`git log ${oldHead}..${newHead} --format="› \`%h\` %s"`)
-            commitList = logRes.stdout.trim()
+            newHead = (await exec('git rev-parse HEAD')).stdout.trim()
         } catch {}
 
-        try {
-            const statRes = await exec(`git diff --shortstat ${oldHead}..${newHead}`)
-            shortStat = parseShortStat(statRes.stdout.trim())
-        } catch {}
+        const hasUpdate = Boolean(oldHead && newHead && oldHead !== newHead)
+        let commitList = ''
+        let shortStat = ''
+        let fileList = ''
 
-        try {
-            const diffTreeRes = await exec(`git diff --name-status ${oldHead}..${newHead}`)
-            const lines = diffTreeRes.stdout.trim().split('\n').filter(Boolean)
-            const formatted = lines.slice(0, 15).map(line => {
-                const [status, ...f] = line.trim().split(/\s+/)
-                return formatChangedFile(status, f.join(' '))
-            })
-            fileList = formatted.join('\n')
-            if (lines.length > 15) {
-                fileList += `\n› ...dan ${lines.length - 15} berkas lainnya`
-            }
-        } catch {}
-    }
+        if (hasUpdate) {
+            try {
+                const logRes = await exec(`git log ${oldHead}..${newHead} --format="› \`%h\` %s"`)
+                commitList = logRes.stdout.trim()
+            } catch {}
 
-    return {
-        raw: r.stdout || r.stderr || 'Already up to date.',
-        oldHead,
-        newHead,
-        hasUpdate,
-        commitList,
-        shortStat,
-        fileList
+            try {
+                const statRes = await exec(`git diff --shortstat ${oldHead}..${newHead}`)
+                shortStat = parseShortStat(statRes.stdout.trim())
+            } catch {}
+
+            try {
+                const diffTreeRes = await exec(`git diff --name-status ${oldHead}..${newHead}`)
+                const lines = diffTreeRes.stdout.trim().split('\n').filter(Boolean)
+                const formatted = lines.slice(0, 15).map(line => {
+                    const [status, ...f] = line.trim().split(/\s+/)
+                    return formatChangedFile(status, f.join(' '))
+                })
+                fileList = formatted.join('\n')
+                if (lines.length > 15) {
+                    fileList += `\n› ...dan ${lines.length - 15} berkas lainnya`
+                }
+            } catch {}
+        }
+
+        return {
+            raw: r.stdout || r.stderr || 'Already up to date.',
+            oldHead,
+            newHead,
+            hasUpdate,
+            commitList,
+            shortStat,
+            fileList
+        }
+    } finally {
+        restoreDataShield(shieldedFiles)
     }
 }
 
@@ -435,6 +503,7 @@ async function githubUpload({ isAuto = false, customMessage = '', isForce = fals
             await runGit(`git config user.email "${CONFIG.git.email}"`)
             await runGit(`git config user.name "${CONFIG.git.name}"`)
             await runGit('git add -A')
+            await runGit('git reset HEAD -- data/*.db* data/backups/ .codebase_graph.db 2>/dev/null').catch(() => {})
             const commitRes = await runGit(`git commit -m "${sanitize(customMessage)}"`)
             if (!commitRes.success) {
                 throw new Error(commitRes.error?.message || 'Gagal membuat commit.')

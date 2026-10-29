@@ -10,9 +10,10 @@ data/gsmarena-index.json
 .env
 
 # Database & Backups
-data/*.db
-data/*.db-shm
-data/*.db-wal
+*.db
+*.db.*
+*.db-*
+data/*.db*
 data/backups/
 
 # Dynamic data, caches, accounts & cookies

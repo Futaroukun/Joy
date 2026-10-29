@@ -7,6 +7,7 @@
 
 import Database from 'better-sqlite3';
 import { join } from 'path';
+import { existsSync, statSync, copyFileSync, readdirSync } from 'fs';
 import chalk from 'chalk';
 import cron from 'node-cron';
 
@@ -336,8 +337,43 @@ export function wrapStoreLid(conn) {
 }
 
 export function initDatabase(dataDir) {
-    sqlite = new Database(join(dataDir, 'database.db'));
+    const dbPath = join(dataDir, 'database.db');
+    const safeBakPath = join(dataDir, 'database.db.safe');
+    const backupsDir = join(dataDir, 'backups');
+
+    // Auto-Recovery: Jika database.db tidak ada atau 0 byte (misal akibat git pull), pulihkan otomatis
+    try {
+        if (!existsSync(dbPath) || statSync(dbPath).size === 0) {
+            if (existsSync(safeBakPath) && statSync(safeBakPath).size > 0) {
+                console.log(chalk.yellow(' [DATABASE AUTO-RECOVERY]') + ' Memulihkan database dari database.db.safe...');
+                copyFileSync(safeBakPath, dbPath);
+            } else if (existsSync(backupsDir)) {
+                const bFiles = readdirSync(backupsDir)
+                    .filter(f => f.startsWith('backup_') && f.endsWith('.db'))
+                    .sort()
+                    .reverse();
+                if (bFiles.length > 0) {
+                    const latest = join(backupsDir, bFiles[0]);
+                    if (statSync(latest).size > 0) {
+                        console.log(chalk.yellow(' [DATABASE AUTO-RECOVERY]') + ` Memulihkan database dari backup terbaru: ${bFiles[0]}...`);
+                        copyFileSync(latest, dbPath);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error(' [DATABASE AUTO-RECOVERY ERROR]', e.message);
+    }
+
+    sqlite = new Database(dbPath);
     global.sqlite = sqlite;
+
+    // Simpan salinan database.db.safe jika database saat ini sehat
+    try {
+        if (existsSync(dbPath) && statSync(dbPath).size > 1024) {
+            copyFileSync(dbPath, safeBakPath);
+        }
+    } catch (_) {}
 
     sqlite.pragma('journal_mode = WAL');
     sqlite.pragma('synchronous = NORMAL');
