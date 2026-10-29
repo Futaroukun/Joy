@@ -24,14 +24,20 @@ class CustomArray extends Array {
 }
 
 let handler = async (m, _2) => {
-  const { conn, usedPrefix, noPrefix, args, groupMetadata, isOwner } = _2;
+  const { conn, usedPrefix, noPrefix, command, args, groupMetadata, isOwner } = _2;
 
-  const rawCode = (noPrefix || '').trim();
-  if (!rawCode) return;
+  let rawCode = (noPrefix || '').trim();
+  const cmd = (command || '').toLowerCase();
 
-  const isShell = /^\$/.test(usedPrefix);
-  const isEval = /^(=?>)/.test(usedPrefix);
+  const isShell = /^\$/.test(usedPrefix) || /^(exec|sh)$/i.test(cmd);
+  const isEval = /^(=?>)/.test(usedPrefix) || /^(eval|return)$/i.test(cmd);
   if (!isShell && !isEval) return;
+
+  if (/^(exec|sh|eval|return)$/i.test(cmd)) {
+    rawCode = (args || []).join(' ') || _2.text || '';
+  }
+
+  if (!rawCode) return m.reply(`Masukkan kode atau perintah terminal.\nContoh:\n• \`$ ls\`\n• \`${usedPrefix}exec ls\`\n• \`> 1+1\`\n• \`${usedPrefix}eval 1+1\``);
   const startTime = Date.now();
 
   // Non-blocking react
@@ -39,13 +45,20 @@ let handler = async (m, _2) => {
 
   // ── Shell Execution ($) ──────────────────────────────────
   if (isShell) {
-    const globalBotId = global.conn?.user?.id?.split(':')[0] || global.conn?.user?.jid;
-    const currentBotId = conn?.user?.id?.split(':')[0] || conn?.user?.jid;
+    const globalBotId = (global.conn?.user?.id?.split(':')[0] || global.conn?.user?.jid || '').split('@')[0];
+    const currentBotId = (conn?.user?.id?.split(':')[0] || conn?.user?.jid || '').split('@')[0];
     if (globalBotId && currentBotId && globalBotId !== currentBotId) return;
 
     let output = '';
     let isError = false;
-    const fastShell = process.env.PREFIX ? `${process.env.PREFIX}/bin/sh` : '/bin/sh';
+    let fastShell = '/bin/sh';
+    if (process.env.PREFIX && fs.existsSync(`${process.env.PREFIX}/bin/sh`)) {
+      fastShell = `${process.env.PREFIX}/bin/sh`;
+    } else if (fs.existsSync('/bin/bash')) {
+      fastShell = '/bin/bash';
+    } else if (fs.existsSync('/bin/sh')) {
+      fastShell = '/bin/sh';
+    }
 
     try {
       const { stdout, stderr } = await exec(rawCode, {
@@ -90,7 +103,7 @@ let handler = async (m, _2) => {
   // ── JavaScript Eval (> & =>) ─────────────────────────────
   let _return;
   let _syntax = '';
-  const isReturn = /^=/.test(usedPrefix);
+  const isReturn = /^=/.test(usedPrefix) || cmd === 'return';
   const codeToRun = isReturn ? `return (${rawCode})` : rawCode;
   const oldExp = m.exp * 1;
   let isError = false;
@@ -202,9 +215,11 @@ let handler = async (m, _2) => {
   m.exp = oldExp;
 };
 
-handler.help = ['$ *terminal/sh*', '> *eval*', '=> *eval return*'];
+handler.help = ['$ *terminal/sh*', '> *eval*', '=> *eval return*', 'exec *<sh>*', 'eval *<code>*'];
 handler.tags = ['owner'];
 handler.customPrefix = /^(=?>|\$)\s*/;
+handler.command = /^(\$|>|=>|exec|sh|eval|return)$/i;
 handler.rowner = true;
+handler.owner = true;
 
 export default handler;

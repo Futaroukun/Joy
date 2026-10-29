@@ -124,8 +124,9 @@ export function getPluginIndex() {
                 continue;
             }
 
-            // Plugin yang memiliki customPrefix ditangani khusus dan tidak boleh masuk ke command standard
-            if (plugin.customPrefix) {
+            // Plugin yang memiliki customPrefix ditangani khusus
+            // Jika plugin tidak memiliki command standard, lewati commandMap
+            if (plugin.customPrefix && !plugin.command) {
                 continue;
             }
 
@@ -688,7 +689,7 @@ export async function handler(chatUpdate) {
                         args = text ? text.split(/\s+/) : [];
 
                         const cmd = item.plugin.command;
-                        let isAccept = false;
+                        let isAccept = !cmd;
                         if (typeof cmd === "string") {
                             isAccept = cmd === command;
                         } else if (cmd instanceof RegExp) {
@@ -761,15 +762,15 @@ export async function handler(chatUpdate) {
                 if (isMuted && (!isROwner || !isAdmin)) return;
                 if (isBannned && (!isROwner || !isOwner)) return;
 
-                if (plugin.rowner && plugin.owner && !(isROwner || isOwner)) {
-                    global.dFail("owner", m, this);
-                    return;
-                }
-                if (plugin.rowner && !isROwner) {
+                if (plugin.rowner && plugin.owner) {
+                    if (!(isROwner || isOwner)) {
+                        global.dFail("owner", m, this);
+                        return;
+                    }
+                } else if (plugin.rowner && !isROwner) {
                     global.dFail("rowner", m, this);
                     return;
-                }
-                if (plugin.owner && !isOwner) {
+                } else if (plugin.owner && !isOwner) {
                     global.dFail("owner", m, this);
                     return;
                 }
