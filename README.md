@@ -85,7 +85,11 @@ cd Joy
 # 3. Pasang seluruh dependensi proyek
 npm install
 
-# 4. Jalankan bot
+# 4. Salin dan sesuaikan berkas konfigurasi .env
+cp .env.example .env
+nano .env
+
+# 5. Jalankan bot
 npm start
 ```
 
@@ -110,7 +114,11 @@ git clone https://github.com/Futaroukun/Joy.git
 cd Joy
 npm install
 
-# 4. Jalankan secara langsung atau menggunakan process manager (PM2)
+# 4. Salin dan konfigurasi .env
+cp .env.example .env
+nano .env
+
+# 5. Jalankan secara langsung atau menggunakan process manager (PM2)
 npm start
 
 # (Opsional) Menggunakan PM2 agar bot berjalan di background secara permanen:
@@ -123,23 +131,39 @@ pm2 save && pm2 startup
 
 ---
 
-## ⚙️ Konfigurasi Awal
+## ⚙️ Konfigurasi Environment (`.env`)
 
-Buka dan sesuaikan data nomor WhatsApp di file [`settings.js`](./settings.js):
+Joy menggunakan berkas `.env` untuk mengelola nomor owner, API key, serta kredensial akun secara terisolasi. Berkas ini secara otomatis diabaikan oleh Git (`.gitignore`), sehingga data kredensial Anda **aman dari kebocoran publik** dan **tidak akan tertimpa saat melakukan `git pull`**.
 
-```javascript
-// ===== KONFIGURASI OTORITAS =====
-global.developer = ["628xxxxxxxxxx"]; // Nomor Developer Utama (Hak Akses Penuh Sistem)
-global.owner     = ["628xxxxxxxxxx"]; // Nomor Owner Tambahan
-
-// ===== IDENTITAS BOT =====
-global.info = {
-    nomorbot:   "628xxxxxxxxxx",
-    namabot:    "Joy",
-    nomorowner: "628xxxxxxxxxx",
-    namaowner:  "Developer"
-};
+### 1. Membuat Berkas `.env`
+Salin template berkas `.env.example` ke `.env`:
+```bash
+cp .env.example .env
+nano .env
 ```
+
+### 2. Parameter Konfigurasi
+
+| Variabel | Keterangan | Contoh Nilai |
+| :--- | :--- | :--- |
+| `DEVELOPER_NUMBER` | Nomor pengembang utama (akses penuh dev-only) | `6281234567890` |
+| `OWNER_NUMBER` | Nomor owner tambahan / admin bot | `6289876543210` |
+| `BOT_NUMBER` | Nomor WhatsApp yang digunakan oleh bot | `6281234567890` |
+| `BOT_NAME` | Nama identitas bot | `Joy` |
+| `OWNER_NAME` | Nama pemilik bot | `Rafli` |
+| `OPENROUTER_KEYS` | API Key dari [OpenRouter](https://openrouter.ai) (multi-key pisahkan dengan koma) | `sk-or-v1-...` |
+| `MODELNYAW_API_KEY` | API Key OpenAI / endpoint kompatibel | `sk-...` |
+| `GEMINI_API_KEY` | API Key resmi [Google AI Studio](https://aistudio.google.com/) | `AIzaSy...` |
+| `PIXIV_COOKIE` | Cookie sesi login akun Pixiv (untuk fitur art download & R-18) | `117268539_...` |
+| `ELIN_USERNAME` | Username akun persona Elin AI | `user@email.com` |
+| `ELIN_PASSWORD` | Password akun persona Elin AI | `password123` |
+| `QWEN_EMAIL` | Email akun Qwen Web Chat | `user@email.com` |
+| `QWEN_PASSWORD` | Password akun Qwen Web Chat | `password123` |
+| `SFILE_EMAIL` | Email akun Sfile.mobi | `user@email.com` |
+| `SFILE_PASSWORD` | Password akun Sfile.mobi | `password123` |
+
+> [!TIP]
+> Anda tetap dapat menyesuaikan link media sosial atau tampilan thumbnail bot secara langsung melalui [`settings.js`](./settings.js). Namun seluruh nomor telepon dan token rahasia sangat disarankan hanya disimpan di dalam berkas `.env`.
 
 ---
 

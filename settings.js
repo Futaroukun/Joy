@@ -3,18 +3,29 @@ import { watchFile, unwatchFile, existsSync, readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
 
+// Auto-load environment variables jika ada berkas .env
+if (existsSync(".env") && typeof process.loadEnvFile === "function") {
+    try { process.loadEnvFile(".env"); } catch (_) {}
+}
+
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const localThumb = path.join(__dir, "src", "thumbnail.jpg");
 
 // ===== CONFIG =====
-global.developer = ["6283854551575"]; // Developer Utama (Akses Penuh / Dev Only)
-global.owner     = ["6285722157719"]; // Owner Tambahan / Admin Bot (Akses Terbatas)
+const devNumber   = process.env.DEVELOPER_NUMBER || "6283854551575";
+const ownerNumber = process.env.OWNER_NUMBER || "6285722157719";
+const botNumber   = process.env.BOT_NUMBER || "6285722157719";
+const botName     = process.env.BOT_NAME || "Joy";
+const ownerName   = process.env.OWNER_NAME || "Rafli";
+
+global.developer = [devNumber]; // Developer Utama (Akses Penuh / Dev Only)
+global.owner     = [ownerNumber]; // Owner Tambahan / Admin Bot (Akses Terbatas)
 
 global.info = {
-    nomorbot: "6285722157719",
-    namabot: "Joy",
-    nomorowner: "6283854551575",
-    namaowner: "Rafli"
+    nomorbot:   botNumber,
+    namabot:    botName,
+    nomorowner: devNumber,
+    namaowner:  ownerName
 }
 
 // ===== THUMBNAIL =====
