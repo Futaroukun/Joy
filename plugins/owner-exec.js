@@ -24,7 +24,7 @@ class CustomArray extends Array {
 }
 
 let handler = async (m, _2) => {
-  const { conn, usedPrefix, noPrefix, command, args, text } = _2;
+  const { conn, usedPrefix, noPrefix, command, args, text, groupMetadata = {} } = _2;
 
   const cmd = (command || '').toLowerCase();
   const pref = (usedPrefix || '').trim();
