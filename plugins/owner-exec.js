@@ -24,53 +24,52 @@ class CustomArray extends Array {
 }
 
 let handler = async (m, _2) => {
-  const { conn, usedPrefix, noPrefix, command, args, groupMetadata, isOwner } = _2;
+  const { conn, usedPrefix, noPrefix, command, args, text } = _2;
 
-  let rawCode = (noPrefix || '').trim();
   const cmd = (command || '').toLowerCase();
+  const pref = (usedPrefix || '').trim();
 
-  const isShell = /^\$/.test(usedPrefix) || /^(exec|sh)$/i.test(cmd);
-  const isEval = /^(=?>)/.test(usedPrefix) || /^(eval|return)$/i.test(cmd);
+  const isShell = pref.startsWith('$') || cmd === 'exec' || cmd === 'sh';
+  const isReturn = pref.startsWith('=>') || cmd === 'return';
+  const isEval = pref.startsWith('>') || isReturn || cmd === 'eval';
+
   if (!isShell && !isEval) return;
 
-  if (/^(exec|sh|eval|return)$/i.test(cmd)) {
-    rawCode = (args || []).join(' ') || _2.text || '';
+  let rawCode = '';
+  if (cmd === 'exec' || cmd === 'sh' || cmd === 'eval' || cmd === 'return') {
+    rawCode = text || (args || []).join(' ') || '';
+  } else {
+    rawCode = (noPrefix || '').trim();
   }
 
-  if (!rawCode) return m.reply(`Masukkan kode atau perintah terminal.\nContoh:\n• \`$ ls\`\n• \`${usedPrefix}exec ls\`\n• \`> 1+1\`\n• \`${usedPrefix}eval 1+1\``);
+  if (!rawCode) {
+    return m.reply(`Masukkan perintah terminal atau kode JavaScript.\n\nContoh:\n• \`$ ls -la\`\n• \`${usedPrefix}exec ls -la\`\n• \`> 1 + 1\`\n• \`${usedPrefix}eval 1 + 1\``);
+  }
+
   const startTime = Date.now();
 
   // Non-blocking react
   m.react?.('⏳').catch(() => {});
 
-  // ── Shell Execution ($) ──────────────────────────────────
+  // ── Shell Execution ($ / .exec / .sh) ─────────────────────
   if (isShell) {
-    const globalBotId = (global.conn?.user?.id?.split(':')[0] || global.conn?.user?.jid || '').split('@')[0];
-    const currentBotId = (conn?.user?.id?.split(':')[0] || conn?.user?.jid || '').split('@')[0];
-    if (globalBotId && currentBotId && globalBotId !== currentBotId) return;
-
     let output = '';
     let isError = false;
-    let fastShell = '/bin/sh';
+
+    const execOptions = {
+      timeout: 30000,
+      maxBuffer: 1024 * 1024 * 5,
+      cwd: process.cwd()
+    };
     if (process.env.PREFIX && fs.existsSync(`${process.env.PREFIX}/bin/sh`)) {
-      fastShell = `${process.env.PREFIX}/bin/sh`;
-    } else if (fs.existsSync('/bin/bash')) {
-      fastShell = '/bin/bash';
-    } else if (fs.existsSync('/bin/sh')) {
-      fastShell = '/bin/sh';
+      execOptions.shell = `${process.env.PREFIX}/bin/sh`;
     }
 
     try {
-      const { stdout, stderr } = await exec(rawCode, {
-        timeout: 30000,
-        maxBuffer: 1024 * 1024 * 5,
-        shell: fastShell,
-        cwd: process.cwd()
-      });
-
+      const { stdout, stderr } = await exec(rawCode, execOptions);
       const out = stdout?.trim() || '';
       const err = stderr?.trim() || '';
-      output = out && err ? `${out}\n\n${err}` : out || err || '(Done / No output)';
+      output = out && err ? `${out}\n\n${err}` : out || err || '(Selesai tanpa output)';
     } catch (e) {
       const errOut = e.stdout?.trim() || '';
       const errStderr = e.stderr?.trim() || '';
@@ -88,7 +87,7 @@ let handler = async (m, _2) => {
 
     if (output.length > 4000) {
       const preview = output.slice(0, 2000) + `\n\n... [Output terpotong, sisa ${output.length - 2000} karakter dikirim sebagai file]`;
-      await conn.reply(m.chat, `\`\`\`bash\n${preview}\n\`\`\`\n*Waktu:* ${duration}ms`, m);
+      await m.reply(`\`\`\`bash\n${preview}\n\`\`\`\n*Waktu:* ${duration}ms`);
       return conn.sendMessage(m.chat, {
         document: Buffer.from(output, 'utf-8'),
         mimetype: 'text/plain',
@@ -97,13 +96,12 @@ let handler = async (m, _2) => {
       }, { quoted: m });
     }
 
-    return conn.reply(m.chat, `\`\`\`bash\n${output}\n\`\`\`\n*Waktu:* ${duration}ms`, m);
+    return m.reply(`\`\`\`bash\n${output}\n\`\`\`\n*Waktu:* ${duration}ms`);
   }
 
-  // ── JavaScript Eval (> & =>) ─────────────────────────────
+  // ── JavaScript Eval (> & => & .eval) ──────────────────────
   let _return;
   let _syntax = '';
-  const isReturn = /^=/.test(usedPrefix) || cmd === 'return';
   const codeToRun = isReturn ? `return (${rawCode})` : rawCode;
   const oldExp = m.exp * 1;
   let isError = false;
@@ -126,7 +124,7 @@ let handler = async (m, _2) => {
       conn,
       (...printArgs) => {
         if (--printCount < 1) return;
-        return conn.reply(m.chat, format(...printArgs), m);
+        return m.reply(format(...printArgs));
       },
       m,
       m.quoted,
@@ -151,74 +149,43 @@ let handler = async (m, _2) => {
       baileys,
       global.db,
       global.plugins,
-      m.chat,
+      global.db.data?.chats?.[m.chat],
       m.sender,
-      isOwner
+      _2.isOwner
     );
 
-    // Auto-await promise jika hasil belum resolved
-    if (_return instanceof Promise || (_return && typeof _return.then === 'function')) {
-      _return = await _return;
-    }
-  } catch (e) {
+    _syntax = '';
+  } catch (err) {
     isError = true;
-    const err = syntaxerror(codeToRun, 'Execution Function', {
-      allowReturnOutsideFunction: true,
-      allowAwaitOutsideFunction: true,
-      sourceType: 'module'
-    });
-    if (err) _syntax = '```' + err + '```\n\n';
-    _return = e;
+    _syntax = err?.message || String(err);
   }
 
   const duration = Date.now() - startTime;
   m.react?.(isError ? '❌' : '✅').catch(() => {});
 
-  let formattedOutput = _return;
-
-  if (formattedOutput instanceof Error) {
-    formattedOutput = formattedOutput.stack || formattedOutput.message || String(formattedOutput);
-  } else if (formattedOutput !== null && typeof formattedOutput === 'object') {
-    try {
-      const cleanObj = {};
-      for (const key in formattedOutput) {
-        try {
-          cleanObj[key] = formattedOutput[key];
-        } catch (e) {
-          cleanObj[key] = `[Getter Error: ${e.message}]`;
-        }
-      }
-      formattedOutput = inspect(cleanObj, { depth: 2, maxArrayLength: 50, colors: false });
-    } catch (e) {
-      formattedOutput = inspect(formattedOutput, { depth: 2, maxArrayLength: 50, colors: false });
-    }
-  } else {
-    formattedOutput = format(formattedOutput);
+  if (_syntax) {
+    return m.reply(`*Error:*\n\`\`\`js\n${_syntax}\n\`\`\`\n\n*Waktu:* ${duration}ms`);
   }
 
-  if (isError) {
-    const errorText = _syntax ? `${_syntax}${formattedOutput}` : formattedOutput;
-    conn.reply(m.chat, `*Error:*\n${errorText}\n\n*Waktu:* ${duration}ms`, m);
-  } else if (formattedOutput.length > 4000) {
+  const formattedOutput = inspect(_return, { depth: 2, colors: false });
+  if (formattedOutput.length > 4000) {
     const preview = formattedOutput.slice(0, 2000) + `\n\n... [Output terpotong, sisa ${formattedOutput.length - 2000} karakter dikirim sebagai file]`;
-    await conn.reply(m.chat, `\`\`\`js\n${preview}\n\`\`\`\n*Waktu:* ${duration}ms`, m);
-    conn.sendMessage(m.chat, {
+    await m.reply(`\`\`\`js\n${preview}\n\`\`\`\n*Waktu:* ${duration}ms`);
+    return conn.sendMessage(m.chat, {
       document: Buffer.from(formattedOutput, 'utf-8'),
       mimetype: 'text/plain',
       fileName: 'eval-output.txt',
       caption: `*Full Output:* ${(formattedOutput.length / 1024).toFixed(1)} KB | *Waktu:* ${duration}ms`
     }, { quoted: m });
-  } else {
-    conn.reply(m.chat, `\`\`\`js\n${formattedOutput}\n\`\`\`\n*Waktu:* ${duration}ms`, m);
   }
 
-  m.exp = oldExp;
+  return m.reply(`\`\`\`js\n${formattedOutput}\n\`\`\`\n*Waktu:* ${duration}ms`);
 };
 
 handler.help = ['$ *terminal/sh*', '> *eval*', '=> *eval return*', 'exec *<sh>*', 'eval *<code>*'];
 handler.tags = ['owner'];
 handler.customPrefix = /^(=?>|\$)\s*/;
-handler.command = /^(\$|>|=>|exec|sh|eval|return)$/i;
+handler.command = ['exec', 'sh', 'eval', 'return'];
 handler.rowner = true;
 handler.owner = true;
 

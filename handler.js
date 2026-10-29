@@ -688,26 +688,8 @@ export async function handler(chatUpdate) {
                         _args = noPrefix.trim().split(` `).slice(1);
                         args = text ? text.split(/\s+/) : [];
 
-                        const cmd = item.plugin.command;
-                        let isAccept = !cmd;
-                        if (typeof cmd === "string") {
-                            isAccept = cmd === command;
-                        } else if (cmd instanceof RegExp) {
-                            isAccept = cmd.test(command);
-                        } else if (Array.isArray(cmd)) {
-                            for (let k = 0; k < cmd.length; k++) {
-                                const c = cmd[k];
-                                if (c instanceof RegExp ? c.test(command) : c === command) {
-                                    isAccept = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (isAccept) {
-                            targetEntry = item;
-                            break;
-                        }
+                        targetEntry = item;
+                        break;
                     }
                 }
             }
