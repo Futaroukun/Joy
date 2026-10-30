@@ -149,6 +149,8 @@ const isValidVideoUrl = (url, musicUrls = []) => {
     }
     if (
         url.includes('mime_type=audio_mp4') ||
+        url.includes('mime_type=audio_mpeg') ||
+        url.includes('mime_type=audio') ||
         url.includes('-music.') ||
         url.includes('/music/') ||
         url.endsWith('.mp3')
@@ -243,7 +245,7 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
         const videoUrl = videoHD || videoSD || null
         const isHD = Boolean(videoHD)
 
-        const images = (savetikResult?.images?.length ? savetikResult.images : tikwmData?.images) || []
+        const images = (tikwmData?.images?.length ? tikwmData.images : savetikResult?.images) || []
 
         if (!videoUrl && images.length === 0) {
             if (loadingMsg?.key) {
@@ -283,20 +285,56 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
                     `• *Shares*: ${stats.shares}\n`
             }
 
-            captionText += `╰━━━━━━━━━━━━━━━━━━━━━━━\n> Media: SaveTik | Info: TikWM`
+            captionText += `╰━━━━━━━━━━━━━━━━━━━━━━━\n> Media: ${tikwmData?.images?.length ? 'TikWM' : 'SaveTik'}`
 
-            const albumItems = images.map((img, i) => ({
-                image: { url: img },
-                caption: i === 0 ? captionText : ''
-            }))
+            // Unduh buffer gambar (chunk 5) untuk mencegah undici 'terminated' saat stream di Baileys
+            const albumItems = []
+            const chunkSize = 5
+            for (let i = 0; i < images.length; i += chunkSize) {
+                const chunk = images.slice(i, i + chunkSize)
+                const chunkBuffers = await Promise.all(
+                    chunk.map(imgUrl =>
+                        downloadBuffer(imgUrl, 25000).catch(() => null)
+                    )
+                )
+                chunkBuffers.forEach((buf, idx) => {
+                    const originalIdx = i + idx
+                    albumItems.push({
+                        image: buf || { url: images[originalIdx] },
+                        caption: originalIdx === 0 ? captionText : ''
+                    })
+                })
+            }
 
-            await conn.sendAlbum(m.chat, albumItems, { quoted: m, delay: 1000 })
+            let albumSent = false
+            if (typeof conn.sendAlbum === 'function') {
+                try {
+                    await conn.sendAlbum(m.chat, albumItems, { quoted: m, delay: 800 })
+                    albumSent = true
+                } catch (albumErr) {
+                    console.warn('[TikTok] sendAlbum gagal, fallback 1-by-1:', albumErr?.message || albumErr)
+                }
+            }
+
+            if (!albumSent) {
+                for (let i = 0; i < albumItems.length; i++) {
+                    const item = albumItems[i]
+                    await conn.sendMessage(m.chat, {
+                        ...item,
+                        caption: i === 0 ? captionText : `*Slide ${i + 1}/${albumItems.length}*`
+                    }, { quoted: m }).catch(() => {})
+                    if (i < albumItems.length - 1) await new Promise(r => setTimeout(r, 600))
+                }
+            }
 
             if (audioUrl) {
-                await conn.sendMessage(m.chat, {
-                    audio: { url: audioUrl },
-                    mimetype: 'audio/mpeg'
-                }, { quoted: m }).catch(() => {})
+                try {
+                    const audioBuffer = await downloadBuffer(audioUrl, 25000).catch(() => null)
+                    await conn.sendMessage(m.chat, {
+                        audio: audioBuffer || { url: audioUrl },
+                        mimetype: 'audio/mpeg'
+                    }, { quoted: m }).catch(() => {})
+                } catch {}
             }
 
             // Hapus loading setelah media terkirim
@@ -333,8 +371,12 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
 
             if (isTooLargeForVideo) {
                 captionText += `\n> ℹ️ *Catatan*: Dikirim sebagai dokumen karena ukuran file (${sizeInMB} MB) melebihi batas 64 MB video WhatsApp.`
+                let docBuffer = null
+                try {
+                    docBuffer = await downloadBuffer(videoUrl, 90000)
+                } catch {}
                 await conn.sendMessage(m.chat, {
-                    document: { url: videoUrl },
+                    document: docBuffer || { url: videoUrl },
                     mimetype: 'video/mp4',
                     fileName: `tiktok_${videoId || Date.now()}_${isHD ? 'HD' : 'SD'}.mp4`,
                     caption: captionText
@@ -384,10 +426,13 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
             }
 
             if (audioUrl) {
-                await conn.sendMessage(m.chat, {
-                    audio: { url: audioUrl },
-                    mimetype: 'audio/mpeg'
-                }, { quoted: m }).catch(() => {})
+                try {
+                    const audioBuffer = await downloadBuffer(audioUrl, 25000).catch(() => null)
+                    await conn.sendMessage(m.chat, {
+                        audio: audioBuffer || { url: audioUrl },
+                        mimetype: 'audio/mpeg'
+                    }, { quoted: m }).catch(() => {})
+                } catch {}
             }
         }
 
@@ -398,9 +443,12 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
             await conn.sendMessage(m.chat, { delete: loadingMsg.key }).catch(() => {})
         }
 
+        const isTerminated = error?.message?.includes('terminated')
         const isNoSpace = error?.message?.includes('ENOSPC') || error?.code === 'ENOSPC'
         const errMsg = isNoSpace
             ? 'Penyimpanan (disk) server bot penuh. Bersihkan storage VPS/panel hosting.'
+            : isTerminated
+            ? 'Koneksi unduhan terputus (undici timeout). Silakan coba ulangi beberapa saat lagi.'
             : error.message
 
         const userMsg =
