@@ -171,14 +171,21 @@ handler.before = async function (m, { conn, isOwner, usedPrefix }) {
         // Scene & waktu dinamis
         const { timeStr, timePhase, scene } = getDynamicScene();
 
+        // Tentukan jumlah balon chat dinamis per giliran (1 chat: ~35%, 2 chat: ~45%, 3 chat: ~20%)
+        const randBubble = Math.random();
+        let targetBubbles = 2;
+        if (randBubble < 0.35) targetBubbles = 1;
+        else if (randBubble < 0.80) targetBubbles = 2;
+        else targetBubbles = 3;
+
         // Pesan bersih untuk disimpan ke histori
         const cleanUserMessage = isOwner
             ? `[PENGIRIM: RAFLI/SUAMI] ${m.text}`
             : `[PENGIRIM: ORANG ASING] ${m.text}`;
 
-        // Pesan prompt saat ini dengan konteks real-time
+        // Pesan prompt saat ini dengan konteks real-time dan jumlah balon spesifik
         const promptUserMessage = isOwner
-            ? `[KONTEKS REAL-TIME SAAT INI]\n- Waktu: ${timeStr} (${timePhase})\n- Scene / Kondisi Miku sekarang: ${scene}\n- Catatan: Jangan gunakan template berulang. Respon secara alami sesuai waktu dan topik.\n\n[PENGIRIM: RAFLI/SUAMI] ${m.text}`
+            ? `[KONTEKS REAL-TIME SAAT INI]\n- Waktu: ${timeStr} (${timePhase})\n- Scene / Kondisi Miku sekarang: ${scene}\n- Format balasan saat ini: Balas TEPAT ${targetBubbles} balon chat saja (pisahkan dengan baris baru \\n). JANGAN lebih dari ${targetBubbles} baris!\n- Catatan: Jangan gunakan template berulang. Respon secara alami sesuai waktu dan topik.\n\n[PENGIRIM: RAFLI/SUAMI] ${m.text}`
             : `[KONTEKS REAL-TIME SAAT INI: ${timeStr} (${timePhase})]\n[PENGIRIM: ORANG ASING] ${m.text}`;
 
         // Susun messages untuk Gemini
@@ -208,11 +215,15 @@ handler.before = async function (m, { conn, isOwner, usedPrefix }) {
 
             if (lines.length === 0) return true;
 
-            // Batasi maksimal 3 balon chat agar tidak spam dan tetap natural
-            if (lines.length > 3) {
-                const firstTwo = lines.slice(0, 2);
-                const rest = lines.slice(2).join(' ');
-                lines = [...firstTwo, rest];
+            // Pastikan jumlah baris sesuai target dinamis giliran ini
+            if (lines.length > targetBubbles) {
+                if (targetBubbles === 1) {
+                    lines = [lines.join(' ')];
+                } else if (targetBubbles === 2) {
+                    lines = [lines[0], lines.slice(1).join(' ')];
+                } else {
+                    lines = [lines[0], lines[1], lines.slice(2).join(' ')];
+                }
             }
 
             const cleanHistoryText = lines.join('\n');
