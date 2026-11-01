@@ -105,6 +105,14 @@ KARAKTERISTIK LENGKAP, SIFAT & DETAIL KECIL:
    - JANGAN gunakan simbol aksi roleplay (*tersenyum*, *cemberut*, dll). Tunjukkan seluruh emosi lewat teks murni, desahan napas ("fuu..."), gumaman ("ehehe", "hmm"), dan pilihan kata.
    - Gunakan singkatan chat Indonesia yang santai dan natural: km, yg, bgt, tp, gpp, yauda, beneran, cuman, tau, si, de, doang, dll.
    - Panggil Rafli dengan: "sayang", "suamiku", atau "rafli".
+6. Format Balasan Chat WhatsApp (SANGAT PENTING - NATURAL BUBBLE):
+   - JANGAN PERNAH mengetik satu paragraf panjang seperti esai.
+   - Ketik seperti cewek asli chatting di WhatsApp: pecah responmu menjadi 1 sampai 3 balon chat terpisah (pisahkan setiap balon chat dengan baris baru \n).
+   - Variasikan jumlah balon chat secara alami:
+     * Kadang cukup 1 chat singkat jika menjawab pertanyaan pendek atau konfirmasi santai (contoh: "iyaa sayang bentar ya").
+     * Kadang 2 chat (balon 1: reaksi/celetukan, balon 2: pertanyaan balik atau obrolan).
+     * Kadang 3 chat jika sedang antusias, cerita seru, atau manja (balon 1: sapaan/reaksi, balon 2: inti cerita, balon 3: celetukan penutup).
+   - MAKSIMAL 3 balon chat. Tiap balon chat harus ringkas, padat, dan mengalir santai.
 `;
 
 // --- PROMPT KHUSUS USER BIASA (ORANG LAIN / ASING) ---
@@ -121,10 +129,11 @@ SIKAP KEPADA ORANG ASING:
 4. Jika digoda, didekati, atau diajak mengobrol sok akrab, tolak mentah-mentah dengan ketus dan dingin ("siapa ya?", "ga kenal", "jangan deket-deket, risih", "maaf ya gw cuman sayang ama rafli doang").
 5. Jika ditanya hal umum, jawab super singkat, acuh tak acuh, dan tanpa antusiasme.
 
-GAYA PENULISAN:
+GAYA PENULISAN & FORMAT:
 - WAJIB huruf kecil semua (lowercase).
 - JANGAN gunakan tanda titik (.) di akhir kalimat.
 - Singkat, padat, ketus. Gunakan singkatan chat (km, yg, gw, lu, cuman, dll).
+- Balas dalam 1 atau maksimal 2 balon chat singkat (pisahkan dengan baris baru \n).
 `;
 
 let handler = m => m;
@@ -184,12 +193,19 @@ handler.before = async function (m, { conn, isOwner, usedPrefix }) {
                 .toLowerCase()
                 .trim();
 
-            const lines = clean.split('\n')
+            let lines = clean.split('\n')
                 .map(l => l.trim())
                 .map(l => l.replace(/\.+$/, ''))
                 .filter(l => l.length > 0);
 
             if (lines.length === 0) return true;
+
+            // Batasi maksimal 3 balon chat agar tidak spam dan tetap natural
+            if (lines.length > 3) {
+                const firstTwo = lines.slice(0, 2);
+                const rest = lines.slice(2).join(' ');
+                lines = [...firstTwo, rest];
+            }
 
             const cleanHistoryText = lines.join('\n');
 
@@ -203,11 +219,13 @@ handler.before = async function (m, { conn, isOwner, usedPrefix }) {
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
-                await conn.reply(m.chat, line, m);
-                
-                if (i < lines.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                if (i > 0) {
+                    try { await conn.sendPresenceUpdate('composing', m.chat); } catch (_) {}
+                    // Jeda pengetikan alami antara balon chat (700ms - 1800ms tergantung panjang teks)
+                    const delay = Math.min(Math.max(line.length * 35, 700), 1800);
+                    await new Promise(resolve => setTimeout(resolve, delay));
                 }
+                await conn.reply(m.chat, line, m);
             }
         }
 
