@@ -121,49 +121,45 @@ export async function chat(messages = [], fileBuffer = null, options = {}) {
         }
     }
 
-    // ── Mode 2: Gemini Web Client (Menggunakan Cookie gemini-cookies.json) ──────
-    const cookiesPath = path.join(process.cwd(), 'data', 'gemini-cookies.json');
-    const fallbackCookiesPath = path.join(__dirname, '../../data/gemini-cookies.json');
-    if (fs.existsSync(cookiesPath) || fs.existsSync(fallbackCookiesPath)) {
-        try {
-            // Jika sesi baru (belum ada chatId), sertakan instruksi sistem atau ringkasan riwayat ke prompt awal
-            let sendPrompt = prompt;
-            if (!chatId) {
-                const nonSys = msgs.filter(m => m.role !== 'system');
-                if (systemPrompt && nonSys.length <= 1) {
-                    sendPrompt = `[Instruksi Sistem & Karakter]:\n${systemPrompt}\n\n[Pesan Pengguna]:\n${prompt}`;
-                } else if (nonSys.length > 1) {
-                    const historyStr = nonSys.slice(0, -1).map(m => `${m.role === 'assistant' ? 'AI' : 'User'}: ${m.content}`).join('\n');
-                    const sysHeader = systemPrompt ? `[Instruksi Sistem]:\n${systemPrompt}\n\n` : '';
-                    sendPrompt = `${sysHeader}[Riwayat Percakapan Sebelumnya]:\n${historyStr}\n\n[Pesan Pengguna]:\n${prompt}`;
-                }
+    // ── Mode 2: Gemini Web Client (Menggunakan Cookie atau Guest Fallback) ────
+    try {
+        // Jika sesi baru (belum ada chatId), sertakan instruksi sistem atau ringkasan riwayat ke prompt awal
+        let sendPrompt = prompt;
+        if (!chatId) {
+            const nonSys = msgs.filter(m => m.role !== 'system');
+            if (systemPrompt && nonSys.length <= 1) {
+                sendPrompt = `[Instruksi Sistem & Karakter]:\n${systemPrompt}\n\n[Pesan Pengguna]:\n${prompt}`;
+            } else if (nonSys.length > 1) {
+                const historyStr = nonSys.slice(0, -1).map(m => `${m.role === 'assistant' ? 'AI' : 'User'}: ${m.content}`).join('\n');
+                const sysHeader = systemPrompt ? `[Instruksi Sistem]:\n${systemPrompt}\n\n` : '';
+                sendPrompt = `${sysHeader}[Riwayat Percakapan Sebelumnya]:\n${historyStr}\n\n[Pesan Pengguna]:\n${prompt}`;
             }
-
-            let webRes;
-            try {
-                webRes = await webChat(sendPrompt, auth, chatId, options.onChunk, fileBuffer, options.fileName);
-            } catch (err) {
-                // Auto-recovery jika sesi Google expired: buat sesi baru dan ulangi 1x
-                if (chatId || auth) {
-                    console.warn('[GEMINI WEB] Sesi lama kedaluwarsa, membuat sesi baru:', err.message);
-                    auth = await startSession();
-                    webRes = await webChat(sendPrompt, auth, null, options.onChunk, fileBuffer, options.fileName);
-                } else {
-                    throw err;
-                }
-            }
-
-            if (webRes?.reply || webRes?.text) {
-                const replyText = webRes.reply || webRes.text;
-                return createResponseObject(replyText, {
-                    provider: 'web',
-                    auth: webRes.auth,
-                    chatId: webRes.chatId
-                });
-            }
-        } catch (e) {
-            console.error('[GEMINI WEB ERROR]', e.message);
         }
+
+        let webRes;
+        try {
+            webRes = await webChat(sendPrompt, auth, chatId, options.onChunk, fileBuffer, options.fileName);
+        } catch (err) {
+            // Auto-recovery jika sesi Google expired: buat sesi baru dan ulangi 1x
+            if (chatId || auth) {
+                console.warn('[GEMINI WEB] Sesi lama kedaluwarsa, membuat sesi baru:', err.message);
+                auth = await startSession();
+                webRes = await webChat(sendPrompt, auth, null, options.onChunk, fileBuffer, options.fileName);
+            } else {
+                throw err;
+            }
+        }
+
+        if (webRes?.reply || webRes?.text) {
+            const replyText = webRes.reply || webRes.text;
+            return createResponseObject(replyText, {
+                provider: 'web',
+                auth: webRes.auth,
+                chatId: webRes.chatId
+            });
+        }
+    } catch (e) {
+        console.error('[GEMINI WEB ERROR]', e.message);
     }
     throw new Error('Semua provider Gemini AI saat ini tidak tersedia. Silakan periksa cookies atau API Key.');
 }
