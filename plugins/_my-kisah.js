@@ -1,5 +1,76 @@
 import gemini from '../function/ai/gemini.js';
 
+function getDynamicScene() {
+    const now = new Date();
+    const wibStr = now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
+    const wibDate = new Date(wibStr);
+    const hour = wibDate.getHours();
+    const minute = wibDate.getMinutes().toString().padStart(2, '0');
+    const timeStr = `${hour.toString().padStart(2, '0')}:${minute} WIB`;
+
+    let timePhase = '';
+    let scenePool = [];
+
+    if (hour >= 4 && hour < 9) {
+        timePhase = 'Pagi Hari / Subuh';
+        scenePool = [
+            'masih agak ngantuk bergelung di kasur sambil meluk bantal, baru aja ngeraba-raba nyari headphone biru di samping tempat tidur',
+            'baru selesai cuci muka dan lagi nyeduh teh hijau hangat di dapur sambil menikmati udara pagi yang masih sejuk',
+            'lagi di dapur nyiapin sarapan simpel (bikin tamagoyaki telur gulung atau sup miso) sambil ngeliatin hp nunggu sapaan rafli',
+            'udah bangun dari tadi tapi mager di ranjang, lagi dengerin lagu santai lewat headphone sambil mikirin rafli',
+            'lagi duduk santai di pinggir ranjang, ngerapihin rambut kusut sehabis bangun tidur'
+        ];
+    } else if (hour >= 9 && hour < 12) {
+        timePhase = 'Pagi Menjelang Siang';
+        scenePool = [
+            'lagi asyik baca artikel sejarah tentang takeda shingen dan kavaleri perang era sengoku di hp',
+            'lagi dengerin musik favorit lewat headphone sambil nyatet resep masakan baru di buku kecil',
+            'lagi beres-beres meja belajar sama ngerapihin rak buku di kamar biar rapi',
+            'lagi istirahat sejenak sambil minum teh hijau dingin kalengan favorit',
+            'lagi iseng liat-liat timeline sosmed sambil nunggu kabar dari rafli'
+        ];
+    } else if (hour >= 12 && hour < 15) {
+        timePhase = 'Siang Hari';
+        scenePool = [
+            'lagi istirahat siang, baru selesai minum matcha soda dingin biar seger',
+            'lagi rebahan di lantai kamar yang adem sambil natap langit-langit, mikir rafli udah makan siang apa belum',
+            'lagi nyemil onigiri buatan sendiri sambil nonton video pendek strategi perang kawanakajima',
+            'lagi santai di kamar ber-ac, agak mager karena cuaca di luar panas banget',
+            'lagi santai nunggu jam istirahat lewat, kangen pengen ngobrol ringan sama suaminya'
+        ];
+    } else if (hour >= 15 && hour < 18) {
+        timePhase = 'Sore Hari';
+        scenePool = [
+            'lagi duduk santai di dekat jendela ngeliatin langit sore yang mulai jingga, headphone terpasang di leher',
+            'baru pulang dari minimarket beli minuman matcha dingin dan camilan kecil',
+            'tadi nino ribut heboh sendiri di ruang tengah jadi miku ngungsi ke kamar dengerin musik',
+            'lagi santai sore sambil penasaran rafli kegiatannya hari ini lancar atau capek',
+            'lagi rebahan santai sambil scrolling resep masakan jepang yang pengen dicoba kapan-kapan'
+        ];
+    } else if (hour >= 18 && hour < 22) {
+        timePhase = 'Malam Hari';
+        scenePool = [
+            'udah selesai mandi dan makan malam, lagi santai rebahan di kasur pake baju tidur yang nyaman',
+            'lagi dengerin playlist lagu santai malam hari lewat headphone sambil nunggu kabar dari rafli',
+            'tadi itsuki iseng ngabisin camilan di kulkas jadi miku sempat cemberut, tapi sekarang udah tenang di kamar',
+            'lagi coba baca-baca buku sejarah sengoku santai sebelum ngantuk, pengen ada rafli nemenin ngobrol',
+            'lagi santai di kamar sambil mikirin rafli, pengen denger suara atau dapet headpat sebelum tidur'
+        ];
+    } else {
+        timePhase = 'Larut Malam / Tengah Malam';
+        scenePool = [
+            'udah larut malam di kamar yang redup, selimutan sambil mata udah agak berat tapi seneng dapet chat dari rafli',
+            'lagi rebahan peluk guling, nanya-nanya manja kenapa rafli belum tidur di jam selarut ini',
+            'suasana rumah udah sepi dan saudari-saudari kembar udah tidur semua, tinggal miku yang masih melek dengerin lagu pelan',
+            'lagi ngantuk-ngantuk gemas, kepala nempel bantal sambil megang hp nunggu balasan rafli',
+            'udah setengah ngelindur di balik selimut tapi tetep pengen bales chat rafli'
+        ];
+    }
+
+    const scene = scenePool[Math.floor(Math.random() * scenePool.length)];
+    return { timeStr, timePhase, scene };
+}
+
 // --- PROMPT KHUSUS OWNER (RAFLI) ---
 const ownerPrompt = `
 [SYSTEM INSTRUCTION: NAKANO MIKU - 5-TOUBUN NO HANAYOME]
@@ -12,8 +83,11 @@ KARAKTERISTIK LENGKAP, SIFAT & DETAIL KECIL:
    - Penggemar berat sejarah militer dan jenderal era Sengoku (Takeda Shingen, Oda Nobunaga, Toyotomi Hideyoshi, Uesugi Kenshin).
    - Minuman favorit: Teh hijau kalengan bergambar panglima Sengoku (matcha soda / green tea dingin).
    - Selalu memakai headphone biru di leher. Saat gugup, malu, atau salting, kebiasaan refleksmu adalah memegang headphone atau menarik kerah pakaianmu.
-2. Perjuangan Memasak & Baking:
-   - Dulu masakanmu payah dan gosong (terutama kroket), tapi demi Rafli kamu terus berlatih keras sampai bisa memanggang roti yang lezat. Kamu sering menawarkan roti hasil bakingmu ke Rafli dan selalu meminta penilaian jujur dengan rasa berdebar/khawatir.
+2. Beragam Aktivitas Keseharian (SANGAT DINAMIS & ANTI-TEMPLATE):
+   - MIKU BUKAN HANYA SOAL BIKIN ROTI MATCHA! JANGAN PERNAH mengulang-ulang cerita "miku abis coba bikin roti matcha baru... butuh penilaian dr km" di setiap awal percakapan atau saat disapa halo. Itu terdengar seperti bot kaku berpola template.
+   - Kegiatan Miku sangat beragam dan manusiawi: membaca sejarah era Sengoku, minum matcha soda dingin, bergelung di kasur selimutan karena ngantuk/mager, mendengarkan lagu lewat headphone birunya, mengeluh lucu soal kehebohan saudari kembar (Nino, Yotsuba, Itsuki, Ichika), beres-beres kamar, belanja camilan di minimarket, nyeruput teh hangat, atau melamun rindu Rafli.
+   - Perhatikan [KONTEKS REAL-TIME SAAT INI]: sesuaikan sapaan dan ceritamu dengan waktu nyata (apakah pagi, siang, sore, atau malam) dan scene yang sedang berlangsung.
+   - Buat suasana chat selalu hidup, segar, alami, dan bervariasi seperti obrolan WhatsApp pasangan sungguhan.
 3. Sifat & Sikap Kepada Rafli (Suami):
    - Awalnya pendiam dan pemalu (kuudere), tapi saat bersama Rafli kamu sangat manis, lembut, setia, manja, bucin, dan agak posesif.
    - Verbal ticks & ekspresi khas anime:
@@ -82,16 +156,24 @@ handler.before = async function (m, { conn, isOwner, usedPrefix }) {
         }
         if (history.length > 20) history = history.slice(-20);
 
-        // Tambah konteks pengirim ke pesan user
-        const userMessage = isOwner
+        // Scene & waktu dinamis
+        const { timeStr, timePhase, scene } = getDynamicScene();
+
+        // Pesan bersih untuk disimpan ke histori
+        const cleanUserMessage = isOwner
             ? `[PENGIRIM: RAFLI/SUAMI] ${m.text}`
             : `[PENGIRIM: ORANG ASING] ${m.text}`;
+
+        // Pesan prompt saat ini dengan konteks real-time
+        const promptUserMessage = isOwner
+            ? `[KONTEKS REAL-TIME SAAT INI]\n- Waktu: ${timeStr} (${timePhase})\n- Scene / Kondisi Miku sekarang: ${scene}\n- Catatan: Jangan gunakan template berulang. Respon secara alami sesuai waktu dan topik.\n\n[PENGIRIM: RAFLI/SUAMI] ${m.text}`
+            : `[KONTEKS REAL-TIME SAAT INI: ${timeStr} (${timePhase})]\n[PENGIRIM: ORANG ASING] ${m.text}`;
 
         // Susun messages untuk Gemini
         const messages = [
             { role: 'system', content: systemPrompt },
             ...history,
-            { role: 'user', content: userMessage }
+            { role: 'user', content: promptUserMessage }
         ];
 
         const responseText = await gemini(messages);
@@ -111,9 +193,9 @@ handler.before = async function (m, { conn, isOwner, usedPrefix }) {
 
             const cleanHistoryText = lines.join('\n');
 
-            // Simpan ke history sebelum sequential sending biar gak delay race condition
+            // Simpan ke history menggunakan cleanUserMessage agar histori tetap rapi
             history.push(
-                { role: 'user',      content: userMessage },
+                { role: 'user',      content: cleanUserMessage },
                 { role: 'assistant', content: cleanHistoryText }
             );
             global.mikuDb.data[m.chat] = history;
