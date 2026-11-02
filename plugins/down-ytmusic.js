@@ -5,6 +5,7 @@
  */
 
 import ytmusic from '../function/scrapers/ytmusic.js';
+import convert1s from '../function/scrapers/convert1s.js';
 import { toAudioM4A } from '../function/media/converter.js';
 
 function isValidAudioBuffer(buf) {
@@ -52,10 +53,33 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                   `╰━━━━━━━━━━━━━━━━━━━━━━━`
         }, { quoted: m });
 
-        const result = await ytmusic.download(query, {
-            whatsapp: true,
-            format: 'mp3'
-        });
+        let result = null;
+        try {
+            result = await ytmusic.download(query, {
+                whatsapp: true,
+                format: 'mp3'
+            });
+        } catch (ytmErr) {
+            console.warn('[YTMUSIC] ytmusic.download error, mencoba fallback convert1s:', ytmErr.message);
+        }
+
+        if (!result || !result.buffer) {
+            try {
+                const c1s = await convert1s.downloadAudio(query);
+                if (c1s?.buffer) {
+                    result = {
+                        videoId: c1s.videoId,
+                        title: c1s.title || query,
+                        artist: 'YouTube Music',
+                        duration: '—',
+                        formattedSize: `${(c1s.buffer.length / (1024 * 1024)).toFixed(2)} MB`,
+                        buffer: c1s.buffer
+                    };
+                }
+            } catch (c1sErr) {
+                console.warn('[YTMUSIC] convert1s fallback error:', c1sErr.message);
+            }
+        }
 
         if (!result || !result.buffer) {
             throw new Error('Gagal mendapatkan buffer audio dari YouTube Music.');

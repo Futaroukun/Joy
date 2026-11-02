@@ -11,6 +11,7 @@ import { spawn, spawnSync } from 'child_process'
 import axios from 'axios'
 import yts from 'yt-search'
 import ytmusic from '../function/scrapers/ytmusic.js'
+import convert1s from '../function/scrapers/convert1s.js'
 import { toAudioM4A } from '../function/media/converter.js'
 
 function isValidAudioBuffer(buf) {
@@ -258,21 +259,37 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         let buffer = null;
         let lastErr = null;
 
-        // Engine 1: YouTube Music Innertube Direct (Pure JS)
+        // Engine 1: Convert1s / Ytmp3 Scraper (Fast 320kbps)
         try {
-            const ytmDl = await ytmusic.download(videoId, {
-                whatsapp: true,
-                format: 'mp3'
-            });
-            if (ytmDl?.buffer && isValidAudioBuffer(ytmDl.buffer)) {
-                buffer = ytmDl.buffer;
+            const c1s = await convert1s.downloadAudio(canonicalUrl);
+            if (c1s?.buffer && isValidAudioBuffer(c1s.buffer)) {
+                buffer = c1s.buffer;
+                if (!meta?.title && c1s.title) {
+                    meta = { ...(meta || {}), title: c1s.title };
+                }
             }
         } catch (err) {
             lastErr = err;
-            console.warn('[YTMP3] YouTube Music gagal, mencoba SaveTube:', err.message);
+            console.warn('[YTMP3] Convert1s/Ytmp3 gagal, mencoba engine berikutnya:', err.message);
         }
 
-        // Engine 2: yt-dlp local (hanya jika terinstal di sistem)
+        // Engine 2: YouTube Music Innertube Direct (Pure JS)
+        if (!buffer) {
+            try {
+                const ytmDl = await ytmusic.download(videoId, {
+                    whatsapp: true,
+                    format: 'mp3'
+                });
+                if (ytmDl?.buffer && isValidAudioBuffer(ytmDl.buffer)) {
+                    buffer = ytmDl.buffer;
+                }
+            } catch (err) {
+                lastErr = err;
+                console.warn('[YTMP3] YouTube Music gagal, mencoba SaveTube:', err.message);
+            }
+        }
+
+        // Engine 3: yt-dlp local (hanya jika terinstal di sistem)
         if (!buffer && isYtDlpAvailable()) {
             try {
                 const dlBuf = await downloadViaYtDlp(canonicalUrl);
@@ -284,7 +301,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Engine 3: SaveTube scraper
+        // Engine 4: SaveTube scraper
         if (!buffer) {
             try {
                 const st = await savetube.download(canonicalUrl);

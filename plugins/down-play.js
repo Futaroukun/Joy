@@ -11,6 +11,7 @@ import { spawn, spawnSync } from 'child_process';
 import axios from 'axios';
 import yts from 'yt-search';
 import ytmusic from '../function/scrapers/ytmusic.js';
+import convert1s from '../function/scrapers/convert1s.js';
 import { toAudioM4A } from '../function/media/converter.js';
 
 function isValidAudioBuffer(buf) {
@@ -394,22 +395,36 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         let downloadResult = null;
         let lastErr = null;
 
-        // Engine 1: YouTube Music Direct (Pure JS Innertube VisionOS)
+        // Engine 1: Convert1s / Ytmp3 Scraper (Fast 320kbps)
         try {
-            const ytmDl = await ytmusic.download(video.videoId || video.url, {
-                whatsapp: true,
-                format: 'mp3'
-            });
-            if (ytmDl?.buffer && isValidAudioBuffer(ytmDl.buffer)) {
-                buffer = ytmDl.buffer;
-                downloadResult = ytmDl;
+            const c1s = await convert1s.downloadAudio(video.videoId || video.url);
+            if (c1s?.buffer && isValidAudioBuffer(c1s.buffer)) {
+                buffer = c1s.buffer;
+                downloadResult = c1s;
             }
         } catch (err) {
             lastErr = err;
-            console.warn('[PLAY] YouTube Music error, mencoba fallback lain:', err.message);
+            console.warn('[PLAY] Convert1s/Ytmp3 error, mencoba fallback lain:', err.message);
         }
 
-        // Engine 2: yt-dlp local (hanya jika binary terpasang di sistem)
+        // Engine 2: YouTube Music Direct (Pure JS Innertube VisionOS)
+        if (!buffer) {
+            try {
+                const ytmDl = await ytmusic.download(video.videoId || video.url, {
+                    whatsapp: true,
+                    format: 'mp3'
+                });
+                if (ytmDl?.buffer && isValidAudioBuffer(ytmDl.buffer)) {
+                    buffer = ytmDl.buffer;
+                    downloadResult = ytmDl;
+                }
+            } catch (err) {
+                lastErr = err;
+                console.warn('[PLAY] YouTube Music error, mencoba fallback lain:', err.message);
+            }
+        }
+
+        // Engine 3: yt-dlp local (hanya jika binary terpasang di sistem)
         if (!buffer && isYtDlpAvailable()) {
             try {
                 const dlBuf = await downloadViaYtDlp(video.url);
@@ -421,7 +436,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Engine 3: SaveTube scraper fallback
+        // Engine 4: SaveTube scraper fallback
         if (!buffer) {
             try {
                 const st = await savetube.download(video.url);
