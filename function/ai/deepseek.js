@@ -364,8 +364,8 @@ class DeepSeek {
     });
 
     const body = res.data;
-    if (body.code === 0 && body.data?.biz_code === 0 && body.data?.biz_data?.token) {
-      const token = body.data.biz_data.token;
+    const token = body.data?.biz_data?.user?.token || body.data?.biz_data?.token;
+    if (body.code === 0 && body.data?.biz_code === 0 && token) {
       this.saveToken(token);
       return token;
     }
