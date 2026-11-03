@@ -35,14 +35,18 @@ async function getSession(userId) {
     return session
 }
 
-const handler = async (m, { conn, text, usedPrefix, command, args }) => {
+const handler = async (m, { conn, text, usedPrefix, command, args, isOwner, isROwner }) => {
     const userId = m.sender
     const cmd = command.toLowerCase()
 
     // ── Manajemen Akun Owner (.dsaccount / .setds) ─────────────────────────────
     if (cmd === 'dsaccount' || cmd === 'setds' || cmd === 'deepseekaccount') {
-        const isOwner = m.isOwner || global.owner?.some?.(o => (Array.isArray(o) ? o[0] : o) === m.sender.split('@')[0])
-        if (!isOwner) return m.reply('Perintah ini hanya dapat diakses oleh Owner.')
+        const senderNum = (m.sender || '').replace(/[^0-9]/g, '')
+        const isAllowed = isOwner || isROwner || m.fromMe ||
+            global.developer?.some(d => String(d).replace(/[^0-9]/g, '') === senderNum) ||
+            global.owner?.some(o => String(Array.isArray(o) ? o[0] : o).replace(/[^0-9]/g, '') === senderNum)
+
+        if (!isAllowed) return m.reply('Perintah ini hanya dapat diakses oleh Owner.')
 
         const input = (text || '').trim()
         const accountPath = path.join(process.cwd(), 'data', 'deepseek-account.json')
