@@ -604,7 +604,18 @@ class DeepSeek {
       }
     }
 
-    return { message: response, thoughts: thinking, search_queries, search_results, search_indexes, message_id, parent_id, error };
+    return { 
+      message: formatWA(response), 
+      thoughts: thinking ? formatWA(thinking) : '', 
+      raw_message: response,
+      raw_thoughts: thinking,
+      search_queries, 
+      search_results, 
+      search_indexes, 
+      message_id, 
+      parent_id, 
+      error 
+    };
   }
 
   // Helper sekali panggil untuk bot/script
@@ -614,8 +625,48 @@ class DeepSeek {
   }
 }
 
+function formatWA(text) {
+  if (!text) return '';
+
+  const codeBlocks = [];
+  text = text.replace(/```[\s\S]*?```|`[^`\n]+`/g, (m) => {
+    codeBlocks.push(m);
+    return `___CODE_BLOCK_${codeBlocks.length - 1}___`;
+  });
+
+  // 1. Heading markdown (#, ##, ###) -> *Teks*
+  text = text.replace(/^#{1,6}\s+(.+)$/gm, '*$1*');
+
+  // 2. Bold: **teks** dan __teks__ -> *teks*
+  text = text.replace(/(?:\*\*|__)(.*?)(?:\*\*|__)/gs, (match, p1) => {
+    const content = p1.trim();
+    if (!content) return '';
+    return `*${content}*`;
+  });
+
+  // 3. Strikethrough: ~~teks~~ -> ~teks~
+  text = text.replace(/~~(.*?)~~/gs, '~$1~');
+
+  // 4. Markdown link: [teks](url) -> *teks* (url)
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '*$1* ($2)');
+
+  // 5. Bullet point (* item, - item, + item) -> • item
+  text = text.replace(/^[\s]*[-*+]\s+(.+)$/gm, '• $1');
+
+  // 6. Horizontal line (---, ***, ___) -> pembatas
+  text = text.replace(/^[-*_]{3,}$/gm, '────────────────────────────');
+
+  // 7. Rapikan multiple newlines
+  text = text.replace(/\n{3,}/g, '\n\n');
+
+  // Restore code blocks
+  text = text.replace(/___CODE_BLOCK_(\d+)___/g, (_, idx) => codeBlocks[Number(idx)]);
+
+  return text.trim();
+}
+
 // Instance singleton bawaan
 const defaultClient = new DeepSeek();
 
-export { DeepSeek, ChatSession, DeepSeekHash, dsSolve };
+export { DeepSeek, ChatSession, DeepSeekHash, dsSolve, formatWA };
 export default defaultClient;
