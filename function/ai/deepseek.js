@@ -286,7 +286,14 @@ class DeepSeek {
   loadSavedAccount() {
     try {
       if (fs.existsSync(this.accountFile)) {
-        return JSON.parse(fs.readFileSync(this.accountFile, 'utf8'));
+        const data = JSON.parse(fs.readFileSync(this.accountFile, 'utf8'));
+        if (data && (data.email || data.password || data.deviceId)) {
+          const exampleFile = this.accountFile.replace(/\.json$/, '.example.json');
+          if (fs.existsSync(exampleFile)) {
+            try { fs.unlinkSync(exampleFile); } catch {}
+          }
+        }
+        return data;
       }
     } catch {}
     return {};

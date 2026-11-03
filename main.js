@@ -66,6 +66,31 @@ const dataDir = join(__dirname, 'data');
 if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
 initDatabase(dataDir);
 
+// ── Auto-cleanup .example.json jika file konfigurasi asli sudah terisi ──────────
+try {
+    const dataFiles = readdirSync(dataDir);
+    for (const file of dataFiles) {
+        if (file.endsWith('.example.json')) {
+            const targetFile = join(dataDir, file.replace('.example.json', '.json'));
+            if (existsSync(targetFile)) {
+                try {
+                    const raw = readFileSync(targetFile, 'utf8').trim();
+                    if (raw.length > 5 && raw !== '{}' && raw !== '[]') {
+                        const parsed = JSON.parse(raw);
+                        const hasData = Object.values(parsed).some(v => 
+                            v !== "" && v !== null && v !== 0 && v !== false && 
+                            (!Array.isArray(v) || v.length > 0)
+                        );
+                        if (hasData) {
+                            unlinkSync(join(dataDir, file));
+                        }
+                    }
+                } catch {}
+            }
+        }
+    }
+} catch {}
+
 // ── Bounded LRU Message Cache untuk getMessage retry/resend ───────────────────
 class MessageLRUCache {
     constructor(maxSize = 1000) {

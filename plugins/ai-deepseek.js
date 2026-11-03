@@ -4,6 +4,8 @@
   - @Description: Asisten AI DeepSeek dengan percakapan bersambung, penalaran mendalam (DeepThink / Reasoner), pencarian web, dan auto-relogin.
 */
 
+import fs from 'fs'
+import path from 'path'
 import defaultClient, { DeepSeek } from '../function/ai/deepseek.js'
 
 // Cache session per pengguna: userId -> { session, lastActive }
@@ -36,6 +38,92 @@ async function getSession(userId) {
 const handler = async (m, { conn, text, usedPrefix, command, args }) => {
     const userId = m.sender
     const cmd = command.toLowerCase()
+
+    // ── Manajemen Akun Owner (.dsaccount / .setds) ─────────────────────────────
+    if (cmd === 'dsaccount' || cmd === 'setds' || cmd === 'deepseekaccount') {
+        const isOwner = m.isOwner || global.owner?.some?.(o => (Array.isArray(o) ? o[0] : o) === m.sender.split('@')[0])
+        if (!isOwner) return m.reply('Perintah ini hanya dapat diakses oleh Owner.')
+
+        const input = (text || '').trim()
+        const accountPath = path.join(process.cwd(), 'data', 'deepseek-account.json')
+        const examplePath = path.join(process.cwd(), 'data', 'deepseek-account.example.json')
+        const tokenPath = path.join(process.cwd(), 'data', 'deepseek-token.json')
+
+        if (!input || input === 'status' || input === 'cek') {
+            let email = 'Belum diatur'
+            let hasDevice = false
+            let tokenUpdated = 'Belum ada token'
+
+            if (fs.existsSync(accountPath)) {
+                try {
+                    const acc = JSON.parse(fs.readFileSync(accountPath, 'utf8'))
+                    email = acc.email || email
+                    hasDevice = !!acc.deviceId
+                } catch {}
+            }
+            if (fs.existsSync(tokenPath)) {
+                try {
+                    const tok = JSON.parse(fs.readFileSync(tokenPath, 'utf8'))
+                    if (tok.updatedAt) tokenUpdated = new Date(tok.updatedAt).toLocaleString('id-ID')
+                } catch {}
+            }
+
+            return m.reply(
+                `╭── ✦ *STATUS AKUN DEEPSEEK* ✦\n` +
+                `• *Email:* \`${email}\`\n` +
+                `• *Device ID:* ${hasDevice ? '🟢 Terpasang' : '🔴 Belum Ada'}\n` +
+                `• *Token Terakhir:* ${tokenUpdated}\n\n` +
+                `*Cara Pasang/Update Akun:*\n` +
+                `\`${usedPrefix + command} email|sandi|device_id\`\n` +
+                `╰━━━━━━━━━━━━━━━━━━━━━━━`
+            )
+        }
+
+        const parts = input.split('|').map(s => s.trim())
+        if (parts.length < 3) {
+            return m.reply(
+                `Format salah.\n\n*Gunakan:*\n\`${usedPrefix + command} email|password|deviceId\`\n\n` +
+                `*Contoh:*\n\`${usedPrefix + command} user@gmail.com|rahasia123|BT+xWOg...\``
+            )
+        }
+
+        const [newEmail, newPass, newDeviceId] = parts
+        const accountData = {
+            email: newEmail,
+            password: newPass,
+            deviceId: newDeviceId
+        }
+
+        fs.writeFileSync(accountPath, JSON.stringify(accountData, null, 2))
+        if (fs.existsSync(examplePath)) {
+            try { fs.unlinkSync(examplePath) } catch {}
+        }
+
+        await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
+        try {
+            defaultClient.email = newEmail
+            defaultClient.password = newPass
+            defaultClient.deviceId = newDeviceId
+            defaultClient.auth = null
+            await defaultClient.login()
+
+            await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+            return m.reply(
+                `╭── ✦ *AKUN BERHASIL DIPASANG* ✦\n` +
+                `• *Email:* \`${newEmail}\`\n` +
+                `• *Device ID:* 🟢 Valid\n` +
+                `• *Auto Login:* 🟢 Berhasil (Token baru tersimpan)\n` +
+                `• *File Template:* \`deepseek-account.example.json\` telah otomatis dihapus.\n` +
+                `╰━━━━━━━━━━━━━━━━━━━━━━━`
+            )
+        } catch (err) {
+            await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+            return m.reply(
+                `Akun tersimpan di file, namun login gagal:\n` +
+                `*Error:* ${err.message}`
+            )
+        }
+    }
 
     // ── Reset Sesi Percakapan ──────────────────────────────────────────────────
     if (cmd === 'deepseekreset' || cmd === 'dsreset' || text?.toLowerCase().trim() === 'reset') {
@@ -136,9 +224,9 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
     }
 }
 
-handler.help = ['deepseek *teks*', 'deepseek -think *teks*']
+handler.help = ['deepseek *teks*', 'deepseek -think *teks*', 'dsaccount *email|pass|deviceId*']
 handler.tags    = ['ai']
-handler.command = /^(deepseek|ds|deepseekreset|dsreset)$/i
+handler.command = /^(deepseek|ds|deepseekreset|dsreset|dsaccount|setds|deepseekaccount)$/i
 handler.limit   = false
 
 export default handler
