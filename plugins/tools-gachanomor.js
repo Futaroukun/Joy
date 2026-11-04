@@ -58,13 +58,16 @@ function checkRarity(number) {
   return { grade: 'Common (A)', emoji: '🔹' };
 }
 
-let handler = async (m, { conn, usedPrefix, command }) => {
+let handler = async (m, { conn, usedPrefix, command, isPremium, isOwner }) => {
   const userId = m.sender;
   const now = Date.now();
   const lastUsed = userCooldowns.get(userId) || 0;
-  const remainingCooldown = Math.ceil((COOLDOWN_MS - (now - lastUsed)) / 1000);
 
-  if (now - lastUsed < COOLDOWN_MS) {
+  // Jeda gacha: User biasa 15s, User premium dipersingkat 5s, Owner 0s
+  const effectiveCooldownMs = isOwner ? 0 : (isPremium ? 5000 : COOLDOWN_MS);
+  const remainingCooldown = Math.ceil((effectiveCooldownMs - (now - lastUsed)) / 1000);
+
+  if (effectiveCooldownMs > 0 && (now - lastUsed < effectiveCooldownMs)) {
     return m.reply(
       `*Jeda Gacha (Anti-Spam)*\n\n` +
       `Tunggu \`${remainingCooldown} detik\` lagi untuk melakukan gacha nomor berikutnya.`
@@ -200,6 +203,6 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 handler.help = ['gachanomor'];
 handler.tags = ['tools'];
 handler.command = /^(gachanom?or|gachawa|rngwa)$/i;
-handler.limit = false;
+handler.limit = true;
 
 export default handler;

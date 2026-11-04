@@ -574,7 +574,7 @@ export async function handler(chatUpdate) {
                             command: 'qwensession',
                             args: m.text.trim().split(/\s+/)
                         });
-                        if (!isOwner && !isPremium) {
+                        if (!isOwner) {
                             setCooldown(senderLID, 'qwen');
                         }
                     } catch (e) {
@@ -762,6 +762,14 @@ export async function handler(chatUpdate) {
                     return;
                 }
 
+                if (plugin.limit && !isPremium && !isOwner) {
+                    const requiredLimit = typeof plugin.limit === 'number' ? plugin.limit : 1;
+                    if ((user?.limit || 0) < requiredLimit) {
+                        global.dFail("limit", m, this);
+                        return;
+                    }
+                }
+
                 if (plugin.group && !m.isGroup) {
                     global.dFail("group", m, this);
                     return;
@@ -930,8 +938,12 @@ export async function handler(chatUpdate) {
                     const runPlugin = plugin.call(this, m, extra);
                     await (pluginTimeoutMs > 0 ? withTimeout(runPlugin, pluginTimeoutMs, `Waktu eksekusi plugin melebihi batas (Timeout ${pluginTimeoutMs / 1000}s)`) : runPlugin);
                     m.status = 'Success';
-                    if (!isOwner && !isPremium) {
+                    if (!isOwner) {
                       setCooldown(senderLID, primaryCommand);
+                    }
+                    if (plugin.limit && !isPremium && !isOwner && user) {
+                      const requiredLimit = typeof plugin.limit === 'number' ? plugin.limit : 1;
+                      user.limit = Math.max(0, (user.limit || 0) - requiredLimit);
                     }
                     if (user) {
                         user.exp = (user.exp || 0) + (Math.floor(Math.random() * 15) + 15);
@@ -1023,6 +1035,7 @@ global.dFail = (type, m, conn) => {
         botAdmin: "*BOT ADMIN REQUIRED*",
         sewa: "*PAID GROUP ONLY*",
         unreg: "*KAMU BELUM TERDAFTAR*\nSilakan daftar terlebih dahulu untuk menggunakan fitur ini:\n*.daftar nama | tgl_lahir*\nContoh: *.daftar Rafli | 14-06-2006*",
+        limit: "*LIMIT KAMU HABIS*\nLimit kamu tidak mencukupi untuk menggunakan fitur ini.\n• Beli tiket limit di *.toko* atau tunggu reset harian.\n• Upgrade ke *Premium* untuk menikmati limit tanpa batas!",
         restrict: "*RESTRICTED COMMAND*",
         disable: "*DISABLE COMMAND*"
     }[type];

@@ -11,13 +11,16 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const userCooldowns = new Map();
 const COOLDOWN_MS = 15000; // 15 detik jeda per pengguna
 
-let handler = async (m, { conn, text, usedPrefix, command }) => {
+let handler = async (m, { conn, text, usedPrefix, command, isPremium, isOwner }) => {
   const userId = m.sender;
   const now = Date.now();
   const lastUsed = userCooldowns.get(userId) || 0;
-  const remainingCooldown = Math.ceil((COOLDOWN_MS - (now - lastUsed)) / 1000);
 
-  if (now - lastUsed < COOLDOWN_MS) {
+  // Jeda keamanan: User biasa 15s, User premium dipersingkat 5s, Owner 0s
+  const effectiveCooldownMs = isOwner ? 0 : (isPremium ? 5000 : COOLDOWN_MS);
+  const remainingCooldown = Math.ceil((effectiveCooldownMs - (now - lastUsed)) / 1000);
+
+  if (effectiveCooldownMs > 0 && (now - lastUsed < effectiveCooldownMs)) {
     return m.reply(
       `*Jeda Keamanan (Anti-Ban)*\n\n` +
       `Mohon tunggu \`${remainingCooldown} detik\` sebelum melakukan pengecekan nomor kembali agar akun bot tidak terkena pembatasan.`
@@ -209,6 +212,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 handler.help = ['ceknomor *<nomor>x*'];
 handler.tags = ['tools'];
 handler.command = /^(ceknom?or|checknum|cekhp|nowa)$/i;
-handler.limit = false;
+handler.limit = true;
 
 export default handler;

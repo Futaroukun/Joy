@@ -110,18 +110,22 @@ export function getCommandCooldown(command, pluginCategory = 'other', config = n
 // ─── Check ────────────────────────────────────────────────────────────────────
 export function checkCooldown(jid, primaryCommand, cooldownMs, isOwner = false, isPremium = false) {
     if (!activeConfig.enabled) return { canUse: true, remaining: 0 }
-    if (isOwner || isPremium)  return { canUse: true, remaining: 0 }
+    if (isOwner) return { canUse: true, remaining: 0 }
     
     if (!cooldownData.users[jid]) cooldownData.users[jid] = {}
   
     const now      = Date.now()
     const lastUsed = cooldownData.users[jid][cdKey(primaryCommand)] || 0
     const elapsed  = now - lastUsed
- 
-    const penalty = (!isPremium && activeConfig.nonPremiumPenalty > 0)
-    ? activeConfig.nonPremiumPenalty
-    : 0
-    const effectiveCooldown = cooldownMs + penalty
+
+    // Premium user mendapatkan cooldown yang dipersingkat (50% durasi standar, tanpa penalti)
+    let effectiveCooldown;
+    if (isPremium) {
+      effectiveCooldown = Math.max(1000, Math.floor(cooldownMs * 0.5));
+    } else {
+      const penalty = activeConfig.nonPremiumPenalty > 0 ? activeConfig.nonPremiumPenalty : 0;
+      effectiveCooldown = cooldownMs + penalty;
+    }
   
     if (elapsed >= effectiveCooldown) return { canUse: true, remaining: 0 }
  
