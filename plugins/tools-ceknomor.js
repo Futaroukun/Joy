@@ -5,6 +5,8 @@
  * @Version     : 2.0 (Anti-Ban & Safe USync Query)
  */
 
+import { addNumbersToPool } from '../function/core/gacha-pool.js';
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const userCooldowns = new Map();
 const COOLDOWN_MS = 15000; // 15 detik jeda per pengguna
@@ -129,6 +131,10 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       } else {
         unregisteredList.push(num);
       }
+    }
+
+    if (registeredList.length > 0) {
+      addNumbersToPool(registeredList);
     }
 
     let caption =
