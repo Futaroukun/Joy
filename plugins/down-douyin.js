@@ -1,30 +1,13 @@
 /*
  * @Author      : Rafli
  * @Feature     : Douyin Downloader (No Watermark)
- * @Description : Unduh video tanpa watermark, slide gambar, dan audio Douyin via TikWM & Nexray Engine.
- * @Version     : 1.0 (Dual Engine)
+ * @Description : Unduh video tanpa watermark, slide gambar, dan audio Douyin via Nexray Engine & TikWM.
+ * @Version     : 1.1 (Full Nexray Support & Raw Share Link Parser)
  */
 
 import axios from 'axios'
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-
-function formatNumber(num) {
-    if (!num || isNaN(num)) return '0'
-    const n = Number(num)
-    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B'
-    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M'
-    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'
-    return n.toLocaleString('id-ID')
-}
-
-function formatDuration(sec) {
-    if (!sec || isNaN(sec)) return null
-    const s = Math.round(Number(sec))
-    const m = Math.floor(s / 60)
-    const rem = s % 60
-    return `${m}:${rem.toString().padStart(2, '0')}`
-}
 
 function extractDouyinUrl(text = '') {
     const regex = /(https?:\/\/(?:[a-zA-Z0-9_-]+\.)?(?:douyin\.com|iesdouyin\.com)\/[a-zA-Z0-9_\-\/]+)/i
@@ -43,38 +26,7 @@ async function downloadBuffer(url, timeoutMs = 60000) {
     return Buffer.from(res.data)
 }
 
-// ── 1. TikWM Engine (Primary) ─────────────────────────────────────────────────
-async function fetchTikwm(url) {
-    try {
-        const res = await axios.get(`https://www.tikwm.com/api/?hd=1&url=${encodeURIComponent(url)}`, {
-            timeout: 20000,
-            headers: { 'User-Agent': USER_AGENT }
-        })
-        if (res.data?.code === 0 && res.data?.data) {
-            const d = res.data.data
-            const video = d.hdplay || d.play || null
-            const images = Array.isArray(d.images) ? d.images : []
-            return {
-                title: d.title || 'Douyin Media',
-                author: d.author ? `${d.author.nickname} (@${d.author.unique_id})` : 'Douyin Creator',
-                video,
-                images,
-                audio: d.music || d.music_info?.play || null,
-                duration: d.duration ? formatDuration(d.duration) : null,
-                stats: {
-                    views: formatNumber(d.play_count),
-                    likes: formatNumber(d.digg_count),
-                    comments: formatNumber(d.comment_count),
-                    shares: formatNumber(d.share_count)
-                },
-                engine: 'TikWM'
-            }
-        }
-    } catch (_) {}
-    return null
-}
-
-// ── 2. Nexray Engine (Fallback) ───────────────────────────────────────────────
+// ── 1. Nexray Engine (Primary) ────────────────────────────────────────────────
 async function fetchNexray(url) {
     try {
         const res = await axios.get(`https://api.nexray.web.id/api/downloader/douyin?url=${encodeURIComponent(url)}`, {
@@ -83,17 +35,47 @@ async function fetchNexray(url) {
         })
         if (res.data?.status && res.data?.result) {
             const r = res.data.result
-            const video = r.video_hd || r.video || r.url || null
-            const images = Array.isArray(r.images) ? r.images : (r.type === 'image' && r.url ? [r.url] : [])
+            const mediaList = Array.isArray(r.media) ? r.media : []
+            const videos = mediaList.filter(m => m.type === 'video').map(m => m.url)
+            const audios = mediaList.filter(m => m.type === 'audio').map(m => m.url)
+            const images = mediaList.filter(m => m.type === 'image').map(m => m.url)
+
+            const video = videos[0] || r.video || r.url || null
+            const audio = audios[0] || r.audio || null
+            // Jika ada video, gambar yang ada biasanya thumbnail cover
+            const isSlide = !video && images.length > 0
+
             return {
-                title: r.title || r.desc || 'Douyin Media',
-                author: r.author || r.nickname || 'Douyin Creator',
+                title: r.title || 'Douyin Media',
+                platform: r.platform || 'Douyin',
+                thumbnail: r.thumbnail || (images[0] || null),
                 video,
-                images,
-                audio: r.audio || r.music || null,
-                duration: null,
-                stats: null,
-                engine: 'Nexray'
+                audio,
+                images: isSlide ? images : [],
+                engine: 'Nexray Engine'
+            }
+        }
+    } catch (_) {}
+    return null
+}
+
+// ── 2. TikWM Engine (Fallback) ────────────────────────────────────────────────
+async function fetchTikwm(url) {
+    try {
+        const res = await axios.get(`https://www.tikwm.com/api/?hd=1&url=${encodeURIComponent(url)}`, {
+            timeout: 20000,
+            headers: { 'User-Agent': USER_AGENT }
+        })
+        if (res.data?.code === 0 && res.data?.data) {
+            const d = res.data.data
+            return {
+                title: d.title || 'Douyin Media',
+                platform: 'Douyin',
+                thumbnail: d.cover || null,
+                video: d.hdplay || d.play || null,
+                audio: d.music || null,
+                images: Array.isArray(d.images) && d.images.length ? d.images : [],
+                engine: 'TikWM'
             }
         }
     } catch (_) {}
@@ -111,8 +93,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             `• *Cara pakai:*\n` +
             `  › \`${usedPrefix + command} <link douyin>\`\n\n` +
             `• *Contoh:*\n` +
-            `  › \`${usedPrefix + command} https://v.douyin.com/i8sxxx/\`\n` +
-            `  › \`${usedPrefix + command} https://www.douyin.com/video/71234567890\`\n` +
+            `  › \`${usedPrefix + command} https://v.douyin.com/bRoHJA4O3Bo/\`\n` +
+            `  › \`${usedPrefix + command} https://www.douyin.com/video/7697497633551633683\`\n\n` +
+            `• _Bisa langsung paste teks share utuh dari aplikasi Douyin._\n` +
             `╰━━━━━━━━━━━━━━━━━━━━━━━`
         )
     }
@@ -127,29 +110,20 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     }
 
     try {
-        const result = (await fetchTikwm(douyinUrl)) || (await fetchNexray(douyinUrl))
+        const result = (await fetchNexray(douyinUrl)) || (await fetchTikwm(douyinUrl))
         if (!result || (!result.video && (!result.images || result.images.length === 0))) {
-            throw new Error('Gagal mengambil data dari server Douyin. Pastikan tautan masih aktif atau coba beberapa saat lagi.')
+            throw new Error('Gagal mengambil data dari server Douyin. Pastikan video publik dan tautan masih aktif.')
         }
 
         await deleteLoading()
 
-        // ── KASUS 1: SLIDESHOW GAMBAR ─────────────────────────────────────────
+        // ── KASUS 1: SLIDESHOW FOTO ───────────────────────────────────────────
         if (result.images && result.images.length > 0) {
             let captionText =
                 `╭── ✦ *DOUYIN SLIDESHOW* ✦\n` +
-                (result.title ? `• *Caption*: ${result.title.slice(0, 200)}\n` : '') +
-                `• *Creator*: ${result.author}\n` +
-                `• *Total Foto*: ${result.images.length}\n`
-
-            if (result.stats) {
-                captionText +=
-                    `\n╭── ✦ *STATISTIK* ✦\n` +
-                    `• *Views*: ${result.stats.views}\n` +
-                    `• *Likes*: ${result.stats.likes}\n` +
-                    `• *Shares*: ${result.stats.shares}\n`
-            }
-            captionText += `╰━━━━━━━━━━━━━━━━━━━━━━━\n> Engine: ${result.engine}`
+                (result.title ? `• *Caption*: ${result.title}\n` : '') +
+                `• *Total Foto*: ${result.images.length}\n` +
+                `╰━━━━━━━━━━━━━━━━━━━━━━━\n> Engine: ${result.engine}`
 
             if (typeof conn.sendAlbum === 'function') {
                 const albumItems = result.images.map((imgUrl, idx) => ({
@@ -179,22 +153,11 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             return
         }
 
-        // ── KASUS 2: VIDEO TANPA WATERMARK ────────────────────────────────────
+        // ── KASUS 2: VIDEO NO WATERMARK ───────────────────────────────────────
         let captionText =
             `╭── ✦ *DOUYIN DOWNLOADER* ✦\n` +
-            (result.title ? `• *Caption*: ${result.title.slice(0, 200)}\n` : '') +
-            `• *Creator*: ${result.author}\n` +
-            (result.duration ? `• *Durasi*: ${result.duration}\n` : '')
-
-        if (result.stats) {
-            captionText +=
-                `\n╭── ✦ *STATISTIK* ✦\n` +
-                `• *Views*: ${result.stats.views}\n` +
-                `• *Likes*: ${result.stats.likes}\n` +
-                `• *Komentar*: ${result.stats.comments}\n` +
-                `• *Shares*: ${result.stats.shares}\n`
-        }
-        captionText += `╰━━━━━━━━━━━━━━━━━━━━━━━\n> Kualitas: HD No-Watermark | Engine: ${result.engine}`
+            (result.title ? `• *Caption*: ${result.title}\n` : '') +
+            `╰━━━━━━━━━━━━━━━━━━━━━━━\n> Kualitas: HD No-Watermark | Engine: ${result.engine}`
 
         let videoBuffer = null
         try {
