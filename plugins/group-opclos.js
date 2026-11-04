@@ -175,12 +175,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     }
 };
 
-handler.help = [
-    'gc *open|close*',
-    'gc *open <jam>*',
-    'gc *close <jam>*',
-    'group *open|close*'
-];
+handler.help = ['group *<open|close> [jam]*'];
 handler.tags = ['group'];
 handler.command = /^(gc|group|grup)$/i;
 

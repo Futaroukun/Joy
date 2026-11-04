@@ -166,7 +166,7 @@ let handler = async (m, { conn, command }) => {
     }, { quoted: m })
 }
 
-handler.help    = ['ping', 'status']
+handler.help    = ['ping']
 handler.tags    = ['info']
 handler.command = /^(ping|status|stats|p)$/i
 

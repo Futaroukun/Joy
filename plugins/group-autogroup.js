@@ -139,7 +139,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     return m.reply(`Perintah tidak dikenali.\nGunakan: *${usedPrefix + command} status* untuk melihat panduan lengkap.`)
 }
 
-handler.help = ['autogrup *<on|off|set>*', 'autogroup *<on|off|set>*']
+handler.help = ['autogrup *<on|off|set>*']
 handler.tags = ['group']
 handler.command = /^(autogrup|autogroup|jadwalgrup)$/i
 

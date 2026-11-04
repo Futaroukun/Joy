@@ -522,11 +522,7 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
     return m.reply(helpText)
 }
 
-handler.help = [
-    'bmkg',
-    'gempa',
-    'cuaca *kota*'
-]
+handler.help = ['bmkg']
 handler.tags = ['tools']
 handler.command = /^(gempa|infogempa|bmkg|autogempa|cuaca|udara|aqi|maritim|gelombang|cuacaekstrem|vona|gunungapi|erupsi)$/i
 

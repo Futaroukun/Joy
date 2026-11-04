@@ -228,7 +228,7 @@ const handler = async (m, { conn, text, usedPrefix, command, args, isOwner, isRO
     }
 }
 
-handler.help = ['deepseek *teks*', 'deepseek -think *teks*', 'dsaccount *email|pass|deviceId*']
+handler.help = ['deepseek *teks*']
 handler.tags    = ['ai']
 handler.command = /^(deepseek|ds|deepseekreset|dsreset|dsaccount|setds|deepseekaccount)$/i
 handler.limit   = false

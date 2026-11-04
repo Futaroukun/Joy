@@ -781,7 +781,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     }
 }
 
-handler.help     = ['toko', 'buy <id_item>']
+handler.help     = ['toko']
 handler.tags     = ['rpg']
 handler.command  = /^(toko|shop|buy|beli)$/i
 handler.register = true

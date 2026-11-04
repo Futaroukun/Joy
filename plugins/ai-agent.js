@@ -678,7 +678,7 @@ const handler = async (m, context) => {
     }
 };
 
-handler.help = ["agent <instruksi>", "agent reset", "agent status"];
+handler.help = ['agent *<instruksi>*'];
 handler.tags = ["ai", "owner"];
 handler.command = /^(agent|aiagent|cai|deepseek)$/i;
 handler.owner = true;

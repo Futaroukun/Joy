@@ -387,7 +387,7 @@ let handler = async (m, { conn, text, usedPrefix, command, args, isOwner }) => {
     return m.reply(textHeader + rawText)
 }
 
-handler.help    = ['get *<url>*', 'fetch *<url>*']
+handler.help    = ['get *<url>*']
 handler.tags    = ['tools']
 handler.command = /^(get|fetch|curl)$/i
 
