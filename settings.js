@@ -29,7 +29,7 @@ global.info = {
 }
 
 // ===== THUMBNAIL =====
-global.thum = existsSync(localThumb) ? readFileSync(localThumb) : "https://api.cloudsky.biz.id/file?key=kurumi-bot/1766671505860.jpg";
+global.thum = existsSync(localThumb) ? readFileSync(localThumb) : "https://qu.ax/NvoLP.jpg";
 
 // ===== PIXIV =====
 const pixivJsonPath = path.join(__dir, "data", "pixiv.json");

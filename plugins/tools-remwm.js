@@ -107,20 +107,8 @@ async function unwatermarkPrimary(imageBuffer) {
 }
 
 async function unwatermarkBackup(imageBuffer) {
-    const fileUrl = await uploadFile(imageBuffer);
-    if (!fileUrl) throw new Error('Gagal mengunggah file cadangan.');
-
-    const apiUrl = `https://api.gimita.id/api/tools/watermark-remover?url=${encodeURIComponent(fileUrl)}`;
-    const res = await axios.get(apiUrl, { timeout: 25000 });
-
-    if (res.data?.success && res.data?.data?.url) {
-        return {
-            url: res.data.data.url,
-            engine: 'Cloud Watermark Cleaner'
-        };
-    }
-
-    throw new Error('Server cadangan tidak merespons.');
+    // Cadangan dinonaktifkan sementara karena domain upstream offline
+    throw new Error('Server cadangan sedang pemeliharaan.');
 }
 
 let handler = async (m, { conn, usedPrefix, command }) => {

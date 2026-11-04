@@ -349,7 +349,8 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
                 externalAdReply: {
                     title: `STORE ITEM DISIMPAN`,
                     body: `${keyName} (${typeLabel})`,
-                    thumbnailUrl: 'https://api.cloudsky.biz.id/file?key=kurumi-bot/1766671505860.jpg',
+                    thumbnail: Buffer.isBuffer(global.thum) ? global.thum : undefined,
+                    thumbnailUrl: typeof global.thum === 'string' ? global.thum : undefined,
                     sourceUrl: '',
                     mediaType: 1,
                     renderLargerThumbnail: true
@@ -446,7 +447,8 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
                 externalAdReply: {
                     title: `ITEM BERHASIL DIHAPUS`,
                     body: `Nama Item: ${target.key}`,
-                    thumbnailUrl: 'https://api.cloudsky.biz.id/file?key=kurumi-bot/1766671505860.jpg',
+                    thumbnail: Buffer.isBuffer(global.thum) ? global.thum : undefined,
+                    thumbnailUrl: typeof global.thum === 'string' ? global.thum : undefined,
                     sourceUrl: '',
                     mediaType: 1,
                     renderLargerThumbnail: true

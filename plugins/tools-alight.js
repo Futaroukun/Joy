@@ -217,6 +217,28 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const args = (text || '').trim().split(/\s+/);
     const sub = (args[0] || '').toLowerCase();
 
+    // Guard: Cek ketersediaan server upstream sebelum memproses perintah aktif
+    if (['status', 'stats', 'cek', 'check', 'custom', 'add', 'verif', 'verify', 'gen', 'create', 'free'].includes(sub)) {
+        try {
+            const check = await fetch('https://motionplus.my.id/api/public/api-status', { signal: AbortSignal.timeout(4000) });
+            if (check.status === 530 || !check.ok) {
+                return m.reply(
+                    `╭── ✦ *SERVER ALIGHT MOTION OFFLINE* ✦\n` +
+                    `• *Status*: Server penyedia (MotionPlus) sedang tidak aktif / DNS down (HTTP ${check.status}).\n` +
+                    `• *Keterangan*: Fitur ini otomatis kembali berfungsi normal begitu server upstream diaktifkan kembali oleh penyedia.\n` +
+                    `╰━━━━━━━━━━━━━━━━━━━━━━━`
+                );
+            }
+        } catch (netErr) {
+            return m.reply(
+                `╭── ✦ *SERVER ALIGHT MOTION OFFLINE* ✦\n` +
+                `• *Status*: Tidak dapat menghubungi server MotionPlus (${netErr.message}).\n` +
+                `• *Keterangan*: Server penyedia sedang tidak aktif.\n` +
+                `╰━━━━━━━━━━━━━━━━━━━━━━━`
+            );
+        }
+    }
+
     // ── SUBCOMMAND: STATUS SERVER ──────────────────────────────────────────────
     if (sub === 'status' || sub === 'stats') {
         await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } }).catch(() => {});

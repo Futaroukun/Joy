@@ -176,39 +176,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         console.warn('[HD] Layer 1 (iLoveIMG) gagal:', e1.message);
     }
 
-    // ── LAYER 2: ONLINE CLOUD AI BACKUP ───────────────────────────────────────
-    try {
-        const fileUrl = await uploadFile(imgBuffer);
-        if (fileUrl) {
-            const gimitaUrl = `https://api.gimita.id/api/tools/upscale?url=${encodeURIComponent(fileUrl)}`;
-            const res = await axios.get(gimitaUrl, { timeout: 20000 });
-
-            if (res.data?.success && res.data?.data?.url) {
-                const resImg = await axios.get(res.data.data.url, { responseType: 'arraybuffer', timeout: 20000 });
-                const resBuffer = Buffer.from(resImg.data);
-                let afterW = beforeW * parseInt(scale, 10);
-                let afterH = beforeH * parseInt(scale, 10);
-                try {
-                    const afterMeta = await sharp(resBuffer).metadata();
-                    afterW = afterMeta.width || afterW;
-                    afterH = afterMeta.height || afterH;
-                } catch (_) {}
-
-                if (loadingMsg?.key) await conn.sendMessage(m.chat, { delete: loadingMsg.key }).catch(() => {});
-
-                await conn.sendMessage(m.chat, {
-                    image: resBuffer,
-                    caption: buildCaption('Cloud AI Enhancer', afterW, afterH, resBuffer.length)
-                }, { quoted: m });
-
-                return await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
-            }
-        }
-    } catch (e2) {
-        console.warn('[HD] Layer 2 (Cloud AI) gagal:', e2.message);
-    }
-
-    // ── LAYER 3: LOCAL SUPER-SAMPLING ENHANCEMENT FILTER (FAIL-SAFE) ──────────
+    // ── LAYER 2: LOCAL SUPER-SAMPLING ENHANCEMENT FILTER (FAIL-SAFE) ──────────
     try {
         const enhancedBuffer = await localSuperEnhance(imgBuffer, parseInt(scale, 10));
         let afterW = beforeW * parseInt(scale, 10);

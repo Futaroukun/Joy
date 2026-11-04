@@ -1,24 +1,11 @@
 /*
  * @Author      : Rafli
  * @Feature     : Instagram Downloader
- * @Description : Download Reels, Posts, Carousel via VideoDropper API (Primary) & Ryzumi (Fallback)
- * @Version     : 5.0 (Dual Engine)
+ * @Description : Download Reels, Posts, dan Carousel Instagram via Nexray Engine (High-Speed & Direct Buffer).
+ * @Version     : 6.0 (Nexray High-Speed)
  */
 
-import crypto from 'node:crypto'
-
-const AES_KEY = Buffer.from('qwertyuioplkjhgf', 'utf-8')
-const BASE_ORIGIN = 'https://fastvideosave.net'
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-const RYZUMI_BASE = 'https://api.ryzumi.net/api/downloader/instagram'
-
-function encryptUrl(url) {
-  const cipher = crypto.createCipheriv('aes-128-ecb', AES_KEY, null)
-  cipher.setAutoPadding(true)
-  let hex = cipher.update(url.trim(), 'utf-8', 'hex')
-  hex += cipher.final('hex')
-  return hex
-}
 
 // ── URL Extractor ─────────────────────────────────────────────────────────────
 const extractInstagramUrl = (text = '') => {
@@ -31,107 +18,46 @@ const guessMediaType = (url = '') => {
   return 'image'
 }
 
-// ── 1. VideoDropper API (Primary Engine) ──────────────────────────────────────
-const downloadViaVideoDropper = async (url) => {
+// ── 1. Nexray API Engine ──────────────────────────────────────────────────────
+const downloadViaNexray = async (url) => {
   const target = url.trim()
-  const res = await fetch('https://api.videodropper.app/allinone', {
+  const apiUrl = `https://api.nexray.web.id/api/downloader/instagram?url=${encodeURIComponent(target)}`
+  
+  const res = await fetch(apiUrl, {
     headers: {
-      'accept': '*/*',
-      'origin': BASE_ORIGIN,
-      'referer': BASE_ORIGIN + '/',
-      'url': encryptUrl(target),
-      'user-agent': USER_AGENT
-    }
+      'User-Agent': USER_AGENT,
+      'Accept': 'application/json'
+    },
+    signal: AbortSignal.timeout(25000)
   })
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(text || `HTTP ${res.status}`)
+    throw new Error(`Nexray HTTP ${res.status}`)
   }
 
-  const data = await res.json()
+  const json = await res.json()
+  if (!json.status || !json.result) {
+    throw new Error(json.error || 'Gagal memproses link Instagram.')
+  }
+
+  const rawList = Array.isArray(json.result) ? json.result : [json.result]
   const list = []
 
-  if (Array.isArray(data.video)) {
-    data.video.forEach(v => {
-      const u = v?.video || (typeof v === 'string' ? v : null)
-      if (u) list.push({ url: u, type: 'video' })
-    })
-  }
-
-  if (Array.isArray(data.image)) {
-    data.image.forEach(img => {
-      const u = typeof img === 'string' ? img : (img?.url || img?.image)
-      if (u) list.push({ url: u, type: 'image' })
-    })
+  for (const item of rawList) {
+    const mediaUrl = item?.url || item?.video || item?.image
+    if (mediaUrl) {
+      const type = item?.type === 'video' || guessMediaType(mediaUrl) === 'video' ? 'video' : 'image'
+      list.push({ url: mediaUrl, type, thumbnail: item?.thumbnail || null })
+    }
   }
 
   if (list.length === 0) {
-    throw new Error('Tidak ada media ditemukan dalam respon VideoDropper.')
+    throw new Error('Tidak ada media yang ditemukan dalam postingan.')
   }
 
   return {
     media: list,
-    caption: null
-  }
-}
-
-// ── 2. Ryzumi API (Fallback Engine) ───────────────────────────────────────────
-const extractRyzumiMedia = (result) => {
-  const list = []
-  const push = (item) => {
-    const url = item?.url || item?.media_url || item?.video_url || (typeof item === 'string' ? item : null)
-    if (url && typeof url === 'string' && url.startsWith('http')) {
-      list.push({ url, type: item?.type || guessMediaType(url) })
-    }
-  }
-
-  if (Array.isArray(result?.media?.all))     result.media.all.forEach(push)
-  else if (Array.isArray(result?.media?.videos) || Array.isArray(result?.media?.images)) {
-    ;(result.media.videos || []).forEach(push)
-    ;(result.media.images || []).forEach(push)
-  }
-  else if (Array.isArray(result?.medias))    result.medias.forEach(push)
-  else if (Array.isArray(result?.media))     result.media.forEach(push)
-  else if (Array.isArray(result))            result.forEach(push)
-  else if (result?.video)  push({ url: result.video, type: 'video' })
-  else if (result?.image)  push({ url: result.image, type: 'image' })
-  else if (result?.url)    push(result)
-
-  return list
-}
-
-const downloadViaRyzumi = async (url) => {
-  const apiUrl = `${RYZUMI_BASE}?url=${encodeURIComponent(url)}`
-  const res = await fetch(apiUrl, {
-    headers: {
-      'User-Agent': USER_AGENT,
-      'Accept': 'application/json',
-      'Referer': 'https://ryzumi.net/'
-    }
-  })
-
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`
-    try {
-      const errJson = await res.json()
-      if (errJson?.message) detail += ` (${errJson.message})`
-    } catch (_) {}
-    throw new Error(detail)
-  }
-
-  const json = await res.json()
-  if (!json.success) throw new Error(json.errors || json.error || json.message || 'API mengembalikan gagal')
-
-  const result = json.result || json.data
-  if (!result) throw new Error('Response kosong dari API')
-
-  const mediaList = extractRyzumiMedia(result)
-  if (mediaList.length === 0) throw new Error('Tidak ada media ditemukan dalam response API')
-
-  return {
-    media: mediaList,
-    caption: result?.title || result?.caption || null
+    caption: json.result?.caption || null
   }
 }
 
@@ -176,26 +102,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   }
 
   try {
-    let result = null
-    let primaryErr = null
-
-    // 1. Coba VideoDropper terlebih dahulu
-    try {
-      result = await downloadViaVideoDropper(parseUrl)
-    } catch (e1) {
-      primaryErr = e1
-      console.warn('[IG] VideoDropper gagal, mencoba fallback Ryzumi:', e1.message)
-    }
-
-    // 2. Fallback ke Ryzumi jika VideoDropper gagal
-    if (!result) {
-      try {
-        result = await downloadViaRyzumi(parseUrl)
-      } catch (e2) {
-        throw new Error(primaryErr?.message || e2.message)
-      }
-    }
-
+    const result = await downloadViaNexray(parseUrl)
     const { media: mediaList, caption } = result
     await deleteLoading()
 
