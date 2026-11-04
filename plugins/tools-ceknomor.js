@@ -200,7 +200,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   }
 };
 
-handler.help = ['ceknomor <nomor>x', 'nowa <nomor>xx'];
+handler.help = ['ceknomor *<nomor>x*'];
 handler.tags = ['tools'];
 handler.command = /^(ceknom?or|checknum|cekhp|nowa)$/i;
 handler.limit = false;
