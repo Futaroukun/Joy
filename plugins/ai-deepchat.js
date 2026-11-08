@@ -1,7 +1,7 @@
 /*
   - @Author: Joy / DeepChat Engine
   - @Feature: Multi-Model AI Assistant (DeepChat)
-  - @Description: Asisten AI multi-model dengan latensi rendah, model switchable, obrolan bersambung, dan vision multimodal.
+  - @Description: Asisten AI multi-model dengan latensi rendah, model switchable, obrolan bersambung, dan format WhatsApp standar.
 */
 
 import { AVAILABLE_MODELS, DEFAULT_MODEL, chatAI } from '../function/ai/deepchat.js'
@@ -48,7 +48,7 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
         await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
         return m.reply(
             `╭── ✦ *RESET OBROLAN* ✦\n` +
-            `• Riwayat percakapan DeepChat berhasil dikosongkan.\n` +
+            `• Riwayat obrolan berhasil dibersihkan.\n` +
             `• Model aktif: *${session.model.name}*\n` +
             `╰━━━━━━━━━━━━━━━━━━━━━━━`
         )
@@ -58,7 +58,7 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
     if (subCommand === 'model' || subCommand === 'models') {
         const target = args.slice(1).join(' ').trim().toLowerCase()
 
-        // Jika hanya ketik `.dc model` tanpa argumen: Tampilkan menu model
+        // Jika hanya ketik `.dc model` tanpa argumen: Tampilkan daftar model
         if (!target) {
             const listText = AVAILABLE_MODELS.map(m => {
                 const isSelected = m.modelId === session.model.modelId ? ' *(Aktif)*' : ''
@@ -67,9 +67,9 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
 
             return m.reply(
                 `╭── ✦ *DAFTAR MODEL DEEPCHAT* ✦\n` +
-                `• Model saat ini: *${session.model.name}* [${session.model.latency}]\n\n` +
+                `• Model aktif saat ini: *${session.model.name}* [${session.model.latency}]\n\n` +
                 `${listText}\n\n` +
-                `› *Cara ubah:* Ketik \`${usedPrefix + command} model <nomor/alias>\`\n` +
+                `› *Cara ubah:* \`${usedPrefix + command} model <nomor/alias>\`\n` +
                 `› *Contoh:* \`${usedPrefix + command} model 2\` atau \`${usedPrefix + command} model deepseek-v3\`\n` +
                 `╰━━━━━━━━━━━━━━━━━━━━━━━`
             )
@@ -86,14 +86,14 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
         if (!found) {
             return m.reply(
                 `╭── ✦ *MODEL TIDAK DITEMUKAN* ✦\n` +
-                `• Pilihan "${target}" tidak valid.\n` +
-                `• Ketik \`${usedPrefix + command} model\` untuk melihat daftar nomor & alias yang tersedia.\n` +
+                `• Pilihan "${target}" tidak terdaftar.\n` +
+                `• Ketik \`${usedPrefix + command} model\` untuk melihat nomor dan alias yang valid.\n` +
                 `╰━━━━━━━━━━━━━━━━━━━━━━━`
             )
         }
 
         session.model = found
-        session.history = [] // Reset riwayat obrolan saat ganti arsitektur model
+        session.history = [] // Reset riwayat percakapan saat beralih arsitektur model
         await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
         return m.reply(
             `╭── ✦ *MODEL DIPERBARUI* ✦\n` +
@@ -119,10 +119,14 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
         return m.reply(
             `╭── ✦ *PANDUAN DEEPCHAT AI* ✦\n` +
             `• Model Aktif: *${session.model.name}* [${session.model.latency}]\n\n` +
-            `• *Tanya AI:* \`${usedPrefix + command} <pertanyaan>\`\n` +
-            `• *Analisis Gambar:* Kirim/reply gambar dengan caption \`${usedPrefix + command} <pertanyaan>\`\n` +
-            `• *Ganti Model:* \`${usedPrefix + command} model\`\n` +
-            `• *Reset Sesi:* \`${usedPrefix + command} reset\`\n` +
+            `• *Tanya AI:*\n` +
+            `  › \`${usedPrefix + command} <pertanyaan>\`\n\n` +
+            `• *Analisis Gambar:*\n` +
+            `  › Kirim/reply gambar dengan caption \`${usedPrefix + command} <pertanyaan>\`\n\n` +
+            `• *Ganti Model:*\n` +
+            `  › \`${usedPrefix + command} model <nomor/alias>\`\n\n` +
+            `• *Reset Percakapan:*\n` +
+            `  › \`${usedPrefix + command} reset\`\n` +
             `╰━━━━━━━━━━━━━━━━━━━━━━━`
         )
     }
@@ -151,10 +155,10 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
         const res = await chatAI(query, {
             providerId: currentModel.providerId,
             modelId: currentModel.modelId,
-            conversationHistory: session.history.slice(-8), // Ambil 8 percakapan terakhir
+            conversationHistory: session.history.slice(-8), // 8 percakapan terakhir untuk efisiensi
             imageBuffer,
             imageMime,
-            systemPrompt: 'Kamu adalah asisten AI cerdas di WhatsApp. Berikan jawaban yang informatif, akurat, terstruktur, dan gunakan bahasa yang mudah dimengerti.'
+            systemPrompt: 'Kamu adalah asisten AI cerdas di WhatsApp. Berikan jawaban yang informatif, akurat, ringkas, dan langsung pada inti tanpa pengantar basa-basi.'
         })
 
         if (!res || !res.reply) {
@@ -165,7 +169,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
         session.history.push({ role: 'user', content: query })
         session.history.push({ role: 'assistant', content: res.reply })
 
-        // Batasi panjang histori memori (maksimal 12 pesan terakhir per user)
         if (session.history.length > 12) {
             session.history = session.history.slice(-12)
         }
@@ -178,9 +181,9 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
         await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
         return m.reply(
             `╭── ✦ *GAGAL MEMPROSES* ✦\n` +
-            `• *Model:* ${session.model.name}\n` +
-            `• *Error:* ${err.message || 'Terjadi gangguan koneksi.'}\n` +
-            `• Ganti ke model cepat lain: \`${usedPrefix + command} model 1\`\n` +
+            `• Model: *${session.model.name}*\n` +
+            `• Error: ${err.message || 'Terjadi kesalahan sistem.'}\n` +
+            `• Solusi: Coba lagi atau ganti model lain dengan \`${usedPrefix + command} model 1\`\n` +
             `╰━━━━━━━━━━━━━━━━━━━━━━━`
         )
     }

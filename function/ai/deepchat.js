@@ -1,7 +1,7 @@
 /*
   - @Author: Joy / DeepChat Engine
   - @Feature: DeepChat Multi-Model AI Client
-  - @Description: Client API DeepChat dengan auto-topup, auto-session, penanganan latency rendah, dan multi-model.
+  - @Description: Client API DeepChat dengan auto-topup, auto-session, format WhatsApp, dan multi-model.
 */
 
 import { createHmac, createHash, randomUUID } from 'node:crypto'
@@ -11,20 +11,20 @@ const BASE_URL = 'https://uebueqfehjrruiwrbmgs.supabase.co'
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVlYnVlcWZlaGpycnVpd3JibWdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NTI0NDYsImV4cCI6MjA4ODQyODQ0Nn0.pC43b2gMMx44q7_SUfJDM_ceLaYWeMzKI4QvMwz_AxU'
 
 export const AVAILABLE_MODELS = [
-    { id: '1',  alias: 'gemini-flash',    name: 'Gemini 2.5 Flash Lite', providerId: 'gemini',   modelId: 'gemini-2.5-flash-lite',     latency: '⚡ ~2.2s', isDefault: true },
-    { id: '2',  alias: 'deepseek-v3',     name: 'DeepSeek V3',           providerId: 'deepseek', modelId: 'deepseek-chat',             latency: '⚡ ~2.1s' },
-    { id: '3',  alias: 'mistral-small',   name: 'Mistral Small (8B)',    providerId: 'mistral',  modelId: 'ministral-8b-latest',       latency: '⚡ ~1.9s' },
-    { id: '4',  alias: 'deepseek-v4',     name: 'DeepSeek V4 Flash',     providerId: 'deepseek', modelId: 'deepseek-v4-flash',         latency: '⚡ ~2.3s' },
-    { id: '5',  alias: 'claude-haiku',    name: 'Claude Haiku 4.5',      providerId: 'claude',   modelId: 'claude-haiku-4-5-20251001', latency: '🚀 ~2.8s' },
-    { id: '6',  alias: 'gpt-4.1',         name: 'GPT-4.1 Flagship',      providerId: 'chatgpt',  modelId: 'gpt-4.1',                   latency: '🚀 ~3.4s' },
-    { id: '7',  alias: 'gpt-4o-mini',     name: 'GPT-4o Mini',           providerId: 'chatgpt',  modelId: 'gpt-4o-mini',               latency: '🚀 ~4.1s' },
-    { id: '8',  alias: 'mistral-large',   name: 'Mistral Large 3',       providerId: 'mistral',  modelId: 'mistral-large-latest',      latency: '🚀 ~4.1s' },
-    { id: '9',  alias: 'claude-opus',     name: 'Claude Opus 4.7',       providerId: 'claude',   modelId: 'claude-opus-4-7',           latency: '🐢 ~7.6s' },
-    { id: '10', alias: 'kimi-k3',         name: 'Kimi K3',               providerId: 'kimi',     modelId: 'kimi-k3',                   latency: '🐢 ~8.5s' },
-    { id: '11', alias: 'grok-4',          name: 'Grok 4',                providerId: 'grok',     modelId: 'grok-4',                    latency: '🐢 ~11.7s' },
-    { id: '12', alias: 'grok-fast',       name: 'Grok 4.1 Fast',         providerId: 'grok',     modelId: 'grok-4-1-fast',             latency: '🐢 ~13.3s' },
-    { id: '13', alias: 'kimi-k2.6',       name: 'Kimi K2.6',             providerId: 'kimi',     modelId: 'kimi-k2.6',                 latency: '🐢 ~13.5s' },
-    { id: '14', alias: 'gemini-pro',      name: 'Gemini 2.5 Pro',        providerId: 'gemini',   modelId: 'gemini-2.5-pro',            latency: '🐢 ~15.8s' }
+    { id: '1',  alias: 'gemini-flash',    name: 'Gemini 2.5 Flash Lite', providerId: 'gemini',   modelId: 'gemini-2.5-flash-lite',     latency: '~2.2s', isDefault: true },
+    { id: '2',  alias: 'deepseek-v3',     name: 'DeepSeek V3',           providerId: 'deepseek', modelId: 'deepseek-chat',             latency: '~2.1s' },
+    { id: '3',  alias: 'mistral-small',   name: 'Mistral Small (8B)',    providerId: 'mistral',  modelId: 'ministral-8b-latest',       latency: '~1.9s' },
+    { id: '4',  alias: 'deepseek-v4',     name: 'DeepSeek V4 Flash',     providerId: 'deepseek', modelId: 'deepseek-v4-flash',         latency: '~2.3s' },
+    { id: '5',  alias: 'claude-haiku',    name: 'Claude Haiku 4.5',      providerId: 'claude',   modelId: 'claude-haiku-4-5-20251001', latency: '~2.8s' },
+    { id: '6',  alias: 'gpt-4.1',         name: 'GPT-4.1 Flagship',      providerId: 'chatgpt',  modelId: 'gpt-4.1',                   latency: '~3.4s' },
+    { id: '7',  alias: 'gpt-4o-mini',     name: 'GPT-4o Mini',           providerId: 'chatgpt',  modelId: 'gpt-4o-mini',               latency: '~4.1s' },
+    { id: '8',  alias: 'mistral-large',   name: 'Mistral Large 3',       providerId: 'mistral',  modelId: 'mistral-large-latest',      latency: '~4.1s' },
+    { id: '9',  alias: 'claude-opus',     name: 'Claude Opus 4.7',       providerId: 'claude',   modelId: 'claude-opus-4-7',           latency: '~7.6s' },
+    { id: '10', alias: 'kimi-k3',         name: 'Kimi K3',               providerId: 'kimi',     modelId: 'kimi-k3',                   latency: '~8.5s' },
+    { id: '11', alias: 'grok-4',          name: 'Grok 4',                providerId: 'grok',     modelId: 'grok-4',                    latency: '~11.7s' },
+    { id: '12', alias: 'grok-fast',       name: 'Grok 4.1 Fast',         providerId: 'grok',     modelId: 'grok-4-1-fast',             latency: '~13.3s' },
+    { id: '13', alias: 'kimi-k2.6',       name: 'Kimi K2.6',             providerId: 'kimi',     modelId: 'kimi-k2.6',                 latency: '~13.5s' },
+    { id: '14', alias: 'gemini-pro',      name: 'Gemini 2.5 Pro',        providerId: 'gemini',   modelId: 'gemini-2.5-pro',            latency: '~15.8s' }
 ]
 
 export const DEFAULT_MODEL = AVAILABLE_MODELS.find(m => m.isDefault) || AVAILABLE_MODELS[0]
@@ -199,6 +199,92 @@ function resolveImageBuffer(buffer, mimeType = 'image/jpeg') {
     }
 }
 
+/**
+ * Konversi tabel markdown ke list baris WhatsApp
+ */
+function convertMarkdownTable(text) {
+    const lines = text.split('\n')
+    const result = []
+    let headers = []
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        const isRow = /^\s*\|/.test(line)
+        const isSep = /^\s*\|[\s\-|:]+\|\s*$/.test(line)
+
+        if (!isRow) {
+            headers = []
+            result.push(line)
+            continue
+        }
+
+        const cells = line
+            .replace(/^\s*\|/, '')
+            .replace(/\|\s*$/, '')
+            .split('|')
+            .map(c => c.trim())
+
+        if (isSep) continue
+
+        if (headers.length === 0) {
+            const nextLine = lines[i + 1] || ''
+            if (/^\s*\|[\s\-|:]+\|\s*$/.test(nextLine)) {
+                headers = cells
+            } else {
+                result.push(cells.join(' • '))
+            }
+            continue
+        }
+
+        const parts = cells.map((cell, idx) =>
+            headers[idx] ? `*${headers[idx]}:* ${cell}` : cell
+        )
+        result.push('› ' + parts.join(' • '))
+    }
+
+    return result.join('\n')
+}
+
+/**
+ * Format Markdown standar ke format teks WhatsApp
+ */
+export function formatWA(text) {
+    if (!text || typeof text !== 'string') return ''
+
+    // 1. Bersihkan token internal OpenAI / DeepChat
+    text = text.replace(/\uE200[^\uE201]*\uE201/g, '').replace(/[\uE200-\uE2FF]/g, '')
+
+    // 2. Format tabel markdown ke list baris
+    text = convertMarkdownTable(text)
+
+    // 3. Konversi heading markdown (#, ##, ###) -> *Teks*
+    text = text.replace(/^#{1,6}\s+(.+)$/gm, '*$1*')
+
+    // 4. Konversi bold: **teks** dan __teks__ -> *teks*
+    text = text.replace(/(?:\*\*|__)(.*?)(?:\*\*|__)/gs, (match, p1) => {
+        const content = p1.trim()
+        if (!content) return ''
+        return `*${content}*`
+    })
+
+    // 5. Konversi strikethrough: ~~teks~~ -> ~teks~
+    text = text.replace(/~~(.*?)~~/gs, '~$1~')
+
+    // 6. Konversi markdown link: [teks](url) -> *teks* (url)
+    text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '*$1* ($2)')
+
+    // 7. Konversi bullet point markdown (* item, - item, + item) -> • item
+    text = text.replace(/^[\s]*[-*+]\s+(.+)$/gm, '• $1')
+
+    // 8. Konversi horizontal line (---, ***, ___) -> pembatas
+    text = text.replace(/^[-*_]{3,}$/gm, '────────────────────────────')
+
+    // 9. Rapikan multiple whitespace & newline
+    text = text.replace(/\n{3,}/g, '\n\n')
+
+    return text.trim()
+}
+
 export async function chatAI(message, options = {}) {
     if (!message || typeof message !== 'string') {
         throw new Error('Pesan pertanyaan tidak boleh kosong.')
@@ -223,7 +309,7 @@ export async function chatAI(message, options = {}) {
 
     const data = await requestEndpoint('send-message', payload)
     return {
-        reply: data.reply || '',
+        reply: formatWA(data.reply || ''),
         provider: data.provider || payload.providerId,
         model: data.model || payload.modelId,
         creditsRemaining: data.creditsRemaining ?? 0
