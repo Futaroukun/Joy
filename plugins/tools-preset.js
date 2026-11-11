@@ -147,14 +147,33 @@ async function scrapeLinktreeLinks(linktreeUrl) {
         const html = res.data
         if (typeof html !== 'string') return []
 
+        const results = []
         const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)
         if (nextDataMatch) {
-            const json = JSON.parse(nextDataMatch[1])
-            const items = json?.props?.pageProps?.links || []
-            return items.map(i => ({ title: i.title, url: i.url })).filter(i => i.url)
+            try {
+                const json = JSON.parse(nextDataMatch[1])
+                const items = json?.props?.pageProps?.links || json?.props?.pageProps?.account?.links || []
+                for (const item of items) {
+                    if (item.url) results.push({ title: item.title, url: item.url })
+                }
+            } catch {}
         }
-    } catch {}
-    return []
+
+        if (results.length === 0) {
+            const $ = cheerio.load(html)
+            $('a[href]').each((_, el) => {
+                const href = $(el).attr('href')
+                const title = $(el).text().trim()
+                if (href && /^https?:\/\//i.test(href) && !href.includes('linktr.ee/s/')) {
+                    results.push({ title, url: href })
+                }
+            })
+        }
+
+        return results
+    } catch {
+        return []
+    }
 }
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
@@ -237,6 +256,28 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
+        // Jika link preset langsung belum ditemukan atau judul menyebut bio, periksa bio profil kreator
+        const mentionsBio = /di\s*bio|cek\s*bio|link\s*bio/i.test(videoData.title || '')
+        if ((amLinks.size === 0 && xmlLinks.size === 0) || mentionsBio) {
+            if (videoData.author?.unique_id) {
+                try {
+                    const stalkRes = await axios.get(`https://api.nexray.web.id/api/stalker/tiktok?username=${encodeURIComponent(videoData.author.unique_id)}`, { timeout: 10000 })
+                    if (stalkRes.data?.status && stalkRes.data?.result) {
+                        const r = stalkRes.data.result
+                        const bioText = [r.bio, r.description].filter(Boolean).join(' ')
+                        const foundBioUrls = bioText.match(linkRegex) || []
+                        for (let l of foundBioUrls) {
+                            l = l.replace(/[.,;]+$/, '').trim()
+                            if (/linktr\.ee|heylink\.me|campsite\.bio|beacons\.ai|s\.id|bit\.ly/i.test(l)) bioLinks.add(l)
+                            else if (/alight\.link|alightcreative\.com/i.test(l)) amLinks.add(l)
+                            else if (/drive\.google\.com|mediafire\.com|sfile\.mobi|mega\.nz|\.xml/i.test(l)) xmlLinks.add(l)
+                            else if (!/tiktok\.com/i.test(l)) otherLinks.add(l)
+                        }
+                    }
+                } catch {}
+            }
+        }
+
         // Jika link preset langsung belum ditemukan, cek isi Linktree jika ada
         if (amLinks.size === 0 && bioLinks.size > 0) {
             for (const bio of Array.from(bioLinks)) {
@@ -247,6 +288,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                             amLinks.add(item.url)
                         } else if (/drive\.google\.com|mediafire\.com|sfile\.mobi|mega\.nz|\.xml/i.test(item.url)) {
                             xmlLinks.add(item.url)
+                        } else if (/whatsapp\.com\/channel/i.test(item.url)) {
+                            otherLinks.add(item.url)
                         }
                     }
                 }
@@ -318,9 +361,13 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
         if (bioLinks.size > 0 || otherLinks.size > 0) {
             caption += `╭── ✦ *TAUTAN TERKAIT / BIO* ✦\n`
-            const extra = [...bioLinks, ...otherLinks]
-            extra.slice(0, 5).forEach((link, idx) => {
-                caption += `• *Link [${idx + 1}]*: ${link}\n`
+            const extra = [...new Set([...bioLinks, ...otherLinks])]
+            extra.slice(0, 6).forEach((link, idx) => {
+                let lbl = 'Tautan'
+                if (/whatsapp\.com\/channel/i.test(link)) lbl = 'Saluran WA'
+                else if (/linktr\.ee/i.test(link)) lbl = 'Linktree'
+                else if (/heylink\.me|beacons\.ai/i.test(link)) lbl = 'Bio Profile'
+                caption += `• *${lbl} [${idx + 1}]*: ${link}\n`
             })
             caption += `╰━━━━━━━━━━━━━━━━━━━━━━━\n\n`
         }
