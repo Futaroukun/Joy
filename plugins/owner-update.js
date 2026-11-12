@@ -8,15 +8,10 @@ import chalk from 'chalk'
 import fetch from 'node-fetch'
 
 async function deleteMsg(conn, m, msg) {
-    if (!msg) return;
+    if (!msg?.key) return;
     try {
-        const chatId = m.chat.replace('@t.me', '');
-        if (global.tgBot && msg.message_id) {
-            await global.tgBot.telegram.deleteMessage(chatId, msg.message_id).catch(() => {});
-        } else if (msg.key) {
-            await conn.sendMessage(m.chat, { delete: msg.key }).catch(() => {});
-        }
-    } catch (e) {}
+        await conn.sendMessage(m.chat, { delete: msg.key }).catch(() => {});
+    } catch (_) {}
 }
 
 const exec = promisify(cp.exec).bind(cp)

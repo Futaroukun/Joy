@@ -60,7 +60,7 @@ export async function chat(messages = [], fileBuffer = null, options = {}) {
     let auth = options.auth || options.session?.auth || null;
     let chatId = options.chatId || options.session?.chatId || null;
 
-    const apiKey = process.env.GEMINI_API_KEY || global.geminiKey || global.api?.gemini || '';
+    const apiKey = process.env.GEMINI_API_KEY || '';
 
     // ── Mode 1: Google AI Studio API (Jika API Key Disediakan) ─────────────────
     if (apiKey) {

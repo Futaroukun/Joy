@@ -103,15 +103,10 @@ const INFOBOX_LABEL_MAP = {
 };
 
 async function deleteMsg(conn, m, msg) {
-    if (!msg) return;
+    if (!msg?.key) return;
     try {
-        const chatId = m.chat.replace('@t.me', '');
-        if (global.tgBot && msg.message_id) {
-            await global.tgBot.telegram.deleteMessage(chatId, msg.message_id).catch(() => {});
-        } else if (msg.key) {
-            await conn.sendMessage(m.chat, { delete: msg.key }).catch(() => {});
-        }
-    } catch (e) {}
+        await conn.sendMessage(m.chat, { delete: msg.key }).catch(() => {});
+    } catch (_) {}
 }
 
 async function translateToId(text) {

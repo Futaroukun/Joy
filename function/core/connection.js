@@ -117,11 +117,10 @@ export async function requestPairing(conn) {
             await sleep(3000);
             syslog('Meminta kode pairing...', p.yellow);
 
-            const customCode = global.customCode || global.pairingCode || undefined;
             let code = null;
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                    code = await conn.requestPairingCode(PhoneNumber, customCode);
+                    code = await conn.requestPairingCode(PhoneNumber);
                     if (code) break;
                 } catch (err) {
                     if (attempt === 3) throw err;
