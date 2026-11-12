@@ -113,7 +113,9 @@ async function renderPhotoWithMusic(photoBuf, audioBuf, startTime = '00:00:00', 
             if (wMatch) width = parseInt(wMatch[1], 10);
             if (hMatch) height = parseInt(hMatch[1], 10);
             if (dMatch) seconds = Math.round(parseFloat(dMatch[1]));
-        } catch {}
+        } catch (err) {
+            console.warn('[tools-addmusic] ffprobe error:', err?.message);
+        }
 
         let jpegThumbnail = undefined;
         try {
@@ -124,8 +126,12 @@ async function renderPhotoWithMusic(photoBuf, audioBuf, startTime = '00:00:00', 
             try {
                 jpegThumbnail = await fsPromises.readFile(thumbPath);
                 await fsPromises.unlink(thumbPath);
-            } catch {}
-        } catch {}
+            } catch (err) {
+                console.warn('[tools-addmusic] thumb read/unlink error:', err?.message);
+            }
+        } catch (err) {
+            console.warn('[tools-addmusic] thumb generate error:', err?.message);
+        }
 
         const outBuffer = await fsPromises.readFile(tmpOut);
         const isHD = Boolean(
@@ -165,7 +171,9 @@ async function renderVideoWithMusic(videoBuf, audioBuf, mode = 'replace', startT
                 `ffprobe -v error -select_streams a:0 -show_entries stream=codec_type -of default=noprint_wrappers=1:nokey=1 "${tmpVid}"`
             );
             hasOriginalAudio = stdout.trim() === 'audio';
-        } catch {}
+        } catch (err) {
+            console.warn('[tools-addmusic] ffprobe audio stream error:', err?.message);
+        }
 
         const cleanStart = normalizeTime(startTime);
 
@@ -270,7 +278,9 @@ async function renderVideoWithMusic(videoBuf, audioBuf, mode = 'replace', startT
             if (wMatch) width = parseInt(wMatch[1], 10);
             if (hMatch) height = parseInt(hMatch[1], 10);
             if (dMatch) seconds = Math.round(parseFloat(dMatch[1]));
-        } catch {}
+        } catch (err) {
+            console.warn('[tools-addmusic] ffprobe error:', err?.message);
+        }
 
         let jpegThumbnail = undefined;
         try {
@@ -281,8 +291,12 @@ async function renderVideoWithMusic(videoBuf, audioBuf, mode = 'replace', startT
             try {
                 jpegThumbnail = await fsPromises.readFile(thumbPath);
                 await fsPromises.unlink(thumbPath);
-            } catch {}
-        } catch {}
+            } catch (err) {
+                console.warn('[tools-addmusic] thumb read/unlink error:', err?.message);
+            }
+        } catch (err) {
+            console.warn('[tools-addmusic] thumb generate error:', err?.message);
+        }
 
         const outBuffer = await fsPromises.readFile(tmpOut);
         const isHD = Boolean(

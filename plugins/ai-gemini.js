@@ -49,14 +49,16 @@ const SOURCE_PATTERNS = [
 const SESSION_TIMEOUT = 60 * 60 * 1000;
 const userSessions = new Map();
 
-setInterval(() => {
+if (global._geminiInterval) clearInterval(global._geminiInterval);
+global._geminiInterval = setInterval(() => {
     const now = Date.now();
     for (const [uid, sess] of userSessions.entries()) {
         if (now - (sess.lastActive || 0) > SESSION_TIMEOUT) {
             userSessions.delete(uid);
         }
     }
-}, 30 * 60 * 1000).unref?.();
+}, 30 * 60 * 1000);
+global._geminiInterval.unref?.();
 
 function getUserSession(userId) {
     const now = Date.now();

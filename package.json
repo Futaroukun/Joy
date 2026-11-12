@@ -11,7 +11,8 @@
   "scripts": {
     "start": "node start.js",
     "setup": "node setup.js",
-    "test": "node function/test.js",
+    "test:logic": "node test/handler-logic.test.js",
+    "test": "node function/test.js && node test/handler-logic.test.js",
     "postinstall": "node function/core/patch-baileys.js"
   },
   "keywords": [
@@ -23,6 +24,9 @@
   "author": "Rafli",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
+  "engines": {
+    "node": ">=20.12.0"
+  },
   "allowScripts": {
     "better-sqlite3": true,
     "canvas": true,

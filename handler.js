@@ -9,132 +9,54 @@ import { unwatchFile, watchFile } from "fs";
 import chalk from "chalk";
 
 import { cleanLID, ensureLID, participantsUpdate, groupsUpdate, catchDeleted } from './function/events/group-events.js';
-export { cleanLID, ensureLID, participantsUpdate, groupsUpdate, catchDeleted };
 
-import { resolveSenderAuth, resolveGroupContext } from './function/core/handler/auth.js';
-import { handleGroupJualan, handleQwenSession, handlePassiveExp } from './function/core/handler/chat-state.js';
-import { executeBeforeHooks, dispatchCommand, executeDidYouMean } from './function/core/handler/dispatcher.js';
-import { parseAndDiagnoseError } from './function/core/handler/diagnostics.js';
-export { parseAndDiagnoseError };
+const _ts = Date.now();
+const {
+    resolveSenderAuth,
+    resolveGroupContext,
+    resolveSenderPermissions,
+    resolveParticipantAdmin
+} = await import(`./function/core/handler/auth.js?update=${_ts}`);
+
+const {
+    handleGroupJualan,
+    handleQwenSession,
+    handlePassiveExp
+} = await import(`./function/core/handler/chat-state.js?update=${_ts}`);
+
+const {
+    executeBeforeHooks,
+    dispatchCommand,
+    executeDidYouMean,
+    getPluginIndex,
+    rebuildPluginIndex,
+    extractExactCommands,
+    checkPermissionGuards,
+    matchPluginCommand
+} = await import(`./function/core/handler/dispatcher.js?update=${_ts}`);
+
+const {
+    parseAndDiagnoseError
+} = await import(`./function/core/handler/diagnostics.js?update=${_ts}`);
+
+export {
+    cleanLID,
+    ensureLID,
+    participantsUpdate,
+    groupsUpdate,
+    catchDeleted,
+    parseAndDiagnoseError,
+    getPluginIndex,
+    rebuildPluginIndex,
+    extractExactCommands,
+    checkPermissionGuards,
+    matchPluginCommand,
+    resolveSenderPermissions,
+    resolveParticipantAdmin
+};
 
 const printMessages = (await import("./function/events/print.js")).default;
 const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), "./plugins");
-
-const str2Regex = str => str.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&");
-
-function extractExactCommands(cmd) {
-    if (typeof cmd === 'string') {
-        return [cmd.toLowerCase()];
-    }
-    if (Array.isArray(cmd)) {
-        const list = [];
-        for (const c of cmd) {
-            if (typeof c === 'string') {
-                list.push(c.toLowerCase());
-            } else if (c instanceof RegExp) {
-                const sub = extractExactCommands(c);
-                if (sub) list.push(...sub);
-                else return null;
-            }
-        }
-        return list;
-    }
-    if (cmd instanceof RegExp) {
-        let src = cmd.source;
-        if (!src.startsWith('^') || !src.endsWith('$')) return null;
-        let inner = src.slice(1, -1);
-        if (inner.startsWith('(') && inner.endsWith(')')) inner = inner.slice(1, -1);
-        if (/[+*?{\\\[\]().^$]/.test(inner)) return null;
-        return inner.split('|').map(s => s.toLowerCase());
-    }
-    return null;
-}
-
-let pluginIndexCache = null;
-let lastPluginsRef = null;
-let lastPluginsCount = 0;
-
-export function getPluginIndex() {
-    const currentPluginsCount = global.plugins && typeof global.plugins === 'object' ? Object.keys(global.plugins).length : 0;
-    if (pluginIndexCache && lastPluginsRef === global.plugins && lastPluginsCount === currentPluginsCount && currentPluginsCount > 0) {
-        return pluginIndexCache;
-    }
-    lastPluginsRef = global.plugins;
-    lastPluginsCount = currentPluginsCount;
-
-    const commandMap = new Map();
-    const regexPlugins = [];
-    const customPrefixPlugins = [];
-    const beforePlugins = [];
-
-    if (global.plugins && typeof global.plugins === 'object') {
-        for (const name in global.plugins) {
-            const plugin = global.plugins[name];
-            if (!plugin || plugin.disable) continue;
-
-            const entry = { name, plugin };
-
-            if (plugin.customPrefix) {
-                if (!plugin._compiledPrefixes) {
-                    const cp = plugin.customPrefix;
-                    if (cp instanceof RegExp) {
-                        plugin._compiledPrefixes = [cp];
-                    } else if (Array.isArray(cp)) {
-                        plugin._compiledPrefixes = cp.map(p => (p instanceof RegExp ? p : new RegExp(str2Regex(p))));
-                    } else if (typeof cp === "string") {
-                        plugin._compiledPrefixes = [new RegExp(str2Regex(cp))];
-                    } else {
-                        plugin._compiledPrefixes = [];
-                    }
-                }
-                customPrefixPlugins.push(entry);
-            }
-
-            if (typeof plugin.before === 'function') {
-                beforePlugins.push(entry);
-            }
-
-            if (typeof plugin !== 'function' && typeof plugin.run !== 'function') {
-                continue;
-            }
-
-            // Plugin yang memiliki customPrefix ditangani khusus
-            // Jika plugin tidak memiliki command standard, lewati commandMap
-            if (plugin.customPrefix && !plugin.command) {
-                continue;
-            }
-
-            const exactCmds = extractExactCommands(plugin.command);
-            if (exactCmds && exactCmds.length > 0) {
-                for (const cmd of exactCmds) {
-                    if (!commandMap.has(cmd)) {
-                        commandMap.set(cmd, entry);
-                    }
-                }
-            } else if (plugin.command) {
-                // Abaikan regex catch-all (misal /(?:)/) yang mencocokkan semua input
-                if (plugin.command instanceof RegExp && (plugin.command.source === '(?:)' || plugin.command.source === '' || plugin.command.test(''))) {
-                    continue;
-                }
-                regexPlugins.push(entry);
-            }
-        }
-    }
-
-    pluginIndexCache = {
-        commandMap,
-        regexPlugins,
-        customPrefixPlugins,
-        beforePlugins
-    };
-    return pluginIndexCache;
-}
-
-export function rebuildPluginIndex() {
-    pluginIndexCache = null;
-    return getPluginIndex();
-}
-global.rebuildPluginIndex = rebuildPluginIndex;
 
 function getCustomPrefixPlugins() {
     return getPluginIndex().customPrefixPlugins.map(e => e.plugin);

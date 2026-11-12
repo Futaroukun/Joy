@@ -5,14 +5,16 @@ import defaultClient, { DeepSeek } from '../function/ai/deepseek.js'
 const userSessions = new Map()
 const SESSION_TIMEOUT = 60 * 60 * 1000
 
-setInterval(() => {
+if (global._deepseekInterval) clearInterval(global._deepseekInterval)
+global._deepseekInterval = setInterval(() => {
     const now = Date.now()
     for (const [uid, sess] of userSessions.entries()) {
         if (now - sess.lastActive > SESSION_TIMEOUT) {
             userSessions.delete(uid)
         }
     }
-}, 30 * 60 * 1000).unref?.()
+}, 30 * 60 * 1000)
+global._deepseekInterval.unref?.()
 
 async function getSession(userId) {
     const now = Date.now()

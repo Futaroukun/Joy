@@ -1,4 +1,5 @@
 import { initUserSchema, syncUserAge, initChatSchema, initSettingSchema } from '../schema.js';
+export { initUserSchema, syncUserAge, initChatSchema, initSettingSchema };
 
 let devSetCache = null;
 let devListKey = '';
@@ -22,6 +23,55 @@ export function getStaticOwnerSet() {
     ownerListKey = key;
     ownerSetCache = new Set(list.map(o => o.toString().split('@')[0].split(':')[0].replace(/[^0-9]/g, '')));
     return ownerSetCache;
+}
+
+export function resolveSenderPermissions({
+    m = {},
+    senderRaw = '',
+    senderPn = null,
+    senderLid = null,
+    userDb = {},
+    cleanDevSet = getDevSet(),
+    cleanStaticOwnersSet = getStaticOwnerSet(),
+    ownersDb = global.db?.data?.owners || {}
+} = {}) {
+    const raw = senderRaw || (m.sender ? m.sender.split('@')[0].split(':')[0].replace(/[^0-9]/g, '') : '');
+
+    const isROwner = !!(m.fromMe ||
+               (senderPn && cleanDevSet.has(senderPn)) ||
+               (raw && cleanDevSet.has(raw)) ||
+               (senderLid && cleanDevSet.has(senderLid.split('@')[0])));
+
+    const isDynamicOwner = !!(
+        (senderPn && ownersDb[senderPn]) ||
+        (senderLid && ownersDb[senderLid]) ||
+        (raw && ownersDb[raw]) ||
+        (m.sender && ownersDb[m.sender]) ||
+        (senderLid && ownersDb[senderLid.split('@')[0]])
+    );
+
+    const isOwner = isROwner ||
+              !!m.fromMe ||
+              (senderPn && cleanStaticOwnersSet.has(senderPn)) ||
+              (raw && cleanStaticOwnersSet.has(raw)) ||
+              (senderLid && cleanStaticOwnersSet.has(senderLid.split('@')[0])) ||
+              isDynamicOwner ||
+              false;
+
+    const isPremium = isROwner || isOwner || userDb?.premium === true;
+
+    return { isROwner: !!isROwner, isOwner: !!isOwner, isPremium: !!isPremium };
+}
+
+export function resolveParticipantAdmin(participants = [], senderLID, botLid) {
+    const user = Array.isArray(participants) ? participants.find(u => u.id === senderLID) : {};
+    const bot = Array.isArray(participants) ? participants.find(u => u.id === botLid) : {};
+
+    const isRAdmin = user?.admin === "superadmin" || false;
+    const isAdmin = isRAdmin || user?.admin === "admin" || false;
+    const isBotAdmin = bot?.admin || false;
+
+    return { user, bot, isRAdmin, isAdmin, isBotAdmin };
 }
 
 export async function resolveSenderAuth(conn, m, senderLID, botLid) {
@@ -66,35 +116,24 @@ export async function resolveSenderAuth(conn, m, senderLID, botLid) {
             }
         }
 
-        // ── Cek Developer Utama (isROwner) ──
+        // ── Cek Permissions (isROwner, isOwner, isPremium) ──
         const cleanDevSet = getDevSet();
-
-        isROwner = m.fromMe ||
-                   (senderPn && cleanDevSet.has(senderPn)) ||
-                   cleanDevSet.has(senderRaw) ||
-                   (senderLid && cleanDevSet.has(senderLid.split('@')[0]));
-
-        // ── Cek Owner (isOwner) Langsung dari Static & Database ──
         const cleanStaticOwnersSet = getStaticOwnerSet();
-
         const ownersDb = global.db?.data?.owners || {};
-        const isDynamicOwner = !!(
-            (senderPn && ownersDb[senderPn]) ||
-            (senderLid && ownersDb[senderLid]) ||
-            ownersDb[senderRaw] ||
-            ownersDb[m.sender] ||
-            (senderLid && ownersDb[senderLid.split('@')[0]])
-        );
 
-        isOwner = isROwner ||
-                  m.fromMe ||
-                  (senderPn && cleanStaticOwnersSet.has(senderPn)) ||
-                  cleanStaticOwnersSet.has(senderRaw) ||
-                  (senderLid && cleanStaticOwnersSet.has(senderLid.split('@')[0])) ||
-                  isDynamicOwner ||
-                  false;
-
-        isPremium = isROwner || isOwner || userDb.premium === true;
+        const perms = resolveSenderPermissions({
+            m,
+            senderRaw,
+            senderPn,
+            senderLid,
+            userDb,
+            cleanDevSet,
+            cleanStaticOwnersSet,
+            ownersDb
+        });
+        isROwner = perms.isROwner;
+        isOwner = perms.isOwner;
+        isPremium = perms.isPremium;
 
         if (isOwner || isPremium) {
             userDb.limit = Infinity;
@@ -146,12 +185,7 @@ export async function resolveGroupContext(conn, m, {
     }
 
     const participants = (m.isGroup ? groupMetadata.participants : []) || [];
-    const user = m.isGroup ? participants.find(u => u.id === senderLID) : {};
-    const bot = m.isGroup ? participants.find(u => u.id === botLid) : {};
-
-    const isRAdmin = user?.admin === "superadmin" || false;
-    const isAdmin = isRAdmin || user?.admin === "admin" || false;
-    const isBotAdmin = bot?.admin || false;
+    const { user, bot, isRAdmin, isAdmin, isBotAdmin } = resolveParticipantAdmin(participants, senderLID, botLid);
 
     const isRegister = global.db.data?.users[senderLID]?.register === true;
     const isBannned = global.db.data?.users[senderLID]?.banned === true;

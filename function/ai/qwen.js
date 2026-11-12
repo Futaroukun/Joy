@@ -11,6 +11,7 @@ import path from 'path';
 
 const CONFIG = {
     BASE_URL: "https://chat.qwen.ai/api/v2",
+    TIMEOUT: 60000,
     HEADERS: {
         'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 15; 25028RN03A Build/AP3A.240905.015.A2) AliApp(QWENCHAT/2.10.0) AppType/Release AplusBridgeLite',
         'Connection': 'Keep-Alive',
@@ -118,7 +119,8 @@ export const qwen = {
                 headers: {
                     ...CONFIG.HEADERS,
                     'x-request-id': utils.generateUUID()
-                }
+                },
+                timeout: CONFIG.TIMEOUT
             });
 
             if (!response.data.success) throw new Error("Login failed");
@@ -144,7 +146,8 @@ export const qwen = {
                 chat_mode: "normal",
                 project_id: ""
             }, {
-                headers: utils.getAuthHeaders(token)
+                headers: utils.getAuthHeaders(token),
+                timeout: CONFIG.TIMEOUT
             });
 
             if (!response.data.success) throw new Error('Failed to create session');
@@ -159,7 +162,8 @@ export const qwen = {
     getListSession: async (token, page = 1) => {
         try {
             const response = await axios.get(`${CONFIG.BASE_URL}/chats/list?exclude_project=true&page=${page}`, {
-                headers: utils.getAuthHeaders(token)
+                headers: utils.getAuthHeaders(token),
+                timeout: CONFIG.TIMEOUT
             });
 
             if (!response.data.success) throw new Error('Failed to get session list');
@@ -174,7 +178,8 @@ export const qwen = {
     getHistory: async (token, chatId) => {
         try {
             const response = await axios.get(`${CONFIG.BASE_URL}/chats/${chatId}`, {
-                headers: utils.getAuthHeaders(token)
+                headers: utils.getAuthHeaders(token),
+                timeout: CONFIG.TIMEOUT
             });
 
             if (!response.data.success) throw new Error('Failed to get history');
@@ -189,7 +194,8 @@ export const qwen = {
     deleteSession: async (token, chatId) => {
         try {
             const response = await axios.delete(`${CONFIG.BASE_URL}/chats/${chatId}`, {
-                headers: utils.getAuthHeaders(token)
+                headers: utils.getAuthHeaders(token),
+                timeout: CONFIG.TIMEOUT
             });
 
             if (!response.data.success) throw new Error('Failed to delete session');
@@ -212,7 +218,7 @@ export const qwen = {
 
             const stsRes = await axios.post(`${CONFIG.BASE_URL}/files/getstsToken`, {
                 filename: filename, filetype: filetype, filesize: stats.size.toString()
-            }, { headers: utils.getAuthHeaders(token) });
+            }, { headers: utils.getAuthHeaders(token), timeout: CONFIG.TIMEOUT });
 
             if (!stsRes.data.success) throw new Error('Failed to get STS Token');
             utils.updateCookies(token, stsRes.headers['set-cookie']);
@@ -231,7 +237,8 @@ export const qwen = {
                     'Date': dateStr,
                     'Content-Type': mimeType
                 },
-                maxBodyLength: Infinity
+                maxBodyLength: Infinity,
+                timeout: CONFIG.TIMEOUT
             });
 
             // Gambar dan video langsung return setelah upload
@@ -240,14 +247,14 @@ export const qwen = {
             }
 
             // Dokumen perlu parsing dulu
-            const parseRes = await axios.post(`${CONFIG.BASE_URL}/files/parse`, { file_id: fileId }, { headers: utils.getAuthHeaders(token) });
+            const parseRes = await axios.post(`${CONFIG.BASE_URL}/files/parse`, { file_id: fileId }, { headers: utils.getAuthHeaders(token), timeout: CONFIG.TIMEOUT });
             if (!parseRes.data.success) throw new Error('Parse init failed');
             utils.updateCookies(token, parseRes.headers['set-cookie']);
 
             let attempts = 0;
             while (attempts < 30) {
                 await utils.sleep(3000);
-                const statusRes = await axios.post(`${CONFIG.BASE_URL}/files/parse/status`, { file_id_list: [fileId] }, { headers: utils.getAuthHeaders(token) });
+                const statusRes = await axios.post(`${CONFIG.BASE_URL}/files/parse/status`, { file_id_list: [fileId] }, { headers: utils.getAuthHeaders(token), timeout: CONFIG.TIMEOUT });
                 utils.updateCookies(token, statusRes.headers['set-cookie']);
 
                 if (statusRes.data.success && statusRes.data.data.length > 0) {
@@ -272,7 +279,8 @@ export const qwen = {
     getModels: async (token) => {
         try {
             const response = await axios.get(`${CONFIG.BASE_URL}/models`, {
-                headers: utils.getAuthHeaders(token)
+                headers: utils.getAuthHeaders(token),
+                timeout: CONFIG.TIMEOUT
             });
             if (!response.data?.success) throw new Error('Failed to get models list');
             utils.updateCookies(token, response.headers['set-cookie']);
@@ -401,7 +409,8 @@ export const qwen = {
                     'Accept': '*/*,text/event-stream',
                     'Content-Type': 'application/json; charset=UTF-8'
                 },
-                responseType: 'stream'
+                responseType: 'stream',
+                timeout: CONFIG.TIMEOUT
             });
             utils.updateCookies(token, response.headers['set-cookie']);
 

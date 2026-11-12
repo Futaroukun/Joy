@@ -75,33 +75,33 @@ handler.owner = true
 
 export default handler
 
-function toPTT(buffer, ext) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let tmp = join(tmpdir(), + new Date + '.' + ext)
-            let out = tmp + '.opus'
-            await promises.writeFile(tmp, buffer)
-            
-            spawn('ffmpeg', [
-                '-y',
-                '-i', tmp,
-                '-vn',
-                '-c:a', 'libopus',
-                '-b:a', '128k',
-                '-vbr', 'on',
-                '-f', 'opus',
-                out
-            ])
-            .on('error', reject)
-            .on('close', async (code) => {
+async function toPTT(buffer, ext) {
+    let tmp = join(tmpdir(), + new Date + '.' + ext)
+    let out = tmp + '.opus'
+    await promises.writeFile(tmp, buffer)
+    
+    return new Promise((resolve, reject) => {
+        spawn('ffmpeg', [
+            '-y',
+            '-i', tmp,
+            '-vn',
+            '-c:a', 'libopus',
+            '-b:a', '128k',
+            '-vbr', 'on',
+            '-f', 'opus',
+            out
+        ])
+        .on('error', reject)
+        .on('close', async (code) => {
+            try {
                 await promises.unlink(tmp)
                 if (code !== 0) return reject(new Error('FFMPEG Error'))
                 let data = await promises.readFile(out)
                 await promises.unlink(out)
                 resolve(data)
-            })
-        } catch (e) {
-            reject(e)
-        }
+            } catch (e) {
+                reject(e)
+            }
+        })
     })
 }

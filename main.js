@@ -10,7 +10,7 @@ import yargs from "yargs";
 import syntaxerror from "syntax-error";
 import { format } from "util";
 import { fileURLToPath, pathToFileURL } from "url";
-import { readdirSync, statSync, unlinkSync, existsSync, readFileSync, mkdirSync, watch, copyFileSync } from "fs";
+import { readdirSync, statSync, unlinkSync, existsSync, readFileSync, writeFileSync, mkdirSync, watch, copyFileSync } from "fs";
 import { spawn } from "child_process";
 import { createRequire } from "module";
 import { makeWASocket, protoType } from "./function/core/simple.js";
@@ -242,13 +242,15 @@ process.on('SIGHUP',  () => gracefulShutdown('SIGHUP'));
 process.on('exit', () => { closeDatabase(); });
 
 process.on('uncaughtException', (error) => {
-    console.error(chalk.red.bold(" [UNCAUGHT EXCEPTION]"), error.message);
-    console.error(chalk.gray(error.stack));
-    if (error.code === 'EBADF' || error.code === 'SQLITE_ERROR' || error.message?.includes('FATAL')) {
-        console.error(chalk.red(' [CRITICAL] Performing emergency shutdown...'));
+    console.error(chalk.red.bold(" [UNCAUGHT EXCEPTION]"), error?.message || error);
+    if (error?.stack) console.error(chalk.gray(error.stack));
+    console.error(chalk.red(' [CRITICAL] Melakukan emergency cleanup dan restart...'));
+    try {
         closeDatabase();
-        process.exit(1);
+    } catch (e) {
+        console.error(chalk.red(' [ERROR] Gagal cleanup database saat uncaughtException:'), e?.message || e);
     }
+    process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
@@ -445,6 +447,24 @@ global.reloadPlugins = async (_ev, filename) => {
 
 Object.freeze(global.reloadPlugins);
 await watch(pluginFolder, global.reloadPlugins);
+
+const handlerFolder = join(__dirname, "./function/core/handler");
+let handlerDebounce = null;
+if (existsSync(handlerFolder)) {
+    watch(handlerFolder, (_ev, filename) => {
+        if (filename && !/\.js$/.test(filename)) return;
+        if (handlerDebounce) clearTimeout(handlerDebounce);
+        handlerDebounce = setTimeout(async () => {
+            console.log(`${chalk.white.bold(" [INFO]")} ${chalk.green.bold(`UPDATE handler "${filename || 'sub-module'}"`)}`);
+            try {
+                await global.reloadHandler();
+            } catch (err) {
+                console.error(chalk.red(' [ERROR] Gagal reload handler:'), err?.message || err);
+            }
+        }, 300);
+    });
+}
+
 await global.reloadHandler();
 
 setTimeout(() => { global.conn.isHandlerInit = false; }, 5000);

@@ -1,18 +1,22 @@
 import fs from "fs";
 import path from "path";
 import axios from "axios";
-import util from "util";
 import Database from "better-sqlite3";
-import { exec } from "child_process";
 import { fileURLToPath } from "url";
 import { fileTypeFromBuffer } from "file-type";
+import {
+    ROOT,
+    TOOLS,
+    TOOLS_SCHEMA,
+    TOOL_EMOJI,
+    shouldEnableTools,
+    EXTERNAL_CONTENT_SECURITY_PROMPT
+} from "../function/ai/agent-tools.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.join(__dirname, "..");
 const DATA_DIR = path.join(ROOT, "data");
 const CONFIG_FILE = path.join(DATA_DIR, "ax_config.json");
 const DB_PATH = path.join(DATA_DIR, "ai_sessions.db");
-const execPromise = util.promisify(exec);
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -459,10 +463,6 @@ function extractApiError(error) {
     };
 }
 
-function resolvePath(p) {
-    return path.isAbsolute(p) ? p : path.join(ROOT, p);
-}
-
 const SUPPORTED_IMAGE_MIMES = new Set([
     "image/jpeg",
     "image/png",
@@ -529,252 +529,6 @@ async function fetchChatCompletion(payload) {
     }
     throw lastError || new Error("Semua API key gagal digunakan.");
 }
-
-const TOOL_EMOJI = {
-    read_file: "📖",
-    write_file: "📝",
-    edit_file: "✏️",
-    delete_file: "🗑️",
-    list_directory: "📂",
-    execute_command: "⚡",
-    run_javascript: "🧬"
-};
-
-const TOOLS_SCHEMA = [
-    {
-        type: "function",
-        function: {
-            name: "read_file",
-            description: "Membaca isi file teks. Gunakan start_line & end_line bila hanya butuh potongan baris agar hemat token.",
-            parameters: {
-                type: "object",
-                properties: {
-                    path: { type: "string", description: "Path target file" },
-                    start_line: { type: "integer", description: "Nomor baris awal (1-indexed)" },
-                    end_line: { type: "integer", description: "Nomor baris akhir (1-indexed)" }
-                },
-                required: ["path"]
-            }
-        }
-    },
-    {
-        type: "function",
-        function: {
-            name: "write_file",
-            description: "Membuat file baru atau menimpa file yang sudah ada.",
-            parameters: {
-                type: "object",
-                properties: {
-                    path: { type: "string", description: "Path file tujuan" },
-                    content: { type: "string", description: "Isi teks file yang ditulis" }
-                },
-                required: ["path", "content"]
-            }
-        }
-    },
-    {
-        type: "function",
-        function: {
-            name: "edit_file",
-            description: "Mengganti teks spesifik (old_text) menjadi new_text di dalam file.",
-            parameters: {
-                type: "object",
-                properties: {
-                    path: { type: "string", description: "Path file" },
-                    old_text: { type: "string", description: "Teks lama yang unik" },
-                    new_text: { type: "string", description: "Teks baru pengganti" }
-                },
-                required: ["path", "old_text", "new_text"]
-            }
-        }
-    },
-    {
-        type: "function",
-        function: {
-            name: "delete_file",
-            description: "Menghapus file atau folder secara rekursif.",
-            parameters: {
-                type: "object",
-                properties: { path: { type: "string", description: "Path yang akan dihapus" } },
-                required: ["path"]
-            }
-        }
-    },
-    {
-        type: "function",
-        function: {
-            name: "list_directory",
-            description: "Menampilkan daftar file dan direktori.",
-            parameters: {
-                type: "object",
-                properties: { path: { type: "string", description: "Path direktori (contoh: '.' atau 'plugins')" } },
-                required: ["path"]
-            }
-        }
-    },
-    {
-        type: "function",
-        function: {
-            name: "execute_command",
-            description: "Menjalankan perintah shell Linux Termux dan membaca output stdout/stderr ringkas.",
-            parameters: {
-                type: "object",
-                properties: { command: { type: "string", description: "Perintah bash shell" } },
-                required: ["command"]
-            }
-        }
-    },
-    {
-        type: "function",
-        function: {
-            name: "run_javascript",
-            description: "Mengeksekusi kode JavaScript async dengan akses ke conn, m, fs, path, global.",
-            parameters: {
-                type: "object",
-                properties: { code: { type: "string", description: "Kode JS async" } },
-                required: ["code"]
-            }
-        }
-    }
-];
-
-const SENSITIVE_PATTERNS = [
-    /sessions(\/|$)/i,
-    /\.env/i,
-    /ai_sessions\.db/i,
-    /pixiv\.json/i,
-    /creds\.json/i,
-    /id_rsa/i,
-    /\.ssh/i,
-    /\.git/i
-];
-
-function isProtectedPath(filePath) {
-    const normalized = String(filePath).replace(/\\/g, "/");
-    return SENSITIVE_PATTERNS.some(regex => regex.test(normalized));
-}
-
-const TOOL_TRIGGER_PATTERNS = [
-    /\b(baca|read|lihat|buka|cek|periksa|scan)\s+(file|folder|direktori|isi|kode|script|plugin|project|source)/i,
-    /\b(tulis|buat|bikin|write|create|save|simpan)\s+(file|folder|script|plugin)/i,
-    /\b(edit|ubah|ganti|update|modifikasi|patch)\s+(file|kode|script|plugin)/i,
-    /\b(hapus|delete|remove|rm)\s+(file|folder|script)/i,
-    /\b(ls|dir|daftar\s+file|list\s+file|list\s+folder)/i,
-    /\b(eksekusi|jalankan|run|exec|bash|terminal|command|perintah|sh|node\s+)/i,
-    /\b(perbaiki|fix|debug)\s+(plugin|file|kode|error)/i
-];
-
-function shouldEnableTools(text, isROwner) {
-    if (!isROwner) return false;
-    if (!text || typeof text !== "string") return false;
-    return TOOL_TRIGGER_PATTERNS.some(pattern => pattern.test(text));
-}
-
-const TOOLS = {
-    read_file: async ({ path: p, start_line, end_line }, context) => {
-        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak membaca file sistem.");
-        if (isProtectedPath(p)) throw new Error(`Akses ditolak: File '${p}' dilindungi untuk mencegah kebocoran data.`);
-
-        const full = resolvePath(p);
-        if (!fs.existsSync(full)) throw new Error(`File ${p} tidak ditemukan.`);
-        const content = fs.readFileSync(full, "utf-8");
-        const lines = content.split("\n");
-
-        if (start_line !== undefined || end_line !== undefined) {
-            const start = Math.max(1, parseInt(start_line) || 1) - 1;
-            const end = Math.min(lines.length, parseInt(end_line) || lines.length);
-            return lines.slice(start, end).join("\n") || "(kosong)";
-        }
-
-        if (lines.length > 200) {
-            return lines.slice(0, 200).join("\n") + 
-                `\n\n[...Dipangkas hemat token: Menampilkan 200 dari ${lines.length} baris. Gunakan start_line & end_line untuk melihat baris lainnya...]`;
-        }
-        return content;
-    },
-    write_file: async ({ path: p, content }, context) => {
-        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak menulis file.");
-        if (isProtectedPath(p)) throw new Error(`Akses ditolak: Lokasi '${p}' dilindungi.`);
-
-        const full = resolvePath(p);
-        fs.mkdirSync(path.dirname(full), { recursive: true });
-        fs.writeFileSync(full, content);
-        return `Berhasil menulis ${p} (${content.length} karakter)`;
-    },
-    edit_file: async ({ path: p, old_text, new_text }, context) => {
-        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak mengedit file.");
-        if (isProtectedPath(p)) throw new Error(`Akses ditolak: File '${p}' dilindungi.`);
-
-        const full = resolvePath(p);
-        const content = fs.readFileSync(full, "utf-8");
-        const occurrences = content.split(old_text).length - 1;
-
-        if (occurrences === 0) {
-            throw new Error(`old_text tidak ditemukan di ${p}. Pastikan teks & indentasi persis sama.`);
-        }
-        if (occurrences > 1) {
-            throw new Error(`old_text muncul ${occurrences}x di ${p}. Berikan teks konteks lebih panjang.`);
-        }
-
-        fs.writeFileSync(full, content.replace(old_text, () => new_text));
-        return `Berhasil mengedit ${p}`;
-    },
-    delete_file: async ({ path: p }, context) => {
-        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak menghapus file.");
-        if (isProtectedPath(p)) throw new Error(`Akses ditolak: Path '${p}' dilindungi.`);
-
-        fs.rmSync(resolvePath(p), { recursive: true, force: true });
-        return `Berhasil menghapus ${p}`;
-    },
-    list_directory: async ({ path: p }, context) => {
-        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak memindai direktori.");
-        if (isProtectedPath(p)) throw new Error(`Akses ditolak: Direktori '${p}' dilindungi.`);
-
-        const items = fs.readdirSync(resolvePath(p), { withFileTypes: true });
-        if (items.length > 40) {
-            const sliced = items.slice(0, 40);
-            return sliced.map(i => `${i.isDirectory() ? "📁" : "📄"} ${i.name}`).join("\n") + 
-                `\n[...dan ${items.length - 40} file/folder lainnya...]`;
-        }
-        return items.map(i => `${i.isDirectory() ? "📁" : "📄"} ${i.name}`).join("\n") || "(kosong)";
-    },
-    execute_command: async ({ command }, context) => {
-        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak mengeksekusi shell command.");
-
-        try {
-            const { stdout, stderr } = await execPromise(command, {
-                timeout: 120000,
-                maxBuffer: 1024 * 1024 * 50,
-                cwd: ROOT
-            });
-            let output = stdout + (stderr ? `\n[stderr]\n${stderr}` : "");
-            if (output.length > 2500) {
-                output = `[...Output awal dipangkas ${output.length - 2500} karakter...]\n` + output.slice(-2500);
-            }
-            return output || "(tidak ada output)";
-        } catch (err) {
-            let out = (err.stdout || "") + (err.stderr ? `\n[stderr]\n${err.stderr}` : "");
-            if (out.length > 2500) out = out.slice(-2500);
-            return out || `Error exec: ${err.message}`;
-        }
-    },
-    run_javascript: async ({ code }, context) => {
-        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak mengeksekusi kode JS.");
-
-        const fn = new Function(
-            "conn",
-            "m",
-            "fs",
-            "path",
-            "global",
-            `return (async () => { ${code} })()`
-        );
-        const result = await fn(context.conn, context.m, fs, path, global);
-        const str = typeof result === "string" ? result : JSON.stringify(result, null, 2);
-        return str.length > 2500 ? str.slice(0, 2500) + "\n[...dipangkas...]" : str;
-    }
-};
-
 
 function convertTableToWA(text) {
     if (!text || !text.includes("|")) return text;
@@ -993,7 +747,8 @@ ATURAN FORMAT TEKS WHATSAPP (MUTLAK - BUKAN FORMAT WEB/BROWSER):
    - Hindari emoji dekoratif, gunakan hanya emoji fungsional bila perlu (✅, ❌, ⏳).
 10. PRIVASI & ATURAN TOOL:
     - Chat santai & pertanyaan umum: Jawab langsung TANPA tool, DILARANG memindai folder/file bot.
-    - Dilarang keras membaca/membocorkan folder sessions, file .env, database, kredensial, dan token.`;
+    - Dilarang keras membaca/membocorkan folder sessions, file .env, database, kredensial, dan token.
+11. ${EXTERNAL_CONTENT_SECURITY_PROMPT}`;
 
 async function runAgentLoop(messages, context, userPromptText = "") {
     const enableTools = shouldEnableTools(userPromptText, context.isROwner);
@@ -1040,8 +795,10 @@ async function runAgentLoop(messages, context, userPromptText = "") {
             }
 
             try {
-                await context.m.react(TOOL_EMOJI[name] || "🔧");
-            } catch (_) {}
+                await (context?.m || context)?.react?.(TOOL_EMOJI[name] || "🔧");
+            } catch (e) {
+                console.warn(`[AI-AX] React ${name} failed:`, e?.message);
+            }
 
             log(`Menjalankan tool: ${name}`, args);
 
@@ -1085,7 +842,7 @@ let handler = async (m, context) => {
             );
         }
         setAxActive(chat, true);
-        try { await m.react("✅"); } catch (_) {}
+        try { await m.react("✅"); } catch (e) { console.warn("[AI-AX] React ✅ failed:", e?.message); }
         const conf = getEndpointConfig();
         return m.reply(
             `╭── ✦ *SESI AX DIAKTIFKAN* ✦\n` +
@@ -1111,7 +868,7 @@ let handler = async (m, context) => {
             );
         }
         setAxActive(chat, false);
-        try { await m.react("✅"); } catch (_) {}
+        try { await m.react("✅"); } catch (e) { console.warn("[AI-AX] React ✅ failed:", e?.message); }
         return m.reply(
             `╭── ✦ *SESI AX DIMATIKAN* ✦\n` +
             `• Mode sesi interaktif AX berhasil *DINONAKTIFKAN*.\n` +
@@ -1138,7 +895,7 @@ let handler = async (m, context) => {
             );
         }
         saveConfig({ provider: targetProvider });
-        try { await m.react("✅"); } catch (_) {}
+        try { await m.react("✅"); } catch (e) { console.warn("[AI-AX] React ✅ failed:", e?.message); }
         const conf = getEndpointConfig();
         return m.reply(
             `╭── ✦ *PROVIDER DIUBAH* ✦\n` +
@@ -1174,7 +931,7 @@ let handler = async (m, context) => {
 
         if (targetModel) {
             saveProviderConfig(conf.provider, { model: targetModel });
-            try { await m.react("✅"); } catch (_) {}
+            try { await m.react("✅"); } catch (e) { console.warn("[AI-AX] React ✅ failed:", e?.message); }
             const meta = MODEL_METADATA[targetModel];
             return m.reply(
                 `╭── ✦ *MODEL DIUBAH* ✦\n` +
@@ -1185,11 +942,11 @@ let handler = async (m, context) => {
             );
         }
 
-        try { await m.react("⏳"); } catch (_) {}
+        try { await m.react("⏳"); } catch (e) { console.warn("[AI-AX] React ⏳ failed:", e?.message); }
         const models = await fetchAvailableModels(conf);
 
         if (!models || models.length === 0) {
-            try { await m.react("❌"); } catch (_) {}
+            try { await m.react("❌"); } catch (e) { console.warn("[AI-AX] React ❌ failed:", e?.message); }
             return m.reply(
                 `❌ *Gagal mengambil daftar model dari endpoint:*\n${conf.rawBaseUrl}\n\n` +
                 `Gunakan format manual:\n\`${usedPrefix + command} setmodel <nama_model>\``
@@ -1256,7 +1013,7 @@ let handler = async (m, context) => {
                 return m.reply("❌ Tidak ada API Key yang valid ditemukan dalam teks input.");
             }
             saveProviderConfig(targetProviderArg, { apiKey: parsedKeys.join(",") });
-            try { await m.react("✅"); } catch (_) {}
+            try { await m.react("✅"); } catch (e) { console.warn("[AI-AX] React ✅ failed:", e?.message); }
             return m.reply(
                 `╭── ✦ *API KEY DISIMPAN* ✦\n` +
                 `• *Provider:* *${targetProviderArg === "openrouter" ? "OpenRouter" : "Modelnyaw"}*\n` +
@@ -1277,7 +1034,7 @@ let handler = async (m, context) => {
 
             saveProviderConfig(targetProv, { apiKey: parsedKeys.join(",") });
             const provName = targetProv === "openrouter" ? "OpenRouter" : "Modelnyaw";
-            try { await m.react("✅"); } catch (_) {}
+            try { await m.react("✅"); } catch (e) { console.warn("[AI-AX] React ✅ failed:", e?.message); }
             return m.reply(
                 `╭── ✦ *API KEY DISIMPAN* ✦\n` +
                 `• *Provider:* *${provName}*${detected ? " _(Otomatis Terdeteksi)_" : ""}\n` +
@@ -1369,7 +1126,7 @@ let handler = async (m, context) => {
             timeout
         });
 
-        try { await m.react("🔑"); } catch (_) {}
+        try { await m.react("🔑"); } catch (e) { console.warn("[AI-AX] React 🔑 failed:", e?.message); }
         return m.reply(
             `╭── ✦ *SESI INPUT API KEY TERBUKA* ✦\n` +
             `• *Provider:* *${providerName}*\n` +
@@ -1401,7 +1158,7 @@ let handler = async (m, context) => {
         }
 
         saveProviderConfig(targetProvider, { baseUrl: newUrl });
-        try { await m.react("✅"); } catch (_) {}
+        try { await m.react("✅"); } catch (e) { console.warn("[AI-AX] React ✅ failed:", e?.message); }
         return m.reply(
             `╭── ✦ *BASE URL DISIMPAN* ✦\n` +
             `• *Provider:* *${targetProvider === "openrouter" ? "OpenRouter" : "Modelnyaw"}*\n` +
@@ -1412,7 +1169,7 @@ let handler = async (m, context) => {
 
     if (subCmd === "reset") {
         sessions.delete(chat);
-        try { await m.react("🧹"); } catch (_) {}
+        try { await m.react("🧹"); } catch (e) { console.warn("[AI-AX] React 🧹 failed:", e?.message); }
         return m.reply("*Riwayat percakapan agent di chat ini berhasil dibersihkan.*");
     }
 
@@ -1444,7 +1201,7 @@ let handler = async (m, context) => {
         return m.reply("⏳ Sesi ax masih memproses instruksi sebelumnya di chat ini.");
     }
 
-    try { await m.react("🧠"); } catch (_) {}
+    try { await m.react("🧠"); } catch (e) { console.warn("[AI-AX] React 🧠 failed:", e?.message); }
     runningSessions.add(chat);
 
     try {
@@ -1484,7 +1241,7 @@ let handler = async (m, context) => {
         const answer = await runAgentLoop(history, { m, conn, ...context }, promptText);
         sessions.set(chat, history);
 
-        try { await m.react("✅"); } catch (_) {}
+        try { await m.react("✅"); } catch (e) { console.warn("[AI-AX] React ✅ failed:", e?.message); }
         const formattedAnswer = formatWhatsApp(answer) || "Selesai.";
         await m.reply(formattedAnswer);
     } catch (error) {
@@ -1492,7 +1249,7 @@ let handler = async (m, context) => {
         log("Error agent ax:", errorInfo);
 
         sessions.delete(chat);
-        try { await m.react("❌"); } catch (_) {}
+        try { await m.react("❌"); } catch (e) { console.warn("[AI-AX] React ❌ failed:", e?.message); }
 
         let msg = `❌ *Agent Error*\n\n`;
         msg += `• *Pesan:* ${errorInfo.message}\n`;
@@ -1515,14 +1272,14 @@ handler.before = async function (m, context) {
         if (/^(batal|cancel|exit|stop)$/i.test(rawText)) {
             if (keySession.timeout) clearTimeout(keySession.timeout);
             pendingKeySessions.delete(m.sender);
-            try { await m.react("❌"); } catch (_) {}
+            try { await m.react("❌"); } catch (e) { console.warn("[AI-AX] React ❌ failed:", e?.message); }
             await m.reply(`*Sesi input API key untuk ${keySession.providerName} telah dibatalkan.*`);
             return true;
         }
 
         const parsedKeys = extractApiKeys(rawText);
         if (parsedKeys.length === 0) {
-            try { await m.react("❌"); } catch (_) {}
+            try { await m.react("❌"); } catch (e) { console.warn("[AI-AX] React ❌ failed:", e?.message); }
             await m.reply("❌ Format key tidak valid. Silakan kirimkan API Key yang benar atau ketik *batal*.");
             return true;
         }
@@ -1531,7 +1288,7 @@ handler.before = async function (m, context) {
         pendingKeySessions.delete(m.sender);
 
         saveProviderConfig(keySession.provider, { apiKey: parsedKeys.join(",") });
-        try { await m.react("✅"); } catch (_) {}
+        try { await m.react("✅"); } catch (e) { console.warn("[AI-AX] React ✅ failed:", e?.message); }
         await m.reply(
             `╭── ✦ *API KEY DISIMPAN* ✦\n` +
             `• *Provider:* *${keySession.providerName}*\n` +
@@ -1558,10 +1315,12 @@ handler.before = async function (m, context) {
     const chat = m.chat;
     const { conn, isOwner, isROwner } = context || {};
 
-    try { await m.react("🧠"); } catch (_) {}
+    try { await m.react("🧠"); } catch (e) { console.warn("[AI-AX] React 🧠 failed:", e?.message); }
     runningSessions.add(chat);
     if (conn?.sendPresenceUpdate) {
-        await conn.sendPresenceUpdate("composing", chat).catch(() => {});
+        await conn.sendPresenceUpdate("composing", chat).catch(e => {
+            console.warn("[AI-AX] sendPresenceUpdate error:", e?.message);
+        });
     }
 
     try {
@@ -1601,14 +1360,14 @@ handler.before = async function (m, context) {
         const answer = await runAgentLoop(history, { m, conn, isOwner: Boolean(isOwner), isROwner: Boolean(isROwner) }, promptText);
         sessions.set(chat, history);
 
-        try { await m.react("✅"); } catch (_) {}
+        try { await m.react("✅"); } catch (e) { console.warn("[AI-AX] React ✅ failed:", e?.message); }
         const formattedAnswer = formatWhatsApp(answer) || "Selesai.";
         await m.reply(formattedAnswer);
         return true;
     } catch (error) {
         const errorInfo = extractApiError(error);
         log("Error agent ax before hook:", errorInfo);
-        try { await m.react("❌"); } catch (_) {}
+        try { await m.react("❌"); } catch (e) { console.warn("[AI-AX] React ❌ failed:", e?.message); }
     } finally {
         runningSessions.delete(chat);
     }

@@ -3,14 +3,16 @@ import { AVAILABLE_MODELS, DEFAULT_MODEL, chatAI } from '../function/ai/deepchat
 const userSessions = new Map()
 const SESSION_TIMEOUT = 60 * 60 * 1000
 
-setInterval(() => {
+if (global._deepchatInterval) clearInterval(global._deepchatInterval)
+global._deepchatInterval = setInterval(() => {
     const now = Date.now()
     for (const [uid, sess] of userSessions.entries()) {
         if (now - sess.lastActive > SESSION_TIMEOUT) {
             userSessions.delete(uid)
         }
     }
-}, 30 * 60 * 1000).unref?.()
+}, 30 * 60 * 1000)
+global._deepchatInterval.unref?.()
 
 function getUserSession(userId) {
     const now = Date.now()

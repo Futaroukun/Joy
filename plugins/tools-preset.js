@@ -72,7 +72,9 @@ async function fetchTikTokVideo(url) {
             if (res.data?.code === 0 && res.data?.data) {
                 return res.data.data
             }
-        } catch {}
+        } catch (err) {
+            console.warn('[tools-preset] fetchTikTokVideo error:', err?.message)
+        }
     }
     return null
 }
@@ -88,7 +90,9 @@ async function fetchVideoComments(url) {
         if (res.data?.code === 0 && Array.isArray(res.data?.data?.comments)) {
             return res.data.data.comments
         }
-    } catch {}
+    } catch (err) {
+        console.warn('[tools-preset] fetchVideoComments error:', err?.message)
+    }
     return []
 }
 
@@ -104,7 +108,9 @@ async function fetchCommentReplies(commentId, videoId) {
         if (res.data?.code === 0 && Array.isArray(res.data?.data?.comments)) {
             return res.data.data.comments
         }
-    } catch {}
+    } catch (err) {
+        console.warn('[tools-preset] fetchCommentReplies error:', err?.message)
+    }
     return []
 }
 
@@ -125,7 +131,8 @@ async function scrapeAlightMetadata(amUrl) {
         const image = $('meta[property="og:image"]').attr('content') || null
 
         return { title, description, image }
-    } catch {
+    } catch (err) {
+        console.warn('[tools-preset] scrapeAlightMetadata error:', err?.message)
         return null
     }
 }
@@ -150,7 +157,9 @@ async function scrapeLinktreeLinks(linktreeUrl) {
                 for (const item of items) {
                     if (item.url) results.push({ title: item.title, url: item.url })
                 }
-            } catch {}
+            } catch (err) {
+                console.warn('[tools-preset] scrapeLinktreeLinks JSON parse error:', err?.message)
+            }
         }
 
         if (results.length === 0) {
@@ -165,7 +174,8 @@ async function scrapeLinktreeLinks(linktreeUrl) {
         }
 
         return results
-    } catch {
+    } catch (err) {
+        console.warn('[tools-preset] scrapeLinktreeLinks error:', err?.message)
         return []
     }
 }
@@ -265,7 +275,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                             else if (!/tiktok\.com/i.test(l)) otherLinks.add(l)
                         }
                     }
-                } catch {}
+                } catch (err) {
+                    console.warn('[tools-preset] stalker error:', err?.message)
+                }
             }
         }
 
@@ -409,7 +421,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                             caption: caption.trim()
                         }, { quoted: m })
                         sent = true
-                    } catch {}
+                    } catch (err) {
+                        console.warn('[tools-preset] Gagal kirim SD video:', err?.message)
+                    }
                 }
             }
         }
@@ -421,7 +435,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                     caption: caption.trim()
                 }, { quoted: m })
                 sent = true
-            } catch {}
+            } catch (err) {
+                console.warn('[tools-preset] Gagal kirim preview image:', err?.message)
+            }
         }
 
         if (!sent) {

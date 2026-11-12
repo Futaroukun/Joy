@@ -1,3 +1,4 @@
+import axios from 'axios'
 import {
     downloadPinterest,
     downloadMedia,
@@ -16,8 +17,52 @@ import {
 } from '../function/scrapers/tiktok.js'
 import { initChatSchema } from '../function/core/schema.js'
 
-const activeProcessing = new Set()
+const activeChats = new Set()
+const chatCooldowns = new Map()
+const COOLDOWN_MS = 5000
+const MAX_VIDEO_BUFFER_BYTES = 64 * 1024 * 1024 // 64 MB
+const MAX_ABSOLUTE_VIDEO_BYTES = 100 * 1024 * 1024 // 100 MB
 const delay = ms => new Promise(r => setTimeout(r, ms))
+
+async function getMediaSize(url, timeoutMs = 7000) {
+    if (!url || typeof url !== 'string' || !url.startsWith('http')) return 0
+    try {
+        const res = await axios.head(url, {
+            timeout: timeoutMs,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+            },
+            maxRedirects: 5,
+            validateStatus: s => s >= 200 && s < 400
+        })
+        const len = parseInt(res.headers?.['content-length'], 10)
+        if (!isNaN(len) && len > 0) return len
+    } catch {}
+
+    try {
+        const rangeRes = await axios.get(url, {
+            timeout: timeoutMs,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Range': 'bytes=0-0'
+            },
+            maxRedirects: 5,
+            validateStatus: s => s === 206 || (s >= 200 && s < 400)
+        })
+        const contentRange = rangeRes.headers?.['content-range']
+        if (contentRange) {
+            const match = contentRange.match(/\/(\d+)/)
+            if (match) {
+                const total = parseInt(match[1], 10)
+                if (!isNaN(total) && total > 0) return total
+            }
+        }
+        const len = parseInt(rangeRes.headers?.['content-length'], 10)
+        if (!isNaN(len) && len > 1) return len
+    } catch {}
+
+    return 0
+}
 
 function detectSupportedUrl(text = '') {
     if (!text || typeof text !== 'string') return null
@@ -48,21 +93,38 @@ async function handlePinterestDownload(conn, m, targetUrl) {
     ].filter(Boolean).join('\n')
 
     if (detail.mediaType === 'carousel' && detail.slides?.length > 0) {
-        const dlSlides = await Promise.all(detail.slides.map(async (item, i) => {
-            try {
-                const buf = await downloadMedia(item.url)
-                return {
-                    index: i,
-                    image: buf,
-                    caption: i === 0 ? caption : ''
-                }
-            } catch {
-                return null
+        const CHUNK_SIZE = 4
+        const validSlides = []
+        for (let i = 0; i < detail.slides.length; i += CHUNK_SIZE) {
+            const chunk = detail.slides.slice(i, i + CHUNK_SIZE)
+            const chunkResults = await Promise.all(
+                chunk.map(async (item, idx) => {
+                    const globalIdx = i + idx
+                    try {
+                        const buf = await downloadMedia(item.url)
+                        return {
+                            index: globalIdx,
+                            image: buf,
+                            caption: globalIdx === 0 ? caption : ''
+                        }
+                    } catch (err) {
+                        console.warn(`[AUTODL] Gagal download slide Pin #${globalIdx}:`, err?.message || err)
+                        return {
+                            index: globalIdx,
+                            image: { url: item.url },
+                            caption: globalIdx === 0 ? caption : ''
+                        }
+                    }
+                })
+            )
+            validSlides.push(...chunkResults.filter(Boolean))
+            if (i + CHUNK_SIZE < detail.slides.length) {
+                await delay(300)
             }
-        }))
+        }
 
-        const validSlides = dlSlides.filter(Boolean).sort((a, b) => a.index - b.index)
         if (validSlides.length > 0) {
+            validSlides.sort((a, b) => a.index - b.index)
             if (typeof conn.sendAlbum === 'function') {
                 try {
                     return await conn.sendAlbum(m.chat, validSlides.map(s => ({
@@ -70,7 +132,7 @@ async function handlePinterestDownload(conn, m, targetUrl) {
                         caption: s.caption
                     })), { quoted: m, delay: 500 })
                 } catch (albumErr) {
-                    console.warn('[AutoDL Pin] sendAlbum fallback:', albumErr.message)
+                    console.warn('[AUTODL] sendAlbum Pinterest fallback:', albumErr?.message)
                 }
             }
 
@@ -85,24 +147,85 @@ async function handlePinterestDownload(conn, m, targetUrl) {
         }
     }
 
-    const buffer = await downloadMedia(detail.mediaUrl).catch(async () => {
-        if (detail.fallbackUrl && detail.fallbackUrl !== detail.mediaUrl) {
-            return await downloadMedia(detail.fallbackUrl)
+    if (detail.mediaType === 'video') {
+        const estSize = await getMediaSize(detail.mediaUrl)
+        if (estSize > MAX_ABSOLUTE_VIDEO_BYTES) {
+            const sizeMB = (estSize / (1024 * 1024)).toFixed(1)
+            return await m.reply(
+                `╭── ✦ *AUTODL PINTEREST* ✦\n` +
+                `• *Status:* Video terlalu besar (${sizeMB} MB)\n` +
+                `• *Batas Maksimal:* 64 MB\n` +
+                `• Tautan langsung:\n${detail.mediaUrl}\n` +
+                `╰━━━━━━━━━━━━━━━━━━━━━━━`
+            )
         }
-        throw new Error('Gagal mengambil file media Pinterest.')
+
+        if (estSize > MAX_VIDEO_BUFFER_BYTES) {
+            const sizeMB = (estSize / (1024 * 1024)).toFixed(1)
+            console.warn(`[AUTODL] Video Pinterest (${sizeMB} MB) > 64MB, kirim langsung via dokumen stream`)
+            return await conn.sendMessage(m.chat, {
+                document: { url: detail.mediaUrl },
+                mimetype: 'video/mp4',
+                fileName: `pinterest_${Date.now()}.mp4`,
+                caption: caption + `\n\n_Catatan: Dikirim sebagai dokumen (${sizeMB} MB)._`
+            }, { quoted: m })
+        }
+
+        const buffer = await downloadMedia(detail.mediaUrl).catch(async (err) => {
+            console.warn('[AUTODL] Gagal download video Pinterest:', err?.message)
+            if (detail.fallbackUrl && detail.fallbackUrl !== detail.mediaUrl) {
+                return await downloadMedia(detail.fallbackUrl).catch(fbErr => {
+                    console.warn('[AUTODL] Gagal fallback video Pinterest:', fbErr?.message)
+                    return null
+                })
+            }
+            return null
+        })
+
+        if (buffer && buffer.length > MAX_VIDEO_BUFFER_BYTES) {
+            const sizeMB = (buffer.length / (1024 * 1024)).toFixed(1)
+            return await conn.sendMessage(m.chat, {
+                document: buffer,
+                mimetype: 'video/mp4',
+                fileName: `pinterest_${Date.now()}.mp4`,
+                caption: caption + `\n\n_Catatan: Dikirim sebagai dokumen (${sizeMB} MB)._`
+            }, { quoted: m })
+        }
+
+        const videoPayload = buffer || { url: detail.mediaUrl }
+        try {
+            return await conn.sendMessage(m.chat, {
+                video: videoPayload,
+                caption,
+                mimetype: 'video/mp4'
+            }, { quoted: m })
+        } catch (sendErr) {
+            console.warn('[AUTODL] Kirim video Pinterest gagal, fallback dokumen:', sendErr?.message)
+            return await conn.sendMessage(m.chat, {
+                document: videoPayload,
+                caption,
+                mimetype: 'video/mp4',
+                fileName: `pinterest_${Date.now()}.mp4`
+            }, { quoted: m })
+        }
+    }
+
+    const buffer = await downloadMedia(detail.mediaUrl).catch(async (err) => {
+        console.warn('[AUTODL] Gagal download media Pinterest:', err?.message)
+        if (detail.fallbackUrl && detail.fallbackUrl !== detail.mediaUrl) {
+            return await downloadMedia(detail.fallbackUrl).catch(fbErr => {
+                console.warn('[AUTODL] Gagal fallback media Pinterest:', fbErr?.message)
+                return null
+            })
+        }
+        return null
     })
 
-    if (detail.mediaType === 'video') {
-        return await conn.sendMessage(m.chat, {
-            video: buffer,
-            caption,
-            mimetype: 'video/mp4'
-        }, { quoted: m })
-    }
+    const payload = buffer || { url: detail.mediaUrl }
 
     if (detail.mediaType === 'gif') {
         return await conn.sendMessage(m.chat, {
-            video: buffer,
+            video: payload,
             caption,
             gifPlayback: true,
             mimetype: 'video/mp4'
@@ -110,7 +233,7 @@ async function handlePinterestDownload(conn, m, targetUrl) {
     }
 
     return await conn.sendMessage(m.chat, {
-        image: buffer,
+        image: payload,
         caption
     }, { quoted: m })
 }
@@ -172,11 +295,14 @@ async function handleTikTokDownload(conn, m, targetUrl) {
         ].filter(Boolean).join('\n')
 
         const albumItems = []
-        const chunkSize = 5
+        const chunkSize = 4
         for (let i = 0; i < images.length; i += chunkSize) {
             const chunk = images.slice(i, i + chunkSize)
             const chunkBuffers = await Promise.all(
-                chunk.map(imgUrl => downloadBuffer(imgUrl, 25000).catch(() => null))
+                chunk.map(imgUrl => downloadBuffer(imgUrl, 25000).catch(imgErr => {
+                    console.warn('[AUTODL] TikTok image download fallback:', imgErr?.message)
+                    return null
+                }))
             )
             chunkBuffers.forEach((buf, idx) => {
                 const originalIdx = i + idx
@@ -185,6 +311,9 @@ async function handleTikTokDownload(conn, m, targetUrl) {
                     caption: originalIdx === 0 ? captionText : ''
                 })
             })
+            if (i + chunkSize < images.length) {
+                await delay(300)
+            }
         }
 
         let albumSent = false
@@ -209,12 +338,19 @@ async function handleTikTokDownload(conn, m, targetUrl) {
 
         if (audioUrl) {
             try {
-                const audioBuffer = await downloadBuffer(audioUrl, 25000).catch(() => null)
+                const audioBuffer = await downloadBuffer(audioUrl, 25000).catch(aErr => {
+                    console.warn('[AUTODL] Audio slideshow buffer gagal:', aErr?.message)
+                    return null
+                })
                 await conn.sendMessage(m.chat, {
                     audio: audioBuffer || { url: audioUrl },
                     mimetype: 'audio/mpeg'
-                }, { quoted: m }).catch(() => {})
-            } catch {}
+                }, { quoted: m }).catch(aSendErr => {
+                    console.warn('[AUTODL] Kirim audio slideshow gagal:', aSendErr?.message)
+                })
+            } catch (audioErr) {
+                console.warn('[AUTODL] Audio slideshow process gagal:', audioErr?.message)
+            }
         }
         return
     }
@@ -228,6 +364,57 @@ async function handleTikTokDownload(conn, m, targetUrl) {
         `╰━━━━━━━━━━━━━━━━━━━━━━━`
     ].filter(Boolean).join('\n')
 
+    let estimatedSize = 0
+    if (isHD && tikwmData?.hd_size) {
+        estimatedSize = Number(tikwmData.hd_size) || 0
+    } else if (tikwmData?.size) {
+        estimatedSize = Number(tikwmData.size) || 0
+    }
+
+    if (!estimatedSize && videoUrl) {
+        estimatedSize = await getMediaSize(videoUrl)
+    }
+
+    if (estimatedSize > MAX_ABSOLUTE_VIDEO_BYTES) {
+        const sizeMB = (estimatedSize / (1024 * 1024)).toFixed(1)
+        return await m.reply(
+            `╭── ✦ *AUTODL TIKTOK* ✦\n` +
+            `• *Status:* Video terlalu besar (${sizeMB} MB)\n` +
+            `• *Batas Maksimal:* 64 MB\n` +
+            `• Tautan langsung:\n${videoUrl}\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━━━━`
+        )
+    }
+
+    if (estimatedSize > MAX_VIDEO_BUFFER_BYTES) {
+        const sizeMB = (estimatedSize / (1024 * 1024)).toFixed(1)
+        console.warn(`[AUTODL] Ukuran video TikTok (${sizeMB} MB) > 64MB, kirim langsung via dokumen stream`)
+        await conn.sendMessage(m.chat, {
+            document: { url: videoUrl },
+            mimetype: 'video/mp4',
+            fileName: `tiktok_${Date.now()}_${isHD ? 'HD' : 'SD'}.mp4`,
+            caption: captionText + `\n\n_Catatan: Dikirim sebagai dokumen (${sizeMB} MB)._`
+        }, { quoted: m })
+
+        if (audioUrl) {
+            try {
+                const audioBuffer = await downloadBuffer(audioUrl, 25000).catch(aErr => {
+                    console.warn('[AUTODL] Audio buffer TikTok gagal:', aErr?.message)
+                    return null
+                })
+                await conn.sendMessage(m.chat, {
+                    audio: audioBuffer || { url: audioUrl },
+                    mimetype: 'audio/mpeg'
+                }, { quoted: m }).catch(aSendErr => {
+                    console.warn('[AUTODL] Kirim audio TikTok gagal:', aSendErr?.message)
+                })
+            } catch (audioErr) {
+                console.warn('[AUTODL] Audio processing TikTok gagal:', audioErr?.message)
+            }
+        }
+        return
+    }
+
     let videoBuffer = null
     try {
         videoBuffer = await downloadBuffer(videoUrl)
@@ -236,41 +423,61 @@ async function handleTikTokDownload(conn, m, targetUrl) {
         if (videoSD && videoSD !== videoUrl) {
             try {
                 videoBuffer = await downloadBuffer(videoSD)
-            } catch {}
+            } catch (sdErr) {
+                console.warn('[AUTODL] TikTok SD download gagal:', sdErr?.message)
+            }
         }
     }
 
-    if (videoBuffer) {
-        const remuxed = await remuxVideoFast(videoBuffer)
-        if (remuxed) videoBuffer = remuxed
-    }
-
-    const videoPayload = videoBuffer || { url: videoUrl }
-
-    try {
+    if (videoBuffer && videoBuffer.length > MAX_VIDEO_BUFFER_BYTES) {
+        const sizeMB = (videoBuffer.length / (1024 * 1024)).toFixed(1)
+        console.warn(`[AUTODL] Buffer video TikTok (${sizeMB} MB) melebihi 64MB, kirim via dokumen`)
         await conn.sendMessage(m.chat, {
-            video: videoPayload,
-            mimetype: 'video/mp4',
-            caption: captionText
-        }, { quoted: m })
-    } catch (sendErr) {
-        console.warn('[AutoDL TikTok] Kirim video gagal, fallback ke dokumen:', sendErr?.message)
-        await conn.sendMessage(m.chat, {
-            document: videoPayload,
+            document: videoBuffer,
             mimetype: 'video/mp4',
             fileName: `tiktok_${Date.now()}_${isHD ? 'HD' : 'SD'}.mp4`,
-            caption: captionText
+            caption: captionText + `\n\n_Catatan: Dikirim sebagai dokumen (${sizeMB} MB)._`
         }, { quoted: m })
+    } else {
+        if (videoBuffer && videoBuffer.length <= 45 * 1024 * 1024) {
+            const remuxed = await remuxVideoFast(videoBuffer)
+            if (remuxed) videoBuffer = remuxed
+        }
+
+        const videoPayload = videoBuffer || { url: videoUrl }
+
+        try {
+            await conn.sendMessage(m.chat, {
+                video: videoPayload,
+                mimetype: 'video/mp4',
+                caption: captionText
+            }, { quoted: m })
+        } catch (sendErr) {
+            console.warn('[AutoDL TikTok] Kirim video gagal, fallback ke dokumen:', sendErr?.message)
+            await conn.sendMessage(m.chat, {
+                document: videoPayload,
+                mimetype: 'video/mp4',
+                fileName: `tiktok_${Date.now()}_${isHD ? 'HD' : 'SD'}.mp4`,
+                caption: captionText
+            }, { quoted: m })
+        }
     }
 
     if (audioUrl) {
         try {
-            const audioBuffer = await downloadBuffer(audioUrl, 25000).catch(() => null)
+            const audioBuffer = await downloadBuffer(audioUrl, 25000).catch(aErr => {
+                console.warn('[AUTODL] Download audio buffer gagal:', aErr?.message)
+                return null
+            })
             await conn.sendMessage(m.chat, {
                 audio: audioBuffer || { url: audioUrl },
                 mimetype: 'audio/mpeg'
-            }, { quoted: m }).catch(() => {})
-        } catch {}
+            }, { quoted: m }).catch(sendAudErr => {
+                console.warn('[AUTODL] Kirim audio gagal:', sendAudErr?.message)
+            })
+        } catch (audioErr) {
+            console.warn('[AUTODL] Audio processing gagal:', audioErr?.message)
+        }
     }
 }
 
@@ -335,7 +542,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner }) =
 
 handler.before = async function (m, { conn, usedPrefix }) {
     if (!m.text || m.isBaileys || m.fromMe) return false
-
     if (usedPrefix) return false
 
     const chat = global.db.data?.chats?.[m.chat]
@@ -344,11 +550,14 @@ handler.before = async function (m, { conn, usedPrefix }) {
     const detected = detectSupportedUrl(m.text)
     if (!detected) return false
 
-    const processKey = `${m.chat}_${m.id || detected.url}`
-    if (activeProcessing.has(processKey)) return false
-    activeProcessing.add(processKey)
+    if (activeChats.has(m.chat)) return false
 
-    setTimeout(() => activeProcessing.delete(processKey), 30000)
+    const now = Date.now()
+    const lastActive = chatCooldowns.get(m.chat) || 0
+    if (now - lastActive < COOLDOWN_MS) return false
+
+    activeChats.add(m.chat)
+    const safetyTimer = setTimeout(() => activeChats.delete(m.chat), 60000)
 
     await m.react?.('⏳').catch(() => {})
 
@@ -361,9 +570,18 @@ handler.before = async function (m, { conn, usedPrefix }) {
         await m.react?.('✅').catch(() => {})
         return true
     } catch (err) {
-        console.error(`[AUTODL ERROR - ${detected.type}]:`, err)
+        console.error(`[AUTODL ERROR - ${detected.type}]:`, err?.message || err)
         await m.react?.('❌').catch(() => {})
         return false
+    } finally {
+        clearTimeout(safetyTimer)
+        activeChats.delete(m.chat)
+        chatCooldowns.set(m.chat, Date.now())
+        setTimeout(() => {
+            if (chatCooldowns.get(m.chat) && Date.now() - chatCooldowns.get(m.chat) >= COOLDOWN_MS) {
+                chatCooldowns.delete(m.chat)
+            }
+        }, COOLDOWN_MS + 1000)
     }
 }
 

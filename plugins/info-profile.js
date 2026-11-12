@@ -42,7 +42,9 @@ async function fetchImageBuffer(url) {
                 const buf = Buffer.from(await res.arrayBuffer())
                 if (buf && buf.length > 100) return buf
             }
-        } catch {}
+        } catch (err) {
+            console.warn('[info-profile] fetchImageBuffer error:', err?.message)
+        }
     }
 
     if (Buffer.isBuffer(global.thum)) return global.thum
@@ -107,7 +109,9 @@ async function fetchWhatsAppBio(conn, pnJid, cleanJid) {
                 if (parsed.text !== 'Tidak ada bio / Privasi disembunyikan') return parsed
             }
         }
-    } catch {}
+    } catch (err) {
+        console.warn('[info-profile] fetchStatus error:', err?.message)
+    }
 
     try {
         if (typeof conn.query === 'function') {
@@ -129,7 +133,9 @@ async function fetchWhatsAppBio(conn, pnJid, cleanJid) {
                 }
             }
         }
-    } catch {}
+    } catch (err) {
+        console.warn('[info-profile] iq query status error:', err?.message)
+    }
 
     return { text: 'Tidak ada bio / Privasi disembunyikan', date: '-' }
 }
@@ -145,7 +151,9 @@ async function fetchProfilePictureUrl(conn, pnJid, cleanJid, lidJid) {
         try {
             const url = await withTimeout(conn.profilePictureUrl(jid, 'image'), 1800, null)
             if (url) return url
-        } catch {}
+        } catch (err) {
+            console.warn('[info-profile] profilePictureUrl error:', err?.message)
+        }
     }
     return null
 }
@@ -218,7 +226,9 @@ function checkIsOwner(rawNumber, pnJid, lidJid, isROwner, isSenderOwner) {
             ).get(pnJid || '', lidJid || '', `%${rawNumber}%`)
             if (row) return true
         }
-    } catch {}
+    } catch (err) {
+        console.warn('[info-profile] sqlite owners check error:', err?.message)
+    }
 
     return isSenderOwner || false
 }
@@ -259,7 +269,9 @@ let handler = async (m, { conn, text, usedPrefix, isOwner, isROwner }) => {
                 try {
                     const resolvedPn = await withTimeout(conn.getLidPN?.(cleanJid), 1200, '')
                     if (resolvedPn && resolvedPn.endsWith('@s.whatsapp.net')) pnJid = resolvedPn
-                } catch {}
+                } catch (err) {
+                    console.warn('[info-profile] getLidPN resolution error:', err?.message)
+                }
             }
         } else {
             pnJid = cleanJid.endsWith('@s.whatsapp.net') ? cleanJid : `${cleanJid.split('@')[0]}@s.whatsapp.net`
@@ -275,7 +287,9 @@ let handler = async (m, { conn, text, usedPrefix, isOwner, isROwner }) => {
                 try {
                     const resolvedLid = await withTimeout(conn.getLidPN?.(pnJid), 1200, '')
                     if (resolvedLid && resolvedLid.endsWith('@lid')) lidJid = resolvedLid
-                } catch {}
+                } catch (err) {
+                    console.warn('[info-profile] getLidPN reverse resolution error:', err?.message)
+                }
             }
         }
 

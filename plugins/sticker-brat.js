@@ -5,7 +5,8 @@ async function getBratImage(text) {
     const url = `https://api.nexray.web.id/maker/brat?text=${encodeURIComponent(text)}`
     const response = await axios.get(url, {
       responseType: 'arraybuffer',
-      headers: { 'user-agent': 'Mozilla/5.0' }
+      headers: { 'user-agent': 'Mozilla/5.0' },
+      timeout: 15000
     })
     return response.data
   } catch (error) {

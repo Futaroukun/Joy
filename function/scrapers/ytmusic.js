@@ -65,7 +65,8 @@ export function parseCookies(input = null) {
           return parts.length >= 7 ? `${parts[5]}=${parts[6]}` : line;
         })
         .join('; ');
-    } catch {
+    } catch (err) {
+      console.warn('[ytmusic] parseCookies error:', err?.message);
       return '';
     }
   }
@@ -92,7 +93,9 @@ export function parseCookies(input = null) {
             return parts.length >= 7 ? `${parts[5]}=${parts[6]}` : line;
           })
           .join('; ');
-      } catch {}
+      } catch (err) {
+        console.warn('[ytmusic] parseCookies searchPaths error:', err?.message);
+      }
     }
   }
 
@@ -424,7 +427,9 @@ export async function getAudioStream(videoIdOrUrl, options = {}) {
           contentLength: bestAudio.contentLength ? parseInt(bestAudio.contentLength, 10) : null,
           url
         };
-      } catch {}
+      } catch (err) {
+        console.warn('[ytmusic] fetchStreamForId error:', err?.message);
+      }
     }
     return null;
   }
@@ -453,7 +458,9 @@ export async function getAudioStream(videoIdOrUrl, options = {}) {
           if (s) return s;
         }
       }
-    } catch {}
+    } catch (err) {
+      console.warn('[ytmusic] oembed fallback search error:', err?.message);
+    }
   }
 
   return null;
@@ -471,7 +478,6 @@ export async function getLyrics(videoIdOrUrl, options = {}) {
   }
   if (!videoId) throw new Error('Invalid YouTube video ID or URL');
 
-  // 1. YouTube Music Official Lyrics
   try {
     const nextData = await apiRequest('next', { videoId }, options);
     const tabs = nextData.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs || [];
@@ -494,9 +500,10 @@ export async function getLyrics(videoIdOrUrl, options = {}) {
         };
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[ytmusic] ytmusic official lyrics error:', err?.message);
+  }
 
-  // 2. Fallback ke LRCLIB
   try {
     const track = await getTrack(videoId, { ...options, skipAudio: true }).catch(() => null);
     const trackName = track?.title || fallbackQuery || '';
@@ -522,7 +529,9 @@ export async function getLyrics(videoIdOrUrl, options = {}) {
         }
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[ytmusic] lrclib lyrics error:', err?.message);
+  }
 
   return {
     videoId,
@@ -1038,7 +1047,8 @@ async function downloadViaSaveTube(videoId) {
       duration: dec.durationLabel,
       buffer: rawBuf
     };
-  } catch {
+  } catch (err) {
+    console.warn('[ytmusic] downloadViaSaveTube error:', err?.message);
     return null;
   }
 }
@@ -1065,7 +1075,6 @@ export async function download(urlOrId, options = {}) {
   let audio = null;
   let effectiveId = null;
 
-  // 1. Coba ambil stream langsung dari Innertube VisionOS untuk setiap kandidat
   for (const candId of candidates) {
     try {
       audio = await getAudioStream(candId, options);
@@ -1073,7 +1082,9 @@ export async function download(urlOrId, options = {}) {
         effectiveId = candId;
         break;
       }
-    } catch {}
+    } catch (err) {
+      console.warn('[ytmusic] download getAudioStream candidate error:', err?.message);
+    }
   }
 
   let buffer = null;
@@ -1086,7 +1097,6 @@ export async function download(urlOrId, options = {}) {
     track = resolvedTrack || {};
   }
 
-  // 2. Fallback SaveTube jika direct Innertube gagal
   if (!audio?.url) {
     for (const candId of candidates.slice(0, 3)) {
       try {
@@ -1102,7 +1112,9 @@ export async function download(urlOrId, options = {}) {
           };
           break;
         }
-      } catch {}
+      } catch (err) {
+        console.warn('[ytmusic] download via SaveTube candidate error:', err?.message);
+      }
     }
   }
 

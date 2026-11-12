@@ -44,6 +44,7 @@ function debouncedSave() {
         saveCooldownData()
         saveTimeout = null
     }, SAVE_DEBOUNCE_MS)
+    if (saveTimeout?.unref) saveTimeout.unref()
 }
 
 // ─── Load / Save ──────────────────────────────────────────────────────────────

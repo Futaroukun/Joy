@@ -6,6 +6,226 @@ import { withTimeout } from '../queue.js';
 import { handleDidYouMean } from '../../events/didyoumean.js';
 import { createErrorReporter } from './diagnostics.js';
 
+const str2Regex = str => str.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&");
+
+export function extractExactCommands(cmd) {
+    if (typeof cmd === 'string') {
+        return [cmd.toLowerCase()];
+    }
+    if (Array.isArray(cmd)) {
+        const list = [];
+        for (const c of cmd) {
+            if (typeof c === 'string') {
+                list.push(c.toLowerCase());
+            } else if (c instanceof RegExp) {
+                const sub = extractExactCommands(c);
+                if (sub) list.push(...sub);
+                else return null;
+            }
+        }
+        return list;
+    }
+    if (cmd instanceof RegExp) {
+        let src = cmd.source;
+        if (!src.startsWith('^') || !src.endsWith('$')) return null;
+        let inner = src.slice(1, -1);
+        if (inner.startsWith('(') && inner.endsWith(')')) inner = inner.slice(1, -1);
+        if (/[+*?{\\\[\]().^$]/.test(inner)) return null;
+        return inner.split('|').map(s => s.toLowerCase());
+    }
+    return null;
+}
+
+let pluginIndexCache = null;
+let lastPluginsRef = null;
+let lastPluginsCount = 0;
+
+export function getPluginIndex(plugins = global.plugins) {
+    const currentPluginsCount = plugins && typeof plugins === 'object' ? Object.keys(plugins).length : 0;
+    if (pluginIndexCache && lastPluginsRef === plugins && lastPluginsCount === currentPluginsCount && currentPluginsCount > 0) {
+        return pluginIndexCache;
+    }
+    lastPluginsRef = plugins;
+    lastPluginsCount = currentPluginsCount;
+
+    const commandMap = new Map();
+    const regexPlugins = [];
+    const customPrefixPlugins = [];
+    const beforePlugins = [];
+
+    if (plugins && typeof plugins === 'object') {
+        for (const name in plugins) {
+            const plugin = plugins[name];
+            if (!plugin || plugin.disable) continue;
+
+            const entry = { name, plugin };
+
+            if (plugin.customPrefix) {
+                if (!plugin._compiledPrefixes) {
+                    const cp = plugin.customPrefix;
+                    if (cp instanceof RegExp) {
+                        plugin._compiledPrefixes = [cp];
+                    } else if (Array.isArray(cp)) {
+                        plugin._compiledPrefixes = cp.map(p => (p instanceof RegExp ? p : new RegExp(str2Regex(p))));
+                    } else if (typeof cp === "string") {
+                        plugin._compiledPrefixes = [new RegExp(str2Regex(cp))];
+                    } else {
+                        plugin._compiledPrefixes = [];
+                    }
+                }
+                customPrefixPlugins.push(entry);
+            }
+
+            if (typeof plugin.before === 'function') {
+                beforePlugins.push(entry);
+            }
+
+            if (typeof plugin !== 'function' && typeof plugin.run !== 'function') {
+                continue;
+            }
+
+            if (plugin.customPrefix && !plugin.command) {
+                continue;
+            }
+
+            const exactCmds = extractExactCommands(plugin.command);
+            if (exactCmds && exactCmds.length > 0) {
+                for (const cmd of exactCmds) {
+                    if (!commandMap.has(cmd)) {
+                        commandMap.set(cmd, entry);
+                    }
+                }
+            } else if (plugin.command) {
+                if (plugin.command instanceof RegExp && (plugin.command.source === '(?:)' || plugin.command.source === '' || plugin.command.test(''))) {
+                    continue;
+                }
+                regexPlugins.push(entry);
+            }
+        }
+    }
+
+    pluginIndexCache = {
+        commandMap,
+        regexPlugins,
+        customPrefixPlugins,
+        beforePlugins
+    };
+    return pluginIndexCache;
+}
+
+export function rebuildPluginIndex(plugins = global.plugins) {
+    pluginIndexCache = null;
+    return getPluginIndex(plugins);
+}
+global.rebuildPluginIndex = rebuildPluginIndex;
+
+export function matchPluginCommand(command, pluginIndex) {
+    if (!command || !pluginIndex) return null;
+    const foundEntry = pluginIndex.commandMap?.get(command);
+    if (foundEntry && !foundEntry.plugin?.disable) {
+        return foundEntry;
+    }
+    if (pluginIndex.regexPlugins) {
+        for (let i = 0; i < pluginIndex.regexPlugins.length; i++) {
+            const item = pluginIndex.regexPlugins[i];
+            if (item.plugin?.disable) continue;
+            const cmd = item.plugin.command;
+            let isAccept = false;
+            if (cmd instanceof RegExp) {
+                isAccept = cmd.test(command);
+            } else if (Array.isArray(cmd)) {
+                for (let j = 0; j < cmd.length; j++) {
+                    const c = cmd[j];
+                    if (c instanceof RegExp ? c.test(command) : c === command) {
+                        isAccept = true;
+                        break;
+                    }
+                }
+            }
+            if (isAccept) return item;
+        }
+    }
+    return null;
+}
+
+export function checkPermissionGuards(plugin, m, conn, ctx = {}) {
+    const {
+        isROwner = false,
+        isOwner = false,
+        isRAdmin = false,
+        isAdmin = false,
+        isBotAdmin = false,
+        isPremium = false,
+        isBannned = false,
+        isMuted = false,
+        isRegister = false,
+        user = {}
+    } = ctx;
+
+    if (isMuted && (!isROwner || !isAdmin)) return { passed: false, reason: 'muted' };
+    if (isBannned && (!isROwner || !isOwner)) return { passed: false, reason: 'banned' };
+
+    if (plugin.rowner && plugin.owner) {
+        if (!(isROwner || isOwner)) {
+            if (typeof global.dFail === 'function') global.dFail("owner", m, conn);
+            return { passed: false, reason: 'owner' };
+        }
+    } else if (plugin.rowner && !isROwner) {
+        if (typeof global.dFail === 'function') global.dFail("rowner", m, conn);
+        return { passed: false, reason: 'rowner' };
+    } else if (plugin.owner && !isOwner) {
+        if (typeof global.dFail === 'function') global.dFail("owner", m, conn);
+        return { passed: false, reason: 'owner' };
+    }
+
+    if (plugin.premium && !isPremium) {
+        if (typeof global.dFail === 'function') global.dFail("premium", m, conn);
+        return { passed: false, reason: 'premium' };
+    }
+
+    if (plugin.limit && !isPremium && !isOwner) {
+        const requiredLimit = typeof plugin.limit === 'number' ? plugin.limit : 1;
+        if ((user?.limit || 0) < requiredLimit) {
+            if (typeof global.dFail === 'function') global.dFail("limit", m, conn);
+            return { passed: false, reason: 'limit' };
+        }
+    }
+
+    if (plugin.group && !m.isGroup) {
+        if (typeof global.dFail === 'function') global.dFail("group", m, conn);
+        return { passed: false, reason: 'group' };
+    } else if (plugin.botAdmin && !isBotAdmin) {
+        if (typeof global.dFail === 'function') global.dFail("botAdmin", m, conn);
+        return { passed: false, reason: 'botAdmin' };
+    } else if (plugin.admin && !isAdmin) {
+        if (typeof global.dFail === 'function') global.dFail("admin", m, conn);
+        return { passed: false, reason: 'admin' };
+    }
+
+    if (plugin.private && m.isGroup) {
+        if (typeof global.dFail === 'function') global.dFail("private", m, conn);
+        return { passed: false, reason: 'private' };
+    }
+    if (plugin.register && !isRegister) {
+        if (typeof global.dFail === 'function') global.dFail("unreg", m, conn);
+        return { passed: false, reason: 'unreg' };
+    }
+    if (plugin.restrict) {
+        if (typeof global.dFail === 'function') global.dFail("restrict", m, conn);
+        return { passed: false, reason: 'restrict' };
+    }
+
+    if (plugin.requiredFiles) {
+        const isOk = checkFiles(m, plugin.requiredFiles, {
+            checkNotEmpty: plugin.requireNotEmpty || false,
+            customMsg: plugin.missingMsg || null
+        });
+        if (!isOk) return { passed: false, reason: 'requiredFiles' };
+    }
+
+    return { passed: true, reason: null };
+}
+
 export async function executeBeforeHooks(conn, m, pluginIndex, ctx) {
     const {
         defaultMatch,
@@ -174,36 +394,7 @@ export async function dispatchCommand(conn, m, pluginIndex, ctx) {
         _args = noPrefix.trim().split(` `).slice(1);
         args = text ? text.split(/\s+/) : [];
 
-        // 1. Direct O(1) Map Lookup
-        const foundEntry = pluginIndex.commandMap.get(command);
-        if (foundEntry && !foundEntry.plugin.disable) {
-            targetEntry = foundEntry;
-        }
-
-        // 2. Fallback Regex Plugins
-        if (!targetEntry) {
-            for (let i = 0; i < pluginIndex.regexPlugins.length; i++) {
-                const item = pluginIndex.regexPlugins[i];
-                if (item.plugin.disable) continue;
-                const cmd = item.plugin.command;
-                let isAccept = false;
-                if (cmd instanceof RegExp) {
-                    isAccept = cmd.test(command);
-                } else if (Array.isArray(cmd)) {
-                    for (let j = 0; j < cmd.length; j++) {
-                        const c = cmd[j];
-                        if (c instanceof RegExp ? c.test(command) : c === command) {
-                            isAccept = true;
-                            break;
-                        }
-                    }
-                }
-                if (isAccept) {
-                    targetEntry = item;
-                    break;
-                }
-            }
-        }
+        targetEntry = matchPluginCommand(command, pluginIndex);
     }
 
     // C. Eksekusi Plugin yang cocok
@@ -211,66 +402,19 @@ export async function dispatchCommand(conn, m, pluginIndex, ctx) {
         const { name, plugin } = targetEntry;
         m.plugin = name;
 
-        if (isMuted && (!isROwner || !isAdmin)) return true;
-        if (isBannned && (!isROwner || !isOwner)) return true;
-
-        if (plugin.rowner && plugin.owner) {
-            if (!(isROwner || isOwner)) {
-                global.dFail("owner", m, conn);
-                return true;
-            }
-        } else if (plugin.rowner && !isROwner) {
-            global.dFail("rowner", m, conn);
-            return true;
-        } else if (plugin.owner && !isOwner) {
-            global.dFail("owner", m, conn);
-            return true;
-        }
-
-        if (plugin.premium && !isPremium) {
-            global.dFail("premium", m, conn);
-            return true;
-        }
-
-        if (plugin.limit && !isPremium && !isOwner) {
-            const requiredLimit = typeof plugin.limit === 'number' ? plugin.limit : 1;
-            if ((user?.limit || 0) < requiredLimit) {
-                global.dFail("limit", m, conn);
-                return true;
-            }
-        }
-
-        if (plugin.group && !m.isGroup) {
-            global.dFail("group", m, conn);
-            return true;
-        } else if (plugin.botAdmin && !isBotAdmin) {
-            global.dFail("botAdmin", m, conn);
-            return true;
-        } else if (plugin.admin && !isAdmin) {
-            global.dFail("admin", m, conn);
-            return true;
-        }
-
-        if (plugin.private && m.isGroup) {
-            global.dFail("private", m, conn);
-            return true;
-        }
-        if (plugin.register && !isRegister) {
-            global.dFail("unreg", m, conn);
-            return true;
-        }
-        if (plugin.restrict) {
-            global.dFail("restrict", m, conn);
-            return true;
-        }
-
-        if (plugin.requiredFiles) {
-            const isOk = checkFiles(m, plugin.requiredFiles, {
-                checkNotEmpty: plugin.requireNotEmpty || false,
-                customMsg: plugin.missingMsg || null
-            });
-            if (!isOk) return true;
-        }
+        const guardResult = checkPermissionGuards(plugin, m, conn, {
+            isROwner,
+            isOwner,
+            isRAdmin,
+            isAdmin,
+            isBotAdmin,
+            isPremium,
+            isBannned,
+            isMuted,
+            isRegister,
+            user
+        });
+        if (!guardResult.passed) return true;
 
         m.isCommand = true;
 

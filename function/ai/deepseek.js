@@ -266,7 +266,8 @@ class DeepSeek {
     accountFile = null,
     tokenFile = null,
     clientVersion = '2.3.0',
-    headers = {}
+    headers = {},
+    timeout = 60000
   } = {}) {
     this.accountFile = accountFile || path.join(__dirname, '../../data/deepseek-account.json');
     this.tokenFile = tokenFile || path.join(__dirname, '../../data/deepseek-token.json');
@@ -277,6 +278,7 @@ class DeepSeek {
     this.deviceId = deviceId || process.env.DEEPSEEK_DEVICE_ID || acc.deviceId || "7865329968002107661";
     this.clientVersion = clientVersion;
     this.customHeaders = headers;
+    this.timeout = timeout;
 
     // Inisialisasi token
     this.auth = auth || this.loadSavedToken();
@@ -360,7 +362,8 @@ class DeepSeek {
         'x-rangers-id': this.deviceId,
         'accept-charset': 'UTF-8'
       },
-      validateStatus: () => true
+      validateStatus: () => true,
+      timeout: this.timeout
     });
 
     const body = res.data;
@@ -388,7 +391,8 @@ class DeepSeek {
       target_path: path
     }, {
       headers: this.headers,
-      validateStatus: () => true
+      validateStatus: () => true,
+      timeout: this.timeout
     });
 
     // Tangani token expired / missing token
@@ -397,7 +401,8 @@ class DeepSeek {
       pow = await axios.post("https://chat.deepseek.com/api/v0/chat/create_pow_challenge", {
         target_path: path
       }, {
-        headers: this.headers
+        headers: this.headers,
+        timeout: this.timeout
       });
     }
 
@@ -430,7 +435,8 @@ class DeepSeek {
       agent
     }, {
       headers: this.headers,
-      validateStatus: () => true
+      validateStatus: () => true,
+      timeout: this.timeout
     });
 
     if (res.data?.code === 40002 || res.data?.code === 40003) {
@@ -438,7 +444,8 @@ class DeepSeek {
       res = await axios.post("https://chat.deepseek.com/api/v0/chat_session/create", {
         agent
       }, {
-        headers: this.headers
+        headers: this.headers,
+        timeout: this.timeout
       });
     }
 
@@ -478,7 +485,8 @@ class DeepSeek {
         ...this.headers,
         'x-ds-pow-response': signature,
       },
-      validateStatus: () => true
+      validateStatus: () => true,
+      timeout: this.timeout
     });
 
     // Tangani token expired di completion
@@ -497,7 +505,8 @@ class DeepSeek {
         headers: {
           ...this.headers,
           'x-ds-pow-response': retrySig,
-        }
+        },
+        timeout: this.timeout
       });
     }
 
@@ -513,7 +522,7 @@ class DeepSeek {
   }
 
   async uploadFile(url) {
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    const response = await axios.get(url, { responseType: 'arraybuffer', timeout: this.timeout });
     if (response.status !== 200) throw new Error("Gagal mengunduh buffer file.");
 
     const mimetype = response.headers["content-type"] || "";
@@ -536,7 +545,8 @@ class DeepSeek {
         'Content-Type': undefined,
         'x-ds-pow-response': signature,
         ...data.getHeaders()
-      }
+      },
+      timeout: this.timeout
     });
 
     if (res.status !== 200) return null;
@@ -544,7 +554,8 @@ class DeepSeek {
     const file_id = res.data.data.biz_data.id;
     for (let attempt = 1; attempt <= 5; attempt++) {
       const { data } = await axios.get(`https://chat.deepseek.com/api/v0/file/fetch_files?file_ids=${file_id}`, {
-        headers: this.headers
+        headers: this.headers,
+        timeout: this.timeout
       });
 
       const file = data?.data?.biz_data?.files?.[0];

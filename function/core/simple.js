@@ -1029,8 +1029,8 @@ export function makeWASocket(connectionOptions, options = {}) {
                   tmpManager.deleteFile(pathFile)
                }
                file = null;
-               return m;
             }
+            return m;
          },
          enumerable: true
       },
