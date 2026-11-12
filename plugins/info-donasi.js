@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Donasi
-- @Description: Kirim info donasi beserta QRIS.
-*/
-
 import { readFileSync } from 'fs'
 import { join } from 'path'
 

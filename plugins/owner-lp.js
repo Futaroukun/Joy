@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : List Installed Plugins
- * @Description : Menampilkan daftar seluruh plugin yang terpasang beserta ukuran file dan status keaktifannya.
- * @Version     : 2.1 (No Decorational Emoji & Clean Overview)
- */
 
 import { readdirSync, statSync } from 'fs'
 import { join } from 'path'

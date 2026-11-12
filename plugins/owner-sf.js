@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Save Plugin & File
- * @Description : Menyimpan kode atau media langsung ke file/plugin tujuan dengan verifikasi sintaks JavaScript otomatis.
- * @Version     : 2.1 (No Decorational Emoji & Strict Syntax Validation)
- */
 
 import fs from 'fs';
 import path from 'path';

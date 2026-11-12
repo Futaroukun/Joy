@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Plugin Control Switch
- * @Description : Mengaktifkan atau menonaktifkan plugin tertentu dari sistem tanpa menghapus filenya.
- * @Version     : 2.1 (No Decorational Emoji & Safe Core Protection)
- */
 
 import { readdirSync } from 'fs';
 import { join } from 'path';

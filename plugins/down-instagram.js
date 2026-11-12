@@ -1,13 +1,5 @@
-/*
- * @Author      : Rafli
- * @Feature     : Instagram Downloader
- * @Description : Download Reels, Posts, dan Carousel Instagram via Nexray Engine (High-Speed & Direct Buffer).
- * @Version     : 6.0 (Nexray High-Speed)
- */
-
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
-// ── URL Extractor ─────────────────────────────────────────────────────────────
 const extractInstagramUrl = (text = '') => {
   const regex = /(https?:\/\/(?:www\.)?instagram\.com\/(p|reel|tv|stories)\/[a-zA-Z0-9_\-]+\/?)/i
   return text.match(regex)?.[0] || null
@@ -18,7 +10,6 @@ const guessMediaType = (url = '') => {
   return 'image'
 }
 
-// ── 1. Nexray API Engine ──────────────────────────────────────────────────────
 const downloadViaNexray = async (url) => {
   const target = url.trim()
   const apiUrl = `https://api.nexray.web.id/api/downloader/instagram?url=${encodeURIComponent(target)}`
@@ -61,7 +52,6 @@ const downloadViaNexray = async (url) => {
   }
 }
 
-// ── Handler Utama ──────────────────────────────────────────────────────────────
 let handler = async (m, { conn, text, usedPrefix, command }) => {
   const input = m.quoted?.text || text || ''
 
@@ -112,7 +102,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       `• *Total Media:* ${mediaList.length}\n` +
       `╰━━━━━━━━━━━━━━━━━━━━━━━`
 
-    // ── SINGLE MEDIA ──────────────────────────────────────────────────────────
     if (mediaList.length === 1) {
       const item = mediaList[0]
       const msgType = item.type === 'video' ? 'video' : 'image'
@@ -122,7 +111,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         mimetype: item.type === 'video' ? 'video/mp4' : 'image/jpeg'
       }, { quoted: m })
 
-    // ── CAROUSEL / MULTIPLE MEDIA ──────────────────────────────────────────────
     } else {
       let albumSent = false
 
@@ -139,7 +127,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
       }
 
-      // Fallback: kirim satu per satu
       if (!albumSent) {
         for (let i = 0; i < mediaList.length; i++) {
           const item = mediaList[i]

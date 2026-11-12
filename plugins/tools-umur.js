@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : User Age, Life Analytics & Astrology Engine
- * @Description : Menghitung umur detail, akumulasi masa hidup, astrologi zodiak & shio, weton Jawa kuno, serta countdown ulang tahun berikutnya.
- * @Version     : 3.0 (Strict Registration Linkage, Weton Jawa & No Direct Edit)
- */
-
 import moment from 'moment-timezone'
 
 const ZODIAC_LIST = [
@@ -53,7 +46,7 @@ function getWeton(dateObj) {
     const pasarans = ['Legi', 'Pahing', 'Pon', 'Wage', 'Kliwon']
     const hariArr = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 
-    const baseDate = new Date(Date.UTC(1945, 7, 17)) // 17 Agustus 1945 = Jumat Legi
+    const baseDate = new Date(Date.UTC(1945, 7, 17))
     const targetDate = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()))
 
     const diffDays = Math.round((targetDate - baseDate) / (1000 * 60 * 60 * 24))
@@ -161,7 +154,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const args = (text || '').trim().split(/\s+/)
     const sub = args[0]?.toLowerCase()
 
-    // ── 1. CEK USIA PENGGUNA LAIN (MENTION ATAU QUOTED) ───────────────────────
     let targetJid = null
     if (m.mentionedJid && m.mentionedJid[0]) {
         targetJid = m.mentionedJid[0]
@@ -192,7 +184,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         return m.reply(textOutput, { mentions: [targetJid] })
     }
 
-    // ── 2. MODE HITUNG TANGGAL SPONTAN (CEK / CALC TANPA UBAH DATABASE) ───────
     if (sub === 'cek' || sub === 'calc') {
         const dateString = args.slice(1).join(' ')
         if (!dateString) {
@@ -223,7 +214,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         return m.reply(textOutput)
     }
 
-    // ── 3. DETEKSI UPAYA SET/EDIT LANGSUNG VIA .UMUR ───────────────────────────
     if (text) {
         return m.reply(
             `╭── ✦ *PENGATURAN UMUR TERPUSAT* ✦\n` +
@@ -239,7 +229,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         )
     }
 
-    // ── 4. TAMPILKAN DATA STATISTIK USER DARI DATABASE ────────────────────────
     if (!user.register || !user.birthdate || user.age === -1) {
         return m.reply(
             `╭── ✦ *STATISTIK USIA* ✦\n` +

@@ -1,9 +1,3 @@
-/*
- * @Author     : Rafli & Antigravity
- * @Feature    : Auto Open & Close Group Configuration
- * @Description: Pengaturan jadwal buka dan tutup grup otomatis setiap hari dengan waktu kustom admin.
- */
-
 import moment from 'moment-timezone'
 
 function parseTime(input) {
@@ -33,7 +27,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     const sub = args[0]?.toLowerCase()
     const nowWib = moment.tz('Asia/Jakarta').format('HH:mm')
 
-    // Tampilkan Status dan Panduan
     if (!sub || sub === 'status' || sub === 'info') {
         const statusText = chat.autoOpenClose ? '*AKTIF*' : '*NONAKTIF*'
         const openTime = chat.openTime || '06:00'
@@ -58,7 +51,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         return m.reply(text)
     }
 
-    // Aktifkan Fitur
     if (/^(on|enable|aktif|1|true)$/i.test(sub)) {
         if (chat.autoOpenClose) {
             return m.reply(`Jadwal buka tutup grup sudah dalam status *AKTIF*.\nJam Buka: *${chat.openTime} WIB*\nJam Tutup: *${chat.closeTime} WIB*`)
@@ -68,7 +60,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         return m.reply(`╭── ✦ *JADWAL GRUP DIAKTIFKAN* ✦\n• Jam Buka: *${chat.openTime || '06:00'} WIB*\n• Jam Tutup: *${chat.closeTime || '21:00'} WIB*\n• Mode: Berjalan otomatis setiap hari\n╰━━━━━━━━━━━━━━━━━━━━━━━`)
     }
 
-    // Nonaktifkan Fitur
     if (/^(off|disable|nonaktif|0|false)$/i.test(sub)) {
         if (!chat.autoOpenClose) {
             return m.reply('Jadwal buka tutup grup sudah dalam status *NONAKTIF*.')
@@ -78,7 +69,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         return m.reply(`╭── ✦ *JADWAL GRUP DINONAKTIFKAN* ✦\n• Status: Jadwal otomatis buka/tutup grup telah dimatikan.\n• Pengaturan grup sekarang sepenuhnya manual.\n╰━━━━━━━━━━━━━━━━━━━━━━━`)
     }
 
-    // Atur Buka dan Tutup Sekaligus: set <buka> <tutup> atau langsung <jamBuka> <jamTutup>
     let openInput = ''
     let closeInput = ''
 
@@ -110,7 +100,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         return m.reply(`╭── ✦ *JADWAL BERHASIL DIATUR* ✦\n• Jam Buka: *${parsedOpen} WIB*\n• Jam Tutup: *${parsedClose} WIB*\n• Status: *AKTIF*\n• Berjalan otomatis setiap hari kecuali dinonaktifkan.\n╰━━━━━━━━━━━━━━━━━━━━━━━`)
     }
 
-    // Atur Jam Buka Saja
     if (/^(buka|open)$/i.test(sub)) {
         const timeInput = args[1]
         const parsed = parseTime(timeInput)
@@ -123,7 +112,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         return m.reply(`╭── ✦ *WAKTU BUKA DIPERBARUI* ✦\n• Jam Buka Baru: *${parsed} WIB*\n• Jam Tutup: *${chat.closeTime || '21:00'} WIB*\n• Status: *${chat.autoOpenClose ? 'AKTIF' : 'NONAKTIF'}*\n╰━━━━━━━━━━━━━━━━━━━━━━━`)
     }
 
-    // Atur Jam Tutup Saja
     if (/^(tutup|close)$/i.test(sub)) {
         const timeInput = args[1]
         const parsed = parseTime(timeInput)

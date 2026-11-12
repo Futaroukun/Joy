@@ -14,7 +14,7 @@
     <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-v20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"></a>
     <a href="https://github.com/WhiskeySockets/Baileys"><img src="https://img.shields.io/badge/Baileys-v0.4.1-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="Baileys"></a>
     <a href="https://sqlite.org"><img src="https://img.shields.io/badge/Database-SQLite%20WAL-0284C7?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite"></a>
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Non--Commercial-EF4444?style=for-the-badge&logo=open-source-initiative&logoColor=white" alt="License"></a>
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-SCPU--NC-EF4444?style=for-the-badge" alt="License SCPU-NC"></a>
     <img src="https://img.shields.io/badge/Platform-Termux%20%7C%20Linux%20%7C%20VPS-F59E0B?style=for-the-badge&logo=linux&logoColor=white" alt="Platform">
   </p>
 
@@ -244,7 +244,7 @@ Joy/
 
 ## 📜 Lisensi & Ketentuan Penggunaan
 
-Proyek ini dilindungi oleh hak cipta di bawah ketentuan resmi [**SOURCE CODE PROTECTION & USAGE POLICY**](./LICENSE):
+Proyek ini dilindungi oleh hak cipta di bawah ketentuan resmi [**SCPU-NC (Source Code Protection & Usage Policy - Non-Commercial)**](./LICENSE):
 
 > [!IMPORTANT]
 > 1. **Modifikasi Terbatas (Minor Modifications Only):** Anda hanya diperkenankan mengubah konfigurasi atau menambah plugin untuk penggunaan pribadi. Dilarang merombak total kode sumber untuk diklaim sebagai karya pribadi (*re-branding / plagiarisme*).

@@ -1,9 +1,3 @@
-/*
- - @Author: Antigravity
- - @Feature: Autonomous AI Developer Agent
- - @Description: AI Agent Developer dengan akses penuh (full system access: shell, node runtime, files, web fetch)
-*/
-
 import fs from "fs";
 import path from "path";
 import axios from "axios";
@@ -20,9 +14,6 @@ const execPromise = util.promisify(exec);
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-// ============================================
-// 1. PROVIDER CONFIG & ENDPOINT
-// ============================================
 const AI = {
     API_KEYS: ["REDACTED_KEY"],
     BASE_URL: "https://69roynaldi-sangjuara-router.irengcloud.com/v1",
@@ -39,9 +30,6 @@ const runningSessions = new Set();
 const log = (msg, data) =>
     console.log(`[AI-AGENT] ${new Date().toISOString()}: ${msg}`, data ? data : "");
 
-// ============================================
-// 2. SQLITE SESSION PERSISTENCE
-// ============================================
 const db = new Database(DB_PATH);
 db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -63,7 +51,6 @@ const sessions = {
     },
     set(chatId, history) {
         try {
-            // Bersihkan data yang terlalu besar sebelum disimpan
             const trimmed = history.slice(-20);
             const payload = JSON.stringify(trimmed);
             db.prepare(`
@@ -84,9 +71,6 @@ const sessions = {
     }
 };
 
-// ============================================
-// 3. FULL ACCESS TOOLS & SCHEMA
-// ============================================
 const resolvePath = p => (path.isAbsolute(p) ? p : path.join(ROOT, p));
 
 const TOOL_DEFS = [
@@ -208,7 +192,8 @@ const TOOL_DEFS = [
 ];
 
 const TOOLS = {
-    execute_command: async ({ command }) => {
+    execute_command: async ({ command }, context) => {
+        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer/Real Owner yang berhak mengeksekusi shell command.");
         try {
             const { stdout, stderr } = await execPromise(command, {
                 timeout: 60000,
@@ -227,6 +212,7 @@ const TOOLS = {
     },
 
     run_javascript: async ({ code }, context) => {
+        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer/Real Owner yang berhak mengeksekusi kode JavaScript.");
         const fn = new Function(
             "conn",
             "m",
@@ -317,9 +303,6 @@ PRINSIP KERJA & EFISIENSI:
 4. MINIMAL EMOJI: Gunakan format WhatsApp rapi (bold *, inline code \`, bullet •, border ╭── ✦ *JUDUL* ✦ dan ╰━━━━━━━━━━━━━━━━━━━━━━━).
 5. VERIFIKASI SINTAKS: Jika memodifikasi kode, pastikan dicek dengan execute_command (\`node --check <file>\`).`;
 
-// ============================================
-// 4. STREAMING CHAT & AGENT LOOP
-// ============================================
 function mergeToolDeltas(acc, deltas) {
     for (const delta of deltas) {
         const idx = Number.isInteger(delta?.index) ? delta.index : 0;
@@ -500,7 +483,6 @@ async function runAgentLoop(history, context) {
     for (let step = 0; step < AI.MAX_STEPS; step++) {
         log(`Step ${step + 1}/${AI.MAX_STEPS} memproses...`);
 
-        // Pada langkah terakhir, jangan berikan tools agar model dipaksa menyimpulkan jawaban
         const isFinalStep = step === AI.MAX_STEPS - 1;
         const payload = {
             model: AI.MODEL,
@@ -510,7 +492,6 @@ async function runAgentLoop(history, context) {
         };
 
         if (step >= 5) {
-            // Nudge model agar segera menyimpulkan
             payload.messages.push({
                 role: "system",
                 content: "Investigasi hampir selesai. Jangan jalankan tool lagi jika data esensial sudah cukup; segera tulis analisis dan kesimpulan akhir."
@@ -519,7 +500,6 @@ async function runAgentLoop(history, context) {
 
         const { message } = await requestAI(payload);
 
-        // Bersihkan assistant message untuk history tanpa reasoning_content agar hemat token
         const cleanAssistantMsg = {
             role: "assistant",
             content: message.content || null,
@@ -594,14 +574,10 @@ async function runAgentLoop(history, context) {
     return "Selesai memproses tugas.";
 }
 
-// ============================================
-// 5. HANDLER JOY BOT
-// ============================================
 const handler = async (m, context) => {
     const { args, text, usedPrefix, command, chat } = context;
     const subCmd = (args[0] || "").toLowerCase();
 
-    // ── Subcommand: Reset ─────────────────────
     if (subCmd === "reset") {
         sessions.delete(chat);
         try { await m.react("🧹"); } catch (_) {}
@@ -612,7 +588,6 @@ const handler = async (m, context) => {
         );
     }
 
-    // ── Subcommand: Status ────────────────────
     if (subCmd === "status") {
         return m.reply(
             `╭── ✦ *AI AGENT STATUS* ✦\n` +
@@ -681,8 +656,7 @@ const handler = async (m, context) => {
 handler.help = ['agent *<instruksi>*'];
 handler.tags = ["ai", "owner"];
 handler.command = /^(agent|aiagent|cai|deepseek)$/i;
-handler.owner = true;
-// Matikan batas waktu timeout 60s bawaan queue.js Joy untuk AI Agent multi-step
+handler.rowner = true;
 handler.timeout = false;
 
 export default handler;

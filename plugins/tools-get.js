@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Web Fetcher & HTTP Client
- * @Description : Mengambil konten URL (JSON, HTML, XML, Media, Dokumen) langsung ke WhatsApp dengan auto-document untuk output besar.
- * @Version     : 3.0 (Stream Optimization, Large Output Auto-Doc & Clean Format)
- */
-
 import fetch from 'node-fetch'
 import https from 'https'
 import mime from 'mime-types'
@@ -15,7 +8,7 @@ import { pipeline } from 'stream/promises'
 
 const CFG = {
     timeout: 30000,
-    maxSize: 100 * 1024 * 1024, // 100 MB
+    maxSize: 100 * 1024 * 1024,
     maxTextLen: 3500,
     retries: 2,
     ua: [
@@ -216,7 +209,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args, isOwner }) => {
         )
     }
 
-    // Penanganan mode HEAD
     if (isHead) {
         await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
         const headersList = []
@@ -236,7 +228,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args, isOwner }) => {
     const ct = (res.headers.get('content-type') || '').toLowerCase()
     const finalUrl = res.url
 
-    // Cek media biner atau unduhan berkas
     const isMedia = /^(image|video|audio)\//.test(ct)
     const isDoc = /^(application\/(pdf|zip|x-tar|x-rar|x-7z|octet-stream|gzip|vnd\.))/i.test(ct)
 
@@ -245,7 +236,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args, isOwner }) => {
         return streamFileToChat(conn, m.chat, res, ct || 'application/octet-stream', finalUrl, m)
     }
 
-    // Tangani teks / data terstruktur
     let rawText = ''
     try {
         rawText = await res.text()
@@ -261,7 +251,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args, isOwner }) => {
     const isXml = ct.includes('xml') || ct.includes('rss') || /^<\?xml/i.test(trimmed)
     const isHtml = ct.includes('html') || /<!doctype\s*html|<html/i.test(trimmed)
 
-    // Format JSON
     if (isJson) {
         let formatted = rawText
         try {
@@ -287,7 +276,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args, isOwner }) => {
         return m.reply(header + `\`\`\`json\n${formatted}\n\`\`\``)
     }
 
-    // Format XML / RSS
     if (isXml) {
         if (/<rss|<feed/i.test(rawText)) {
             const title = rawText.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<!\[CDATA\[|\]\]>/g, '').trim()
@@ -329,7 +317,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args, isOwner }) => {
         return m.reply(header + `\`\`\`xml\n${trunc(rawText.replace(/>\s+</g, '>\n<'), 2500)}\n\`\`\``)
     }
 
-    // Format HTML
     if (isHtml) {
         const { title, desc } = parseHTML(rawText, finalUrl)
         const isRedirected = targetUrl.replace(/\/$/, '') !== finalUrl.replace(/\/$/, '')
@@ -367,7 +354,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args, isOwner }) => {
         )
     }
 
-    // Format Plain Text biasa
     const textHeader =
         `╭── ✦ *WEB FETCHER: TEXT* ✦\n` +
         `• *URL:* ${finalUrl}\n` +

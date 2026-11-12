@@ -1,8 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Owner Session & Pre-Keys Pruner
- * @Description : Memangkas file pre-key usang pada folder sessions untuk menghemat storage dan inode di Termux tanpa merusak sesi WhatsApp yang aktif.
- */
 
 import { cleanOldPreKeys } from '../function/core/session-cleaner.js';
 

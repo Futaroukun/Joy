@@ -1,10 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Group Info & Metadata Inspector
-- @Description: Fitur untuk melihat informasi lengkap, konfigurasi, status saklar bot, dan metadata grup.
-- @Version: 2.0 (High Efficiency & Zero-Fluff)
-*/
-
 import moment from 'moment-timezone';
 import { areJidsSameUser } from '@whiskeysockets/baileys';
 import sharp from 'sharp';
@@ -162,7 +155,6 @@ let handler = async (m, { conn }) => {
             return isOnlyNumber ? `@${number}` : `${name} (@${number})`;
         };
 
-        // WhatsApp Settings
         const isRestrict = groupMeta.restrict ? 'Hanya Admin' : 'Semua Peserta';
         const isAnnounce = groupMeta.announce ? 'Ditutup (Hanya Admin)' : 'Terbuka (Semua Peserta)';
         const isApproval = groupMeta.joinApprovalMode ? 'Butuh Persetujuan' : 'Langsung Masuk';
@@ -181,7 +173,6 @@ let handler = async (m, { conn }) => {
                 ? `${Math.floor(groupMeta.ephemeralDuration / 86400)} Hari`
                 : 'Nonaktif');
 
-        // Bot Settings from Database
         const chatData = global.db?.data?.chats?.[m.chat] || {};
         const botSwitches = [
             `• Welcome: ${chatData.sambutan ? 'ON' : 'OFF'}`,
@@ -194,7 +185,6 @@ let handler = async (m, { conn }) => {
             `• Store: ${chatData.jualan ? 'ON' : 'OFF'}`
         ].join('\n│ ');
 
-        // Susun Pesan
         let txt = `*GROUP INFORMATION*\n`;
         txt += `━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
@@ -318,3 +308,4 @@ handler.command = /^(infogc|gcinfo)$/i
 handler.group   = true
 
 export default handler
+

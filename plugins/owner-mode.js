@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Bot Mode Switcher
- * @Description : Mengatur mode akses bot (Publik, Owner Only/Self, Group Only, Private Only, Sewa Only) dengan dukungan interactive single select list.
- * @Version     : 2.1 (No Decorational Emoji & Owner Only Mode)
- */
 
 import { jidNormalizedUser } from '@whiskeysockets/baileys'
 
@@ -76,7 +70,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     }
     const currentModeTitle = modes[currentModeKey]?.title || 'Mode Publik'
 
-    // ── 1. TAMPILAN INTERAKTIF PILIH MODE ────────────────────────────────────
     if (!args[0]) {
         const rows = Object.entries(modes).map(([key, mode]) => {
             const isActive = (key === currentModeKey)
@@ -128,7 +121,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         }
     }
 
-    // ── 2. EKSEKUSI PERUBAHAN MODE ───────────────────────────────────────────
     const inputArg = args[0].toLowerCase().trim()
     const targetModeKey = resolveModeKey(inputArg)
 
@@ -150,7 +142,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         return m.reply(`Bot sudah berada dalam *${targetMode.title}*. Tidak ada perubahan yang dilakukan.`)
     }
 
-    // Simpan ke database
     settings.chatMode = targetMode.value
     global.db.data.settings[botLid] = settings
     if (global.saveData && botLid) {

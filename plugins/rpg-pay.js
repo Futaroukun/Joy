@@ -1,8 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Coin Transfer & Fantasy Guild Economy
- * @Description : Mengirim koin perunggu, perak, emas, atau platina ke sesama petualang dengan validasi ketat dan aman.
- */
 
 import {
     COPPER_PER_SILVER,
@@ -27,7 +22,6 @@ function parseAmountToCopper(numStr, unitStr = '') {
         return amount * COPPER_PER_SILVER
     }
 
-    // Default: Perunggu (CP)
     return amount
 }
 
@@ -112,7 +106,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         )
     }
 
-    // Eksekusi transfer koin
     senderUser.money = senderMoney - totalCopperToTransfer
     targetUser.money = (typeof targetUser.money === 'number' ? targetUser.money : 0) + totalCopperToTransfer
 

@@ -1,9 +1,3 @@
-/*
- * @Author: Rafli
- * @Feature: YouTube Play (Audio)
- * @Description: Cari lagu via yt-search (smart ranking) dan download audio via SaveTube scraper, lbserver fallback, dan yt-dlp.
- */
-
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -30,7 +24,6 @@ function isValidAudioBuffer(buf) {
     return isId3 || isMp3Sync || isM4a || isOgg || isWebm || isRiff;
 }
 
-// ── SaveTube scraper ──────────────────────────────────────────────────────────
 
 class SaveTube {
     constructor() {
@@ -111,7 +104,6 @@ class SaveTube {
     }
 }
 
-// ── yt-dlp local fallback ─────────────────────────────────────────────────────
 
 let _ytDlpPath = undefined;
 function getYtDlpPath() {
@@ -233,21 +225,18 @@ function rankVideos(videos = [], query = '', limit = 5) {
         const views = Number(v.views) || 0;
         const daysAgo = parseAgeInDays(v.ago);
 
-        // 1. YouTube native ranking weight (relevansi natural mesin pencari YouTube)
         if (originalIndex === 0) score += 45;
         else if (originalIndex === 1) score += 32;
         else if (originalIndex === 2) score += 22;
         else if (originalIndex === 3) score += 14;
         else if (originalIndex <= 6) score += 6;
 
-        // 2. Exact match judul dengan word boundary
         if (cleanQ && title.includes(cleanQ)) {
             score += 35;
             const regexExact = new RegExp('(?:^|[^a-zA-Z0-9])' + cleanQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:[^a-zA-Z0-9]|$)', 'i');
             if (regexExact.test(title)) score += 15;
         }
 
-        // 3. Keyword matching
         let matchedKw = 0;
         for (const kw of keywords) {
             if (title.includes(kw)) matchedKw++;
@@ -262,15 +251,12 @@ function rankVideos(videos = [], query = '', limit = 5) {
             }
         }
 
-        // 4. Official Music / MV / Audio bonus
         if (/official\s*(music\s*video|video|audio|lyric|mv)|\(mv\)|\[mv\]/i.test(title)) {
             score += 15;
         }
 
-        // 5. Popularitas / Views (logarithmic, hingga 40 poin untuk video ratusan juta views)
         score += Math.min(40, Math.log10(views + 1) * 4.5);
 
-        // 6. Recency boost HANYA jika pengguna eksplisit mencari lagu terbaru/baru
         if (isSeekingNew) {
             if (daysAgo <= 7) score += 35;
             else if (daysAgo <= 30) score += 28;
@@ -280,13 +266,11 @@ function rankVideos(videos = [], query = '', limit = 5) {
             else score -= 15;
         }
 
-        // 7. Penalti untuk Anime OP / TV Anime jika pengguna tidak mencari anime
         const isAnimeQuery = /anime|op|ed|ost|opening|ending/i.test(cleanQ);
         if (!isAnimeQuery && /ノンクレジット|tvアニメ|anime\s*(opening|op|ost|ed)/i.test(title)) {
             score -= 35;
         }
 
-        // 8. Penalti reaction / karaoke
         if (!/reaction/i.test(cleanQ) && /reaction/i.test(title)) score -= 40;
         if (!/karaoke/i.test(cleanQ) && /karaoke|instrumental|minus\s*one/i.test(title)) score -= 25;
 
@@ -299,7 +283,6 @@ function rankVideos(videos = [], query = '', limit = 5) {
 
 function isBroadOrGeneral(q) {
     const clean = q.toLowerCase().replace(/terbaru|baru|teranyar|latest|new|\b202[5-9]\b/gi, '').trim();
-    // Hanya anggap broad/general jika berupa frasa playlist/kompilasi/genre umum secara eksplisit
     return /^(dj\s+(tiktok|remix|full\s*bass)|lagu\s+(galau|santai|indo|barat|tiktok|sedih|tidur|kerja)|jedag\s*jedug|kompilasi\s+lagu|kumpulan\s+lagu)$/i.test(clean);
 }
 
@@ -378,7 +361,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             if (explicitIndex !== null && explicitIndex < ranked.length) {
                 video = ranked[explicitIndex];
             } else if (isBroadOrGeneral(searchQuery) && ranked.length > 1) {
-                // Rotasi dari 5 kandidat terbaik agar hasil variatif dan tidak monoton
                 const poolSize = Math.min(5, ranked.length);
                 video = ranked[Math.floor(Math.random() * poolSize)];
             } else {
@@ -395,7 +377,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         let downloadResult = null;
         let lastErr = null;
 
-        // Engine 1: Convert1s / Ytmp3 Scraper (Fast 320kbps)
         try {
             const c1s = await convert1s.downloadAudio(video.videoId || video.url);
             if (c1s?.buffer && isValidAudioBuffer(c1s.buffer)) {
@@ -407,7 +388,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             console.warn('[PLAY] Convert1s/Ytmp3 error, mencoba fallback lain:', err.message);
         }
 
-        // Engine 2: YouTube Music Direct (Pure JS Innertube VisionOS)
         if (!buffer) {
             try {
                 const ytmDl = await ytmusic.download(video.videoId || video.url, {
@@ -424,7 +404,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Engine 3: yt-dlp local (hanya jika binary terpasang di sistem)
         if (!buffer && isYtDlpAvailable()) {
             try {
                 const dlBuf = await downloadViaYtDlp(video.url);
@@ -436,7 +415,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Engine 4: SaveTube scraper fallback
         if (!buffer) {
             try {
                 const st = await savetube.download(video.url);
@@ -504,7 +482,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }, { quoted: m });
 
-        // Pastikan format AAC M4A WhatsApp-compatible (+faststart) agar audio dapat diputar langsung di HP
         let audioToSend = buffer;
         let mimeToSend = 'audio/mp4';
         const isNativeM4A = buffer.length > 8 && buffer.slice(4, 8).toString('ascii') === 'ftyp';

@@ -1,16 +1,7 @@
-/*
- * @Author      : Rafli
- * @Feature     : Roblox Intelligence & Profile Inspector
- * @Description : Pelacak profil pengguna Roblox resmi (3D Avatar HD, status online, statistik sosial, dan biodata) tanpa dependensi pihak ketiga.
- */
-
 import fetch from 'node-fetch'
 import moment from 'moment-timezone'
 import { sendButtons } from '../function/media/button.js'
 
-/**
- * Mengambil data pengguna Roblox dari API resmi Roblox
- */
 async function fetchRobloxUser(target) {
     let userId = null
     let queryName = null
@@ -43,7 +34,6 @@ async function fetchRobloxUser(target) {
         throw new Error(`Pengguna Roblox "${target}" tidak ditemukan. Pastikan username atau ID sudah benar.`)
     }
 
-    // Ambil data secara paralel langsung dari endpoint resmi Roblox
     const [infoRes, thumbRes, headshotRes, friendsRes, followersRes, followingsRes, presRes, wearingRes] = await Promise.allSettled([
         fetch(`https://users.roblox.com/v1/users/${userId}`, { timeout: 8000 }).then(r => r.json()),
         fetch(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`, { timeout: 8000 }).then(r => r.json()),
@@ -135,7 +125,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
 
         const data = await fetchRobloxUser(target)
 
-        // Mode: Avatar 3D HD Only
         if (mode === 'avatar') {
             const imgUrl = data.thumbUrl || data.headshotUrl
             if (!imgUrl) return m.reply('Gambar avatar tidak tersedia.')
@@ -154,7 +143,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
             return
         }
 
-        // Mode: Headshot Only
         if (mode === 'headshot') {
             const imgUrl = data.headshotUrl || data.thumbUrl
             if (!imgUrl) return m.reply('Foto headshot tidak tersedia.')
@@ -172,7 +160,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
             return
         }
 
-        // Mode: Full Profile Stalker
         let joinDate = '-'
         let accountAge = '-'
         if (data.created) {

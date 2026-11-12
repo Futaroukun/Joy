@@ -1,8 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Add, Remove & List Premium
- * @Description : Manajemen status premium user bot dan daftar user premium dengan sensor privasi untuk non-owner.
- */
 
 import moment from 'moment-timezone'
 
@@ -40,9 +35,6 @@ function remainingLabel(ms) {
     return parts.join(' ') || 'Kurang dari semenit'
 }
 
-/**
- * Dapatkan nomor WA dari LID atau JID
- */
 function getPhoneNumber(conn, jid) {
     if (!jid) return 'unknown'
     if (jid.endsWith('@s.whatsapp.net')) return jid.split('@')[0].split(':')[0]
@@ -61,9 +53,6 @@ function getPhoneNumber(conn, jid) {
     return jid.split('@')[0].split(':')[0]
 }
 
-/**
- * Format nomor telepon: Full number untuk Owner, Sensor akhir 'xxx' untuk user lain
- */
 function formatDisplayPhone(conn, lid, isViewerOwner) {
     const raw = getPhoneNumber(conn, lid)
     const clean = raw.replace(/[^0-9]/g, '')
@@ -106,7 +95,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         }
     }
 
-    // ── LIST PREMIUM (Bisa diakses Owner & Semua User) ───────────────────────
     if (cmd === 'listprem') {
         const users = global.db.data.users || {}
         const premList = Object.entries(users)
@@ -135,14 +123,12 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── HANYA OWNER YANG BISA MENAMBAH / MENCABUT PREMIUM ────────────────────
     if (!isCallerOwner) {
         return global.dFail ? global.dFail('owner', m, conn) : m.reply('*AKSES DITOLAK*\nPerintah ini hanya dapat diakses oleh Owner bot.')
     }
 
     const isRemove = /^(remprem|removepremium)$/i.test(cmd)
 
-    // ── REMOVE PREMIUM ────────────────────────────────────────────────────────
     if (isRemove) {
         const targets = m.mentionedJid?.length ? m.mentionedJid
             : m.quoted ? [m.quoted.sender]
@@ -172,7 +158,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         return m.reply(`*PREMIUM DICABUT*\n\n${results.join('\n')}`)
     }
 
-    // ── ADD / EXTEND PREMIUM ──────────────────────────────────────────────────
     const targets = m.mentionedJid?.length ? m.mentionedJid
         : m.quoted ? [m.quoted.sender]
         : []
@@ -196,7 +181,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // Cari argumen durasi (non-mention)
     const durationArg = text.trim().split(/\s+/).find(a => parseDuration(a))
     const duration = durationArg ? parseDuration(durationArg) : null
 

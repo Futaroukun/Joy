@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : HD / Image Enhancer & Upscaler
- * @Description : Meningkatkan resolusi, detail, dan kejernihan gambar menggunakan AI Upscaler dan multi-layer fallback engine.
- * @Version     : 2.1 (Multi-Layer AI & Local Ultra-Enhance)
- */
-
 import axios from 'axios';
 import FormData from 'form-data';
 import sharp from 'sharp';
@@ -22,9 +15,6 @@ async function getILoveAuth() {
     }
 }
 
-/**
- * Local AI Super-Sampling & Sharpness Enhancement Filter
- */
 async function localSuperEnhance(imgBuffer, scale = 2) {
     const meta = await sharp(imgBuffer).metadata();
     const newWidth = Math.round((meta.width || 800) * scale);
@@ -112,7 +102,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         );
     };
 
-    // ── LAYER 1: ILOVEIMG AI UPSCALE ─────────────────────────────────────────
     try {
         const auth = await getILoveAuth();
         if (auth?.token && auth?.task) {
@@ -176,7 +165,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         console.warn('[HD] Layer 1 (iLoveIMG) gagal:', e1.message);
     }
 
-    // ── LAYER 2: LOCAL SUPER-SAMPLING ENHANCEMENT FILTER (FAIL-SAFE) ──────────
     try {
         const enhancedBuffer = await localSuperEnhance(imgBuffer, parseInt(scale, 10));
         let afterW = beforeW * parseInt(scale, 10);

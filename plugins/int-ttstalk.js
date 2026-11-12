@@ -1,13 +1,6 @@
-/*
-- @Author: Rafli
-- @Feature: TikTok User Stalker
-- @Description: Cari info profil TikTok via Nexray API & Direct Web Fallback.
-*/
-
 async function tiktokStalk(username) {
     const cleanUser = username.replace(/^@/, '').trim()
-    
-    // 1. Primary Engine: Nexray Stalker API
+
     try {
         const res = await fetch(`https://api.nexray.web.id/api/stalker/tiktok?username=${encodeURIComponent(cleanUser)}`, {
             headers: {
@@ -39,7 +32,6 @@ async function tiktokStalk(username) {
         }
     } catch (_) {}
 
-    // 2. Fallback: Direct Web Scraper
     try {
         const res = await fetch(`https://www.tiktok.com/@${cleanUser}`, {
             headers: {
@@ -156,3 +148,4 @@ handler.tags    = ['internet']
 handler.command = /^(ttstalk|tiktokstalk)$/i
 
 export default handler
+

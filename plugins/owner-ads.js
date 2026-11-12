@@ -1,8 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Ads Manager
-- @Description: Plugin manajemen iklan untuk owner. Mendukung per-ads interval, scope (all/group/private), cooldown, bypass premium, dan live test preview.
-*/
 
 import { loadAds, saveAds, resetAdsState, sendAdMessage } from '../function/events/ads.js';
 

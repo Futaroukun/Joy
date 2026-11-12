@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : WhatsApp Channel/Newsletter Inspector
- * @Description : Memeriksa informasi detail saluran WhatsApp via Link, Invite Code, atau JID.
- * @Version     : 2.1 (No Decorational Emoji)
- */
-
 import axios from 'axios';
 import moment from 'moment-timezone';
 

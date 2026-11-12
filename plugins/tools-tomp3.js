@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Audio & Voice Note Converter (TOVN / TOMP3 / TTS)
-- @Description: Konversi video/audio ke Voice Note (PTT) atau MP3 dengan waveform, filter audio (bass, chipmunk, robot, slow, nightcore, 8d, echo, dll), dan Text-to-Speech (TTS).
-*/
-
 import { toAudio, toPTT, ffmpeg } from '../function/media/converter.js';
 import { getAudioWaveform } from '@whiskeysockets/baileys';
 import fetch from 'node-fetch';
@@ -45,12 +39,10 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
     let mime = (q.msg || q).mimetype || q.mediaType || '';
     const hasMedia = /video|audio/.test(mime);
 
-    // ── 1. MODE TTS (Text-to-Speech) JIKA TIDAK REPLY MEDIA DAN ADA TEKS ──
     if (!hasMedia && text && text.trim()) {
         let lang = 'id';
         let cleanText = text.trim();
 
-        // Cek jika ada format bahasa [en] halo atau en|halo
         const langMatch = cleanText.match(/^\[([a-zA-Z-]+)\]\s*(.+)/) || cleanText.match(/^([a-zA-Z]{2,5})\s*\|\s*(.+)/);
         if (langMatch) {
             lang = langMatch[1].toLowerCase();
@@ -89,7 +81,6 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
         }
     }
 
-    // ── 2. MENU PANDUAN JIKA TIDAK ADA MEDIA & TEKS ──────────────────────
     if (!hasMedia) {
         return m.reply(
             `*AUDIO & VOICE NOTE CONVERTER*\n` +
@@ -105,7 +96,6 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
         );
     }
 
-    // ── 3. MODE KONVERSI MEDIA (VIDEO/AUDIO KE VN/MP3 + FILTER) ──────────
     await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } });
 
     let result;
@@ -117,7 +107,6 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
         const filterArgs = AUDIO_FILTERS[filterName] || null;
 
         if (filterArgs) {
-            // Konversi dengan filter audio (Ultra HD)
             if (isVN) {
                 result = await ffmpeg(media, [
                     '-vn',
@@ -146,7 +135,6 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
                 ], ext, 'mp3');
             }
         } else {
-            // Konversi standar tanpa filter
             result = isVN ? await toPTT(media, ext) : await toAudio(media, ext);
         }
 

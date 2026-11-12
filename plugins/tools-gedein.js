@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Image Resizer & Scaler
- * @Description : Memperbesar resolusi gambar dan stiker menggunakan algoritma Lanczos3 dan filter ketajaman adaptif.
- * @Version     : 2.1 (No Decorational Emoji & Auto Multiplier)
- */
-
 import sharp from 'sharp';
 
 async function upscaleImage(buffer, multiplier = 2, quality = 92) {
@@ -94,7 +87,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const maxDimension = 8000;
     const maxMultiplier = Math.min(4, Math.floor(maxDimension / Math.max(metadata.width || 1, metadata.height || 1)));
 
-    let multiplier = 2; // Default 2x
+    let multiplier = 2;
     if (text) {
         const parsed = parseFloat(text.trim());
         if (!isNaN(parsed) && parsed > 0) {

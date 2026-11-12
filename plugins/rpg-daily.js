@@ -1,8 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Daily Claim & RPG Rewards
- * @Description : Klaim hadiah harian (EXP & Limit) setiap 24 jam sekali dengan deteksi otomatis kenaikan level RPG.
- */
 
 import { getLevelProgress } from '../function/core/levelling.js'
 import { formatCoins, checkRankMilestoneRewards } from '../function/scrapers/currency.js'
@@ -21,7 +16,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
     if (!user) return m.reply('Data pengguna tidak ditemukan di database.')
 
-    const cooldownTime = 86400000 // 24 jam
+    const cooldownTime = 86400000
     const now = Date.now()
     const lastClaim = user.lastdaily || 0
     const timeRemaining = (lastClaim + cooldownTime) - now
@@ -44,7 +39,6 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     const oldExp = user.exp || 0
     const oldProgress = getLevelProgress(oldExp)
 
-    // Update data pengguna
     user.exp = oldExp + expReward
     user.limit = (user.limit || 0) + limitReward
     user.money = (user.money || 0) + coinReward

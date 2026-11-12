@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Brat Sticker Maker
-- @Description: Buat stiker bergaya brat dari teks.
-*/
-
 import axios from 'axios'
 
 async function getBratImage(text) {

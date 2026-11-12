@@ -1,16 +1,9 @@
-/*
-  - @Author: Joy / Rafli
-  - @Feature: DeepSeek AI (Official Keccak PoW & Auto-Relogin)
-  - @Description: Asisten AI DeepSeek dengan percakapan bersambung, penalaran mendalam (DeepThink / Reasoner), pencarian web, dan auto-relogin.
-*/
-
 import fs from 'fs'
 import path from 'path'
 import defaultClient, { DeepSeek } from '../function/ai/deepseek.js'
 
-// Cache session per pengguna: userId -> { session, lastActive }
 const userSessions = new Map()
-const SESSION_TIMEOUT = 60 * 60 * 1000 // 1 Jam
+const SESSION_TIMEOUT = 60 * 60 * 1000
 
 setInterval(() => {
     const now = Date.now()
@@ -39,7 +32,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args, isOwner, isRO
     const userId = m.sender
     const cmd = command.toLowerCase()
 
-    // ── Manajemen Akun Owner (.dsaccount / .setds) ─────────────────────────────
     if (cmd === 'dsaccount' || cmd === 'setds' || cmd === 'deepseekaccount') {
         const senderNum = (m.sender || '').replace(/[^0-9]/g, '')
         const isAllowed = isOwner || isROwner || m.fromMe ||
@@ -129,7 +121,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args, isOwner, isRO
         }
     }
 
-    // ── Reset Sesi Percakapan ──────────────────────────────────────────────────
     if (cmd === 'deepseekreset' || cmd === 'dsreset' || text?.toLowerCase().trim() === 'reset') {
         userSessions.delete(userId)
         await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
@@ -141,7 +132,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args, isOwner, isRO
         )
     }
 
-    // ── Panduan Penggunaan / Help ──────────────────────────────────────────────
     if (!text && !m.quoted?.text) {
         return m.reply(
             `╭── ✦ *DEEPSEEK AI* ✦\n` +
@@ -167,13 +157,11 @@ const handler = async (m, { conn, text, usedPrefix, command, args, isOwner, isRO
     let thinking_enabled = false
     let search_enabled = false
 
-    // Deteksi bendera pemikiran mendalam (-think atau -r)
     if (/^-(think|r)\s+/i.test(query)) {
         thinking_enabled = true
         query = query.replace(/^-(think|r)\s+/i, '').trim()
     }
 
-    // Deteksi bendera pencarian web (-s atau -search)
     if (/^-(s|search)\s+/i.test(query)) {
         search_enabled = true
         query = query.replace(/^-(s|search)\s+/i, '').trim()
@@ -205,7 +193,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args, isOwner, isRO
 
         out += res.message || '(Tidak ada respon teks)'
 
-        // Tambahkan referensi pencarian jika ada
         if (res.search_results && res.search_results.length > 0) {
             const sources = res.search_results.slice(0, 5).map((s, idx) => {
                 return `• *${idx + 1}.* ${s.title || s.url}\n  › ${s.url}`

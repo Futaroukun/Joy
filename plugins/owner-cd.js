@@ -1,8 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Cooldown Manager
-- @Description: Kelola pengaturan cooldown bot — set, reset, stats, toggle.
-*/
 
 import {
     DEFAULT_CONFIG,
@@ -30,7 +25,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     const config = global.db.data.pluginSettings['cooldown.json'].config || { ...DEFAULT_CONFIG }
     const cmd    = args[0]?.toLowerCase()
 
-    // ── Status ────────────────────────────────────────────────────────────────
     if (!cmd) {
         const stats = getCooldownStats()
         let info    =
@@ -49,7 +43,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         return m.reply(info)
     }
 
-    // ── Help ──────────────────────────────────────────────────────────────────
     if (cmd === 'help') return m.reply(
         `*COOLDOWN COMMAND GUIDE*\n\n` +
         `*Set Global:*\n\`${usedPrefix}cooldown set global 5000\`\n\n` +
@@ -65,14 +58,12 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         `*Kategori tersedia:* ${Object.keys(config.categories).join(', ')}`
     )
 
-    // ── Toggle ────────────────────────────────────────────────────────────────
     if (cmd === 'on' || cmd === 'off') {
         config.enabled = cmd === 'on'
         saveConfig(config)
         return m.reply(`Cooldown ${config.enabled ? 'diaktifkan' : 'dinonaktifkan'}.`)
     }
 
-    // ── Stats ─────────────────────────────────────────────────────────────────
     if (cmd === 'stats') {
         const stats = getCooldownStats()
         let info    =
@@ -92,7 +83,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         return m.reply(info)
     }
 
-    // ── Reset ─────────────────────────────────────────────────────────────────
     if (cmd === 'reset') {
         const sub = args[1]?.toLowerCase()
 
@@ -133,7 +123,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         }
     }
 
-    // ── Set ───────────────────────────────────────────────────────────────────
     if (cmd === 'set') {
         const sub = args[1]?.toLowerCase()
 
@@ -175,7 +164,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         }
     }
 
-    // ── Export ────────────────────────────────────────────────────────────────
     if (cmd === 'export') {
         return m.reply(`*COOLDOWN CONFIG:*\n\n\`\`\`${JSON.stringify(config, null, 2)}\`\`\``)
     }

@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Get Plugin Source
- * @Description : Mengambil isi kode source plugin dengan tombol salin cepat.
- * @Version     : 2.1 (No Decorational Emoji & Clean Copy Button)
- */
 
 import { readFileSync, readdirSync, existsSync } from 'fs'
 import { join } from 'path'

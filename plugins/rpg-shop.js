@@ -1,8 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : RPG Guild Shop (Toko Petualang & Lencana Berdurasi)
- * @Description : Toko penukaran koin anime dengan single_select, katalog produk luas, dan alur dua tahap pemilihan durasi lencana (Trial s/d Permanen).
- */
 
 import {
     COPPER_PER_SILVER,
@@ -13,9 +8,7 @@ import {
 } from '../function/scrapers/currency.js'
 import { getLevelProgress } from '../function/core/levelling.js'
 
-// ── KATALOG PRODUK REGULER (LIMIT, PASS, EXP) ────────────────────────────────
 export const SHOP_ITEMS = {
-    // ── 1. KATEGORI TIKET LIMIT ──────────────────────────────────────────────
     limit_mini: {
         id: 'limit_mini',
         name: '15 Limit Tiket',
@@ -94,7 +87,6 @@ export const SHOP_ITEMS = {
         }
     },
 
-    // ── 2. KATEGORI ADVENTURER PASS (STATUS PREMIUM) ──────────────────────────
     prem_1d: {
         id: 'prem_1d',
         name: 'Trainee Pass (1 Hari)',
@@ -186,7 +178,6 @@ export const SHOP_ITEMS = {
         }
     },
 
-    // ── 3. KATEGORI GULUNGAN EXP (BOOSTER LEVEL) ─────────────────────────────
     exp_rookie: {
         id: 'exp_rookie',
         name: 'Gulungan EXP Trainee (+500 EXP)',
@@ -277,9 +268,7 @@ export const SHOP_ITEMS = {
     }
 }
 
-// ── 4. KATALOG LENCANA KEHORMATAN GUILD & DURASI (18 VARIASI LENGKAP) ────────
 export const GUILD_BADGES = {
-    // ── Tier 1: Jalur Penjelajah & Pemula ──────────────
     badge_scout: {
         id: 'badge_scout',
         title: 'Lencana Pengelana Alam',
@@ -320,7 +309,6 @@ export const GUILD_BADGES = {
         }
     },
 
-    // ── Tier 2: Jalur Tempur & Ksatria ─────────────────
     badge_elite: {
         id: 'badge_elite',
         title: 'Lencana Petualang Elite',
@@ -374,7 +362,6 @@ export const GUILD_BADGES = {
         }
     },
 
-    // ── Tier 3: Jalur Elemen & Sihir ───────────────────
     badge_sorcerer: {
         id: 'badge_sorcerer',
         title: 'Orb Penyihir Bintang',
@@ -428,7 +415,6 @@ export const GUILD_BADGES = {
         }
     },
 
-    // ── Tier 4: Jalur Bangsawan & Mitologi ─────────────
     badge_merchant: {
         id: 'badge_merchant',
         title: 'Plakat Saudagar Emas Guild',
@@ -478,11 +464,10 @@ export const GUILD_BADGES = {
             '3d':   { label: 'Trial 3 Hari',   price: 12 * COPPER_PER_SILVER,  ms: 3 * 86400000 },
             '7d':   { label: 'Trial 7 Hari',   price: 25 * COPPER_PER_SILVER,  ms: 7 * 86400000 },
             '30d':  { label: 'Trial 30 Hari',  price: 80 * COPPER_PER_SILVER,  ms: 30 * 86400000 },
-            'perm': { label: 'Permanen',       price: 1 * COPPER_PER_GOLD,     ms: -1 } // 1 Emas (1 Juta CP)!
+            'perm': { label: 'Permanen',       price: 1 * COPPER_PER_GOLD,     ms: -1 }
         }
     },
 
-    // ── Tier 5: Jalur Penguasa & Dewa Keabadian ────────
     badge_celestial: {
         id: 'badge_celestial',
         title: 'Sayap Utusan Surgawi',
@@ -493,7 +478,7 @@ export const GUILD_BADGES = {
             '3d':   { label: 'Trial 3 Hari',   price: 25 * COPPER_PER_SILVER,  ms: 3 * 86400000 },
             '7d':   { label: 'Trial 7 Hari',   price: 60 * COPPER_PER_SILVER,  ms: 7 * 86400000 },
             '30d':  { label: 'Trial 30 Hari',  price: 200 * COPPER_PER_SILVER, ms: 30 * 86400000 },
-            'perm': { label: 'Permanen',       price: 2 * COPPER_PER_GOLD,     ms: -1 } // 2 Emas
+            'perm': { label: 'Permanen',       price: 2 * COPPER_PER_GOLD,     ms: -1 }
         }
     },
     badge_monarch: {
@@ -506,7 +491,7 @@ export const GUILD_BADGES = {
             '3d':   { label: 'Trial 3 Hari',   price: 40 * COPPER_PER_SILVER,  ms: 3 * 86400000 },
             '7d':   { label: 'Trial 7 Hari',   price: 90 * COPPER_PER_SILVER,  ms: 7 * 86400000 },
             '30d':  { label: 'Trial 30 Hari',  price: 300 * COPPER_PER_SILVER, ms: 30 * 86400000 },
-            'perm': { label: 'Permanen',       price: 3 * COPPER_PER_GOLD,     ms: -1 } // 3 Emas
+            'perm': { label: 'Permanen',       price: 3 * COPPER_PER_GOLD,     ms: -1 }
         }
     },
     badge_overlord: {
@@ -519,7 +504,7 @@ export const GUILD_BADGES = {
             '3d':   { label: 'Trial 3 Hari',   price: 60 * COPPER_PER_SILVER,  ms: 3 * 86400000 },
             '7d':   { label: 'Trial 7 Hari',   price: 150 * COPPER_PER_SILVER, ms: 7 * 86400000 },
             '30d':  { label: 'Trial 30 Hari',  price: 500 * COPPER_PER_SILVER, ms: 30 * 86400000 },
-            'perm': { label: 'Permanen',       price: 5 * COPPER_PER_GOLD,     ms: -1 } // 5 Emas (5 Juta CP)!
+            'perm': { label: 'Permanen',       price: 5 * COPPER_PER_GOLD,     ms: -1 }
         }
     }
 }
@@ -537,8 +522,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const arg0 = (rawArgs[0] || '').toLowerCase()
     const arg1 = (rawArgs[1] || '').toLowerCase()
 
-    // ── TAHAP 2A: TAMPILKAN SINGLE SELECT KATALOG DURASI LENCANA ──────────────
-    // Terpicu jika arg0 = 'badge' atau arg0 cocok dengan id lencana di GUILD_BADGES
     const selectedBadgeKey = (arg0 === 'badge' ? arg1 : (GUILD_BADGES[arg0] ? arg0 : null))
     const badgeObj = GUILD_BADGES[selectedBadgeKey]
 
@@ -592,7 +575,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
     }
 
-    // ── TAHAP 2B: EKSEKUSI PEMBELIAN LENCANA BERDURASI ────────────────────────
     const durCode = (arg0 === 'badge' ? (rawArgs[2] || '').toLowerCase() : arg1)
     if (badgeObj && durCode && badgeObj.durations[durCode]) {
         const dur = badgeObj.durations[durCode]
@@ -605,7 +587,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             )
         }
 
-        // Potong Koin
         user.money = userMoney - dur.price
         const isPermanent = dur.ms === -1
 
@@ -635,7 +616,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         return m.reply(receipt.trim())
     }
 
-    // ── 1. EKSEKUSI PEMBELIAN ITEM REGULER (LIMIT, PASS, EXP) ────────────────
     const regularItem = SHOP_ITEMS[arg0]
     if (regularItem) {
         if (userMoney < regularItem.price) {
@@ -649,11 +629,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         const oldExp = user.exp || 0
         const oldProgress = getLevelProgress(oldExp)
 
-        // Potong Koin & Berikan Efek Item
         user.money = userMoney - regularItem.price
         const resultText = regularItem.apply(user)
 
-        // Deteksi kenaikan level dan hadiah milestone guild
         let levelUpNotice = ''
         if (regularItem.category === 'Gulungan EXP (Booster Level)') {
             const newProgress = getLevelProgress(user.exp)
@@ -694,7 +672,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         return m.reply(receipt.trim())
     }
 
-    // ── TAHAP 1: SIAPKAN DATA SINGLE SELECT KATALOG TOKO UTAMA ───────────────
     const categories = [
         'Paket Tiket Limit',
         'Adventurer Pass (Premium)',
@@ -714,7 +691,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
     })
 
-    // Tambahkan Section Khusus: Lencana Kehormatan Guild (Pilih untuk melihat katalog durasi)
     sections.push({
         title: 'Koleksi Lencana Kehormatan (Trial & Permanen)',
         rows: Object.values(GUILD_BADGES).map(b => ({
@@ -760,7 +736,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             buttons: buttons
         }, { quoted: m })
     } catch {
-        // Fallback teks jika perangkat tidak mendukung interactive button
         let textCatalog = `${bodyText}\n\n`
         for (const cat of categories) {
             textCatalog += `╭── ✦ *${cat.toUpperCase()}* ✦\n`

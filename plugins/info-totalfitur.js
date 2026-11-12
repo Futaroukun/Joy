@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Feature & Plugin Counter
- * @Description : Menampilkan total fitur dan plugin bot dengan statistik kategori lengkap dan visual progress bar.
- * @Version     : 2.1 (No Decorational Emoji & Categorized Breakdown)
- */
-
 const categoryNames = {
     ai        : 'AI Assistant',
     downloader: 'Downloader',
@@ -30,7 +23,6 @@ let handler = async (m, { conn, usedPrefix, command }) => {
         const activeCount = activePlugins.length
         const inactiveCount = inactivePlugins.length
 
-        // Hitung per kategori
         const categoryStats = {}
         for (const [filename, plugin] of activePlugins) {
             const rawTags = plugin.tags

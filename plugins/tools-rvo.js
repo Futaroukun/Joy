@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Read View Once (Anti-View Once)
- * @Description : Membuka dan mengirim ulang pesan sekali lihat (view-once) untuk foto, video, maupun pesan suara (audio/PTT).
- * @Version     : 2.1 (Full Media Container Extraction & Audio PTT Support)
- */
-
 import { downloadMediaMessage } from '@whiskeysockets/baileys'
 
 let handler = async (m, { conn, usedPrefix, command }) => {
@@ -20,7 +13,6 @@ let handler = async (m, { conn, usedPrefix, command }) => {
         )
     }
 
-    // Ekstraksi pesan dari berbagai varian container Baileys view-once
     let rawMsg = q.message || q.msg || q
     if (rawMsg.viewOnceMessage?.message) rawMsg = rawMsg.viewOnceMessage.message
     if (rawMsg.viewOnceMessageV2?.message) rawMsg = rawMsg.viewOnceMessageV2.message
@@ -52,12 +44,10 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     try {
         let mediaBuffer = null
 
-        // Coba download via helper internal m.quoted.download()
         try {
             mediaBuffer = await q.download()
         } catch (_) {}
 
-        // Fallback jika download helper gagal, gunakan Baileys downloadMediaMessage
         if (!mediaBuffer || mediaBuffer.length === 0) {
             mediaBuffer = await downloadMediaMessage(
                 {

@@ -1,9 +1,3 @@
-/*
- - @Author: Rafli & Antigravity
- - @Feature: Autonomous AI Developer Agent
- - @Description: AI Agent Developer dengan OpenRouter API default, deskripsi model fungsional & single-select interactive list.
-*/
-
 import fs from "fs";
 import path from "path";
 import axios from "axios";
@@ -22,13 +16,9 @@ const execPromise = util.promisify(exec);
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-// Sesi input API Key interaktif: userId -> { provider, providerName, timeout }
 const pendingKeySessions = new Map();
-const KEY_SESSION_TIMEOUT = 3 * 60 * 1000; // 3 Menit timeout
+const KEY_SESSION_TIMEOUT = 3 * 60 * 1000;
 
-// ============================================
-// 1. DEFAULT PROVIDER CONFIG (JSON PERSISTENCE)
-// ============================================
 const DEFAULT_PROVIDER_CONFIG = {
     provider: "openrouter",
     openrouter: {
@@ -43,9 +33,7 @@ const DEFAULT_PROVIDER_CONFIG = {
     }
 };
 
-// Deskripsi fungsional model yang mudah dipahami user
 const MODEL_METADATA = {
-    // OpenRouter Free & Recommended
     "openrouter/free": {
         category: "Pertanyaan Normal & Chat",
         desc: "Router Model Gratis OpenRouter (Rekomendasi Default)"
@@ -90,7 +78,6 @@ const MODEL_METADATA = {
         category: "Penalaran Mendalam",
         desc: "Inkling Free"
     },
-    // OpenRouter Flagship (Paid / Credit)
     "anthropic/claude-3.5-sonnet": {
         category: "Coding & Developer",
         desc: "Claude 3.5 Sonnet (Coding & Arsitektur Terbaik)"
@@ -115,7 +102,6 @@ const MODEL_METADATA = {
         category: "Penalaran Mendalam",
         desc: "Llama 3.3 70B Instruct"
     },
-    // Modelnyaw / Legacy Support
     "kimi-k2.7-code": {
         category: "Coding & Developer",
         desc: "Khusus Coding, Tulis/Edit File & Script"
@@ -182,19 +168,12 @@ const MODEL_METADATA = {
     }
 };
 
-// ============================================
-// 2. JSON CONFIG PERSISTENCE & RESOLUTION
-// ============================================
 function extractApiKeys(rawText) {
     if (!rawText || typeof rawText !== "string") return [];
     let text = rawText.trim();
-    // Bersihkan prefix assignment seperti 'export OPENROUTER_KEYS=', 'OPENROUTER_KEYS =', 'API_KEY=' dll.
     text = text.replace(/^(?:export\s+)?[a-zA-Z0-9_]+\s*=\s*/i, "");
-    // Bersihkan tanda kutip pembungkus di awal & akhir
     text = text.replace(/^["'`]|["'`]$/g, "");
-    // Pisahkan berdasarkan koma, titik koma, newline, atau whitespace
     const items = text.split(/[\n\r,;\s]+/);
-    // Bersihkan dan filter tiap key
     const cleanedKeys = items
         .map(k => k.replace(/^["'`]|["'`]$/g, "").trim())
         .filter(k => k.length > 0 && !/^(export|[a-zA-Z0-9_]+=)$/i.test(k));
@@ -223,7 +202,8 @@ function getSavedConfig() {
                 openrouter,
                 modelnyaw
             };
-        } catch (_) {
+        } catch (err) {
+            console.warn('[AI-AX] Gagal membaca atau parse ax_config.json:', err?.message);
             return { ...DEFAULT_PROVIDER_CONFIG };
         }
     }
@@ -278,9 +258,6 @@ function getEndpointConfig() {
     };
 }
 
-// ============================================
-// 3. SQLITE SESSION PERSISTENCE & PRUNING
-// ============================================
 const db = new Database(DB_PATH);
 db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -299,9 +276,6 @@ function getNextApiKey(keys) {
     return { key, index: activeIndex + 1 };
 }
 
-// ============================================
-// 4. FETCH AVAILABLE MODELS & CATEGORIZE
-// ============================================
 async function fetchAvailableModels(config) {
     const keys = config.keys;
     const url = `${config.rawBaseUrl}/models`;
@@ -316,7 +290,9 @@ async function fetchAvailableModels(config) {
             if (Array.isArray(rawData)) {
                 return rawData.map(m => (typeof m === "string" ? m : m.id)).filter(Boolean);
             }
-        } catch (_) {}
+        } catch (err) {
+            console.warn(`[AI-AX] Gagal fetch model dari ${config.rawBaseUrl}:`, err?.message);
+        }
     }
     return [];
 }
@@ -324,7 +300,6 @@ async function fetchAvailableModels(config) {
 function buildModelSections(allModels, currentModel, usedPrefix, command) {
     let activeModels = allModels;
 
-    // Bila endpoint OpenRouter (banyak model), prioritaskan model gratis & model di MODEL_METADATA
     if (allModels.length > 40) {
         const priorityModels = allModels.filter(m => 
             m === currentModel || 
@@ -363,7 +338,7 @@ function buildModelSections(allModels, currentModel, usedPrefix, command) {
         };
 
         if (isCurrent) {
-            categories[catKey].unshift(row); // Model aktif selalu di urutan teratas kategori
+            categories[catKey].unshift(row);
         } else {
             categories[catKey].push(row);
         }
@@ -389,7 +364,6 @@ function pruneMessageHistory(messages) {
     const systemMessage = messages[0];
     let nonSystem = messages.slice(1);
 
-    // Pangkas output tool pada giliran lama untuk menghemat token masif
     nonSystem = nonSystem.map((msg, index) => {
         if (index < nonSystem.length - 4 && msg.role === "tool" && typeof msg.content === "string") {
             if (msg.content.length > 200) {
@@ -413,7 +387,8 @@ const sessions = {
         try {
             const row = db.prepare("SELECT data FROM sessions WHERE id = ?").get(chatId);
             return row ? JSON.parse(row.data) : null;
-        } catch (_) {
+        } catch (err) {
+            console.error("[AX-AGENT] Gagal membaca sesi SQLite:", err?.message);
             return null;
         }
     },
@@ -429,7 +404,9 @@ const sessions = {
     delete(chatId) {
         try {
             db.prepare("DELETE FROM sessions WHERE id = ?").run(chatId);
-        } catch (_) {}
+        } catch (err) {
+            console.error("[AX-AGENT] Gagal menghapus sesi SQLite:", err?.message);
+        }
     }
 };
 
@@ -457,9 +434,6 @@ function setAxActive(chatId, active) {
     }
 }
 
-// ============================================
-// 5. DIAGNOSTICS & LOGGING
-// ============================================
 function log(message, data = null) {
     const timestamp = new Date().toISOString();
     if (data) {
@@ -500,14 +474,12 @@ async function detectMimeType(buffer) {
     try {
         const result = await fileTypeFromBuffer(buffer);
         return result?.mime ?? "application/octet-stream";
-    } catch (_) {
+    } catch (err) {
+        console.warn("[AI-AX] Gagal mendeteksi mime type:", err?.message);
         return "application/octet-stream";
     }
 }
 
-// ============================================
-// 6. API CALL ENGINE
-// ============================================
 async function fetchChatCompletion(payload) {
     const config = getEndpointConfig();
     const keys = config.keys;
@@ -558,9 +530,6 @@ async function fetchChatCompletion(payload) {
     throw lastError || new Error("Semua API key gagal digunakan.");
 }
 
-// ============================================
-// 7. TOOLS DEFINITIONS & IMPLEMENTATIONS
-// ============================================
 const TOOL_EMOJI = {
     read_file: "📖",
     write_file: "📝",
@@ -669,9 +638,6 @@ const TOOLS_SCHEMA = [
     }
 ];
 
-// ============================================
-// 7. SECURITY & SENSITIVE PATH GUARDS
-// ============================================
 const SENSITIVE_PATTERNS = [
     /sessions(\/|$)/i,
     /\.env/i,
@@ -698,15 +664,15 @@ const TOOL_TRIGGER_PATTERNS = [
     /\b(perbaiki|fix|debug)\s+(plugin|file|kode|error)/i
 ];
 
-function shouldEnableTools(text, isOwner) {
-    if (!isOwner) return false;
+function shouldEnableTools(text, isROwner) {
+    if (!isROwner) return false;
     if (!text || typeof text !== "string") return false;
     return TOOL_TRIGGER_PATTERNS.some(pattern => pattern.test(text));
 }
 
 const TOOLS = {
     read_file: async ({ path: p, start_line, end_line }, context) => {
-        if (!context?.isOwner) throw new Error("Akses ditolak: Hanya Owner Bot yang berhak membaca file sistem.");
+        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak membaca file sistem.");
         if (isProtectedPath(p)) throw new Error(`Akses ditolak: File '${p}' dilindungi untuk mencegah kebocoran data.`);
 
         const full = resolvePath(p);
@@ -727,7 +693,7 @@ const TOOLS = {
         return content;
     },
     write_file: async ({ path: p, content }, context) => {
-        if (!context?.isOwner) throw new Error("Akses ditolak: Hanya Owner Bot yang berhak menulis file.");
+        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak menulis file.");
         if (isProtectedPath(p)) throw new Error(`Akses ditolak: Lokasi '${p}' dilindungi.`);
 
         const full = resolvePath(p);
@@ -736,7 +702,7 @@ const TOOLS = {
         return `Berhasil menulis ${p} (${content.length} karakter)`;
     },
     edit_file: async ({ path: p, old_text, new_text }, context) => {
-        if (!context?.isOwner) throw new Error("Akses ditolak: Hanya Owner Bot yang berhak mengedit file.");
+        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak mengedit file.");
         if (isProtectedPath(p)) throw new Error(`Akses ditolak: File '${p}' dilindungi.`);
 
         const full = resolvePath(p);
@@ -754,14 +720,14 @@ const TOOLS = {
         return `Berhasil mengedit ${p}`;
     },
     delete_file: async ({ path: p }, context) => {
-        if (!context?.isOwner) throw new Error("Akses ditolak: Hanya Owner Bot yang berhak menghapus file.");
+        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak menghapus file.");
         if (isProtectedPath(p)) throw new Error(`Akses ditolak: Path '${p}' dilindungi.`);
 
         fs.rmSync(resolvePath(p), { recursive: true, force: true });
         return `Berhasil menghapus ${p}`;
     },
     list_directory: async ({ path: p }, context) => {
-        if (!context?.isOwner) throw new Error("Akses ditolak: Hanya Owner Bot yang berhak memindai direktori.");
+        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak memindai direktori.");
         if (isProtectedPath(p)) throw new Error(`Akses ditolak: Direktori '${p}' dilindungi.`);
 
         const items = fs.readdirSync(resolvePath(p), { withFileTypes: true });
@@ -773,7 +739,7 @@ const TOOLS = {
         return items.map(i => `${i.isDirectory() ? "📁" : "📄"} ${i.name}`).join("\n") || "(kosong)";
     },
     execute_command: async ({ command }, context) => {
-        if (!context?.isOwner) throw new Error("Akses ditolak: Hanya Owner Bot yang berhak mengeksekusi shell command.");
+        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak mengeksekusi shell command.");
 
         try {
             const { stdout, stderr } = await execPromise(command, {
@@ -793,7 +759,7 @@ const TOOLS = {
         }
     },
     run_javascript: async ({ code }, context) => {
-        if (!context?.isOwner) throw new Error("Akses ditolak: Hanya Owner Bot yang berhak mengeksekusi kode JS.");
+        if (!context?.isROwner) throw new Error("Akses ditolak: Hanya Developer (ROwner) yang berhak mengeksekusi kode JS.");
 
         const fn = new Function(
             "conn",
@@ -809,13 +775,7 @@ const TOOLS = {
     }
 };
 
-// ============================================
-// 8. WHATSAPP FORMATTER & SYSTEM PROMPT
-// ============================================
 
-/**
- * Konversi tabel markdown web ke format daftar terstruktur WhatsApp yang ramah layar HP
- */
 function convertTableToWA(text) {
     if (!text || !text.includes("|")) return text;
 
@@ -835,7 +795,6 @@ function convertTableToWA(text) {
 
         for (let i = 0; i < rawRows.length; i++) {
             const row = rawRows[i].trim();
-            // Cek apakah separator baris (misal: |---|---| atau |:---:|)
             if (/^\|?[\s\-:|]+\|?$/.test(row) && row.includes("-")) {
                 if (i > 0 && !headerRow) {
                     headerRow = rawRows[i - 1]
@@ -912,15 +871,11 @@ function convertTableToWA(text) {
     return result.join("\n");
 }
 
-/**
- * Format markdown Web / Browser -> Format WhatsApp Native
- */
 function formatWhatsApp(text) {
     if (!text || typeof text !== "string") return "";
 
     let str = text;
 
-    // 1. Format tag <think>...</think> jika ada
     str = str.replace(/<think>([\s\S]*?)<\/think>/gi, (_, thinkContent) => {
         const clean = thinkContent.replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
         if (!clean) return "";
@@ -930,7 +885,6 @@ function formatWhatsApp(text) {
         return `💭 *Proses Berpikir:*\n_${preview}_\n\n────────────────────────\n\n`;
     });
 
-    // 2. Proteksi blok kode (```...```) agar isi kode tidak rusak oleh regex markdown
     const codeBlocks = [];
     str = str.replace(/```(?:([a-zA-Z0-9_+#.-]+)\r?\n)?([\s\S]*?)```/g, (_, lang, code) => {
         const idx = codeBlocks.length;
@@ -944,7 +898,6 @@ function formatWhatsApp(text) {
         return `%%%AX_CODE_BLOCK_${idx}%%%`;
     });
 
-    // 3. Proteksi inline code (`...`)
     const inlineCodes = [];
     str = str.replace(/`([^`\n]+)`/g, (_, code) => {
         const idx = inlineCodes.length;
@@ -952,23 +905,19 @@ function formatWhatsApp(text) {
         return `%%%AX_INLINE_${idx}%%%`;
     });
 
-    // 4. Konversi tabel markdown ke format WhatsApp
     str = convertTableToWA(str);
 
-    // 5. Konversi tag HTML umum ke format WhatsApp
     str = str
         .replace(/<br\s*\/?>/gi, "\n")
         .replace(/<(?:b|strong)>(.*?)<\/(?:b|strong)>/gi, "*$1*")
         .replace(/<(?:i|em)>(.*?)<\/(?:i|em)>/gi, "_$1_")
         .replace(/<(?:s|strike|del)>(.*?)<\/(?:s|strike|del)>/gi, "~$1~");
 
-    // 6. Konversi LaTeX / Math formulas
     str = str
         .replace(/\\\[([\s\S]*?)\\\]/g, "```\n$1\n```")
         .replace(/\$\$([\s\S]*?)\$\$/g, "```\n$1\n```")
         .replace(/\\\(([\s\S]*?)\\\)/g, "`$1`");
 
-    // 7. Konversi Link Markdown [Label](url) -> Label (url)
     str = str.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, (_, label, url) => {
         const cleanLabel = label.trim();
         const cleanUrl = url.trim();
@@ -979,37 +928,30 @@ function formatWhatsApp(text) {
     });
     str = str.replace(/<(https?:\/\/[^>]+)>/g, "$1");
 
-    // 8. Bersihkan sitasi web seperti [citation:1], [1], 【...】
     str = str
         .replace(/\[citation:\d+\]/gi, "")
         .replace(/【\d+:\d+†source】/g, "")
         .replace(/\[\^\d+\]/g, "");
 
-    // 9. Konversi Garis Pembatas (---, ***, ___, ===) -> ────────────────────────
     str = str.replace(/^(?:-{3,}|\*{3,}|_{3,}|={3,})$/gm, "────────────────────────");
 
-    // 10. Konversi Markdown Headings (# Header) -> *Header*
     str = str.replace(/^#{1,6}\s+(.+)$/gm, (_, heading) => {
         const cleanHeading = heading.replace(/\*\*/g, "").replace(/\*/g, "").trim();
         return `*${cleanHeading}*`;
     });
     str = str.replace(/^([^\n]+)\n[=]{3,}$/gm, "*$1*");
 
-    // 11. Konversi List & Bullets SEBELUM asterisk bold formatting
     str = str.replace(/^(\s{2,}|\t+)[-*+]\s+/gm, "  › ");
     str = str.replace(/^[-*+]\s+/gm, "• ");
 
-    // 12. Konversi Bold-Italic, Bold, Strikethrough
     str = str.replace(/(?:\*\*\*|___)\s*([^\n*]+?)\s*(?:\*\*\*|___)/g, "_*$1*_");
     str = str.replace(/\*\*_\s*([^\n*]+?)\s*_\*\*/g, "_*$1*_");
     str = str.replace(/_\*\*\s*([^\n*]+?)\s*\*\*_/g, "_*$1*_");
     str = str.replace(/(?:\*\*|__)\s*([^\n*]+?)\s*(?:\*\*|__)/g, "*$1*");
     str = str.replace(/~~\s*([^\n~]+?)\s*~~/g, "~$1~");
 
-    // 13. Batasi newlines berlebih maksimal 2 baris kosong
     str = str.replace(/\n{3,}/g, "\n\n");
 
-    // 14. Kembalikan inline code dan code blocks
     for (let i = 0; i < inlineCodes.length; i++) {
         str = str.replace(`%%%AX_INLINE_${i}%%%`, () => inlineCodes[i]);
     }
@@ -1053,11 +995,8 @@ ATURAN FORMAT TEKS WHATSAPP (MUTLAK - BUKAN FORMAT WEB/BROWSER):
     - Chat santai & pertanyaan umum: Jawab langsung TANPA tool, DILARANG memindai folder/file bot.
     - Dilarang keras membaca/membocorkan folder sessions, file .env, database, kredensial, dan token.`;
 
-// ============================================
-// 8. AGENT RUN LOOP
-// ============================================
 async function runAgentLoop(messages, context, userPromptText = "") {
-    const enableTools = shouldEnableTools(userPromptText, context.isOwner);
+    const enableTools = shouldEnableTools(userPromptText, context.isROwner);
 
     for (let step = 0; step < MAX_STEPS; step++) {
         log(`Step ${step + 1} | ${messages.length} pesan dalam histori | Tools: ${enableTools ? "Aktif" : "Nonaktif"}`);
@@ -1095,7 +1034,8 @@ async function runAgentLoop(messages, context, userPromptText = "") {
             let args = {};
             try {
                 args = typeof rawArgs === "string" ? JSON.parse(rawArgs || "{}") : (rawArgs || {});
-            } catch (_) {
+            } catch (err) {
+                log(`Gagal parse arguments tool ${name}: ${err.message}`);
                 args = {};
             }
 
@@ -1125,15 +1065,11 @@ async function runAgentLoop(messages, context, userPromptText = "") {
     throw new Error("Langkah maksimum (50) tercapai.");
 }
 
-// ============================================
-// 9. JOY BOT HANDLER
-// ============================================
 let handler = async (m, context) => {
     const { conn, args, text, usedPrefix, command, isOwner, isAdmin } = context;
     const chat = m.chat;
     const subCmd = (args[0] || "").toLowerCase();
 
-    // --- Subcommand: Sesi Auto-Reply (ON / OFF) ---
     if (subCmd === "on" && args.length === 1) {
         if (m.isGroup && !isAdmin && !isOwner) {
             return m.reply("❌ Pengaturan sesi hanya dapat diaktifkan oleh Admin Grup atau Owner Bot.");
@@ -1184,14 +1120,12 @@ let handler = async (m, context) => {
         );
     }
 
-    // --- Subcommand Khusus Owner ---
     if (["status", "config", "setmodel", "models", "model", "setkey", "setkey_select", "seturl", "setprovider", "provider"].includes(subCmd)) {
         if (!isOwner) {
             return m.reply("❌ Perintah konfigurasi ini hanya dapat diakses oleh Owner Bot.");
         }
     }
 
-    // --- Subcommand: Ganti Provider (OpenRouter / Modelnyaw) ---
     if (subCmd === "setprovider" || subCmd === "provider") {
         const targetProvider = (args[1] || "").toLowerCase().trim();
         if (!targetProvider || !["openrouter", "modelnyaw"].includes(targetProvider)) {
@@ -1216,7 +1150,6 @@ let handler = async (m, context) => {
         );
     }
 
-    // --- Subcommand: Config Status ---
     if (subCmd === "status" || subCmd === "config") {
         const conf = getEndpointConfig();
         const maskedKeys = conf.keys.map(k => k.length > 12 ? k.slice(0, 6) + "..." + k.slice(-4) : "***").join(", ");
@@ -1235,12 +1168,10 @@ let handler = async (m, context) => {
         );
     }
 
-    // --- Subcommand: Set Model (Single Select List / Direct Set) ---
     if (subCmd === "setmodel" || subCmd === "models" || subCmd === "model") {
         const targetModel = args.slice(1).join(" ").trim();
         const conf = getEndpointConfig();
 
-        // Kasus 1: Model langsung ditentukan (contoh: .ax setmodel openrouter/free)
         if (targetModel) {
             saveProviderConfig(conf.provider, { model: targetModel });
             try { await m.react("✅"); } catch (_) {}
@@ -1254,7 +1185,6 @@ let handler = async (m, context) => {
             );
         }
 
-        // Kasus 2: Fetch model list dari endpoint & tampilkan Single Select List
         try { await m.react("⏳"); } catch (_) {}
         const models = await fetchAvailableModels(conf);
 
@@ -1300,9 +1230,10 @@ let handler = async (m, context) => {
                     buttons: buttons
                 }, { quoted: m });
             }
-        } catch (_) {}
+        } catch (err) {
+            console.warn('[AI-AX] sendButton model selector gagal, fallback ke teks:', err?.message);
+        }
 
-        // Fallback teks bila single select tidak didukung client
         let fallbackText = `${bodyText}\n\n*Daftar Model Rekomendasi:*\n`;
         for (const sec of sections) {
             fallbackText += `\n*${sec.title}*\n`;
@@ -1314,13 +1245,11 @@ let handler = async (m, context) => {
         return m.reply(fallbackText);
     }
 
-    // --- Subcommand: Set Key (Interactive Single Select & Sesi Input) ---
     if (subCmd === "setkey") {
         const targetProviderArg = (args[1] || "").toLowerCase().trim();
         const directKey = args.slice(2).join(" ").trim();
         const fullArgs = args.slice(1).join(" ").trim();
 
-        // 1. Shortcut: .ax setkey <provider> <key1,key2>
         if (["openrouter", "modelnyaw"].includes(targetProviderArg) && directKey) {
             const parsedKeys = extractApiKeys(directKey);
             if (parsedKeys.length === 0) {
@@ -1336,7 +1265,6 @@ let handler = async (m, context) => {
             );
         }
 
-        // 2. Shortcut: .ax setkey <raw_keys> (bisa berupa OPENROUTER_KEYS=sk-or-..., multiline, atau dipisah koma)
         if (targetProviderArg && !["openrouter", "modelnyaw"].includes(targetProviderArg)) {
             const detected = detectProviderFromKey(fullArgs);
             const conf = getEndpointConfig();
@@ -1358,7 +1286,6 @@ let handler = async (m, context) => {
             );
         }
 
-        // 3. Mode Interaktif: Munculkan Single Select Provider
         const listParams = {
             title: "PILIH PROVIDER",
             sections: [
@@ -1406,9 +1333,10 @@ let handler = async (m, context) => {
                     buttons: buttons
                 }, { quoted: m });
             }
-        } catch (_) {}
+        } catch (err) {
+            console.warn('[AI-AX] sendButton key config gagal, fallback ke teks:', err?.message);
+        }
 
-        // Fallback bila client tidak render button
         return m.reply(
             `${bodyText}\n\n` +
             `*Pilih Cepat:*\n` +
@@ -1418,7 +1346,6 @@ let handler = async (m, context) => {
         );
     }
 
-    // --- Subcommand Internal: Buka Sesi Input API Key ---
     if (subCmd === "setkey_select") {
         const targetProvider = (args[1] || "").toLowerCase().trim();
         if (!["openrouter", "modelnyaw"].includes(targetProvider)) {
@@ -1454,7 +1381,6 @@ let handler = async (m, context) => {
         );
     }
 
-    // --- Subcommand: Set Base URL ---
     if (subCmd === "seturl") {
         const conf = getEndpointConfig();
         const firstArg = (args[1] || "").toLowerCase();
@@ -1484,7 +1410,6 @@ let handler = async (m, context) => {
         );
     }
 
-    // --- Subcommand: Reset Session ---
     if (subCmd === "reset") {
         sessions.delete(chat);
         try { await m.react("🧹"); } catch (_) {}
@@ -1582,7 +1507,6 @@ let handler = async (m, context) => {
 handler.before = async function (m, context) {
     if (m.isBaileys || m.fromMe) return;
 
-    // --- Sesi Input API Key Interaktif ---
     const keySession = pendingKeySessions.get(m.sender);
     if (keySession) {
         const rawText = (m.text || "").trim();
@@ -1621,7 +1545,6 @@ handler.before = async function (m, context) {
     if (!isAxActive(m.chat)) return;
     if (runningSessions.has(m.chat)) return;
 
-    // Abaikan jika pesan berawalan prefix perintah bot
     const prefixRegex = /^[°•π÷×¶∆£¢€¥®™+✓_=|~!?@#%^&.©^/]/;
     if (m.text && prefixRegex.test(m.text.trim())) return;
 
@@ -1633,7 +1556,7 @@ handler.before = async function (m, context) {
     if (!text && !hasMedia) return;
 
     const chat = m.chat;
-    const { conn, isOwner } = context || {};
+    const { conn, isOwner, isROwner } = context || {};
 
     try { await m.react("🧠"); } catch (_) {}
     runningSessions.add(chat);
@@ -1675,7 +1598,7 @@ handler.before = async function (m, context) {
         history.push({ role: "user", content: userContent });
 
         const promptText = typeof userContent === "string" ? userContent : (text || "");
-        const answer = await runAgentLoop(history, { m, conn, isOwner: Boolean(isOwner) }, promptText);
+        const answer = await runAgentLoop(history, { m, conn, isOwner: Boolean(isOwner), isROwner: Boolean(isROwner) }, promptText);
         sessions.set(chat, history);
 
         try { await m.react("✅"); } catch (_) {}

@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Group Manager & Inspector
- * @Description : Menampilkan daftar grup yang diikuti bot dengan statistik, pencarian kata kunci, interactive single select list, dan kartu detail grup.
- * @Version     : 2.1 (No Decorational Emoji)
- */
 
 import moment from 'moment-timezone'
 import { jidNormalizedUser } from '@whiskeysockets/baileys'

@@ -1,9 +1,3 @@
-/*
-- @Author     : Rafli
-- @Feature    : Group AFK (Away From Keyboard)
-- @Description: Fitur mengaktifkan status AFK dan melihat daftar member yang sedang AFK (.afk <alasan> / .afk list / .afk).
-*/
-
 function msToTime(duration) {
     let seconds = Math.floor((duration / 1000) % 60),
         minutes = Math.floor((duration / (1000 * 60)) % 60),
@@ -22,7 +16,6 @@ function msToTime(duration) {
 let handler = async (m, { conn, text, usedPrefix, command, participants }) => {
     const rawText = (text || '').trim()
 
-    // ── SUBCOMMAND: LIST AFK ─────────────────────────────────────────────────
     if (rawText.toLowerCase() === 'list' || command.toLowerCase() === 'listafk') {
         const usersDb = global.db.data.users || {}
         let afkList = []
@@ -77,7 +70,6 @@ let handler = async (m, { conn, text, usedPrefix, command, participants }) => {
         }, { quoted: m })
     }
 
-    // ── TANPA ARGUMEN / HELP ────────────────────────────────────────────────
     if (!rawText || rawText.toLowerCase() === 'help') {
         return m.reply(
             `*PANDUAN FITUR AFK 💤*\n━━━━━━━━━━━━━━━━━━━━━━\n\n` +
@@ -92,7 +84,6 @@ let handler = async (m, { conn, text, usedPrefix, command, participants }) => {
         )
     }
 
-    // ── SET AFK ──────────────────────────────────────────────────────────────
     const senderLID = conn.getLid ? (conn.getLid(m.sender) || m.sender) : m.sender
     let user = global.db.data.users[senderLID] || global.db.data.users[m.sender]
     if (!user) {

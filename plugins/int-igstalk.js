@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Instagram User Stalker (Direct Mobile API & Multi-Fallback)
- * @Description : Ambil profil Instagram (Followers, Following, Bio, Verifikasi, Foto Profil HD, dan Postingan Terbaru)
- * @Version     : 3.0 (Direct Instagram Web API Engine)
- */
-
 import axios from 'axios';
 
 const HEADERS = {

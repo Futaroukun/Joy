@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: TikTok Downloader (HD Priority)
-- @Description: Download video HD, slide foto, dan audio tanpa watermark dengan scraper SaveTik & TikWM.
-*/
-
 import * as cheerio from 'cheerio'
 import axios from 'axios'
 import { exec } from 'child_process'
@@ -117,7 +111,8 @@ async function savetik(url) {
         const videoId = $('#TikTokId').val() || null
 
         return { mp4, mp4HD, mp4SD, mp3, images, caption, videoId }
-    } catch {
+    } catch (err) {
+        console.warn('[TikTok] savetik scraper error:', err?.message)
         return null
     }
 }
@@ -137,7 +132,9 @@ async function tikwm(url) {
                 }
             })
             if (res.data?.code === 0) return res.data.data
-        } catch {}
+        } catch (err) {
+            console.warn(`[TikTok] tikwm endpoint error (${ep}):`, err?.message)
+        }
     }
     return null
 }
@@ -287,7 +284,6 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
 
             captionText += `╰━━━━━━━━━━━━━━━━━━━━━━━\n> Media: ${tikwmData?.images?.length ? 'TikWM' : 'SaveTik'}`
 
-            // Unduh buffer gambar (chunk 5) untuk mencegah undici 'terminated' saat stream di Baileys
             const albumItems = []
             const chunkSize = 5
             for (let i = 0; i < images.length; i += chunkSize) {
@@ -334,10 +330,11 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
                         audio: audioBuffer || { url: audioUrl },
                         mimetype: 'audio/mpeg'
                     }, { quoted: m }).catch(() => {})
-                } catch {}
+                } catch (audioErr) {
+                    console.warn('[TikTok] Gagal mengirim audio:', audioErr?.message)
+                }
             }
 
-            // Hapus loading setelah media terkirim
             if (loadingMsg?.key) {
                 await conn.sendMessage(m.chat, { delete: loadingMsg.key }).catch(() => {})
             }
@@ -345,8 +342,8 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
         } else if (videoUrl) {
             const rawSize = (videoHD === tikwmData?.hdplay ? tikwmData?.hd_size : tikwmData?.size) || tikwmData?.size || 0
             const sizeInMB = rawSize ? (rawSize / (1024 * 1024)).toFixed(1) : null
-            const isTooLargeForVideo = rawSize > 64 * 1024 * 1024 // Batas video WhatsApp (64 MB)
-            const needsRemux = rawSize > 20 * 1024 * 1024 // > 20 MB: rapikan multi-audio track & moov atom faststart
+            const isTooLargeForVideo = rawSize > 64 * 1024 * 1024
+            const needsRemux = rawSize > 20 * 1024 * 1024
 
             let captionText =
                 `╭── ✦ *TIKTOK DOWNLOADER* ✦\n` +
@@ -374,7 +371,9 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
                 let docBuffer = null
                 try {
                     docBuffer = await downloadBuffer(videoUrl, 90000)
-                } catch {}
+                } catch (docErr) {
+                    console.warn('[TikTok] Gagal download docBuffer:', docErr?.message)
+                }
                 await conn.sendMessage(m.chat, {
                     document: docBuffer || { url: videoUrl },
                     mimetype: 'video/mp4',
@@ -383,7 +382,6 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
                 }, { quoted: m })
             } else {
                 let videoBuffer = null
-                // Unduh buffer langsung dengan User-Agent & Referer browser agar tidak diblokir/hang oleh CDN TikTok
                 try {
                     videoBuffer = await downloadBuffer(videoUrl)
                 } catch (dlErr) {
@@ -391,7 +389,9 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
                     if (videoSD && videoSD !== videoUrl) {
                         try {
                             videoBuffer = await downloadBuffer(videoSD)
-                        } catch {}
+                        } catch (sdErr) {
+                            console.warn('[TikTok] Gagal download SD buffer fallback:', sdErr?.message)
+                        }
                     }
                 }
 
@@ -420,7 +420,6 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
                 }
             }
 
-            // Hapus pesan loading HANYA SETELAH media berhasil terkirim
             if (loadingMsg?.key) {
                 await conn.sendMessage(m.chat, { delete: loadingMsg.key }).catch(() => {})
             }
@@ -432,7 +431,9 @@ let handler = async (m, { conn, text, usedPrefix, command, reportError }) => {
                         audio: audioBuffer || { url: audioUrl },
                         mimetype: 'audio/mpeg'
                     }, { quoted: m }).catch(() => {})
-                } catch {}
+                } catch (audioErr) {
+                    console.warn('[TikTok] Gagal mengirim audio:', audioErr?.message)
+                }
             }
         }
 

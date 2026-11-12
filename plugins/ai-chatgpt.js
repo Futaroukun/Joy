@@ -1,16 +1,8 @@
-/*
-  - @Author: ZennzXD & Rafli
-  - @Feature: ChatGPT AI Web (Conduit Engine)
-  - @Description: Asisten AI ChatGPT dengan percakapan bersambung, pencarian web (Search Grounding), dan format WhatsApp.
-*/
-
 import { ChatGPTClient, formatWA } from '../function/ai/chatgpt.js'
 
-// Cache session instance per user: userId -> { client, lastActive }
 const userSessions = new Map()
-const SESSION_TIMEOUT = 60 * 60 * 1000 // 1 Jam masa aktif sesi
+const SESSION_TIMEOUT = 60 * 60 * 1000
 
-// Auto-sweep sesi kedaluwarsa setiap 30 menit (hemat RAM)
 setInterval(() => {
     const now = Date.now()
     for (const [uid, sess] of userSessions.entries()) {
@@ -40,7 +32,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
     const userId = m.sender
     const cmd = command.toLowerCase()
 
-    // ── Reset Percakapan ────────────────────────────────────────────────────────
     if (cmd === 'chatgptreset' || cmd === 'gptreset' || text?.toLowerCase().trim() === 'reset') {
         const session = userSessions.get(userId)
         if (session) {
@@ -56,7 +47,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
         )
     }
 
-    // ── Menu Bantuan / Help ─────────────────────────────────────────────────────
     if (!text && !m.quoted?.text) {
         return m.reply(
             `╭── ✦ *CHATGPT AI ASSISTANT* ✦\n` +
@@ -78,7 +68,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
     let query = text ? text.trim() : (m.quoted?.text || '').trim()
     let webSearch = false
 
-    // Deteksi bendera pencarian web (-s atau -search) atau kata kunci real-time otomatis
     if (/^-(s|search)\s+/i.test(query)) {
         webSearch = true
         query = query.replace(/^-(s|search)\s+/i, '').trim()
@@ -103,7 +92,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
 
         let responseText = res.text
 
-        // Tambahkan daftar link sumber jika ada dari web search
         if (res.sources && res.sources.length > 0) {
             const sourceList = res.sources.slice(0, 5).map((s, i) => {
                 const title = s.title ? s.title.replace(/\s+/g, ' ').trim() : s.domain

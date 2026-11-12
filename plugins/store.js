@@ -1,15 +1,8 @@
-/*
-- @Author     : Rafli
-- @Feature    : Joy Store (Dedicated Store Catalog)
-- @Description: Sistem database store interaktif lengkap dengan media support, button menu, search, direct shortcut, backup, dan manajemen lengkap (.store <add|del|edit|get|list|search|rename|update|info|stats|backup>).
-*/
-
 import fs from 'fs'
 import path from 'path'
 
 const dbPath = path.join(process.cwd(), 'data', 'store.json')
 
-// ── Database Helper ──────────────────────────────────────────────────────────
 function loadStore() {
     if (!fs.existsSync(dbPath)) {
         const defaultData = { store: {} }
@@ -21,10 +14,8 @@ function loadStore() {
         const raw = fs.readFileSync(dbPath, 'utf8')
         const parsed = JSON.parse(raw)
         if (!parsed.store || typeof parsed.store !== 'object') parsed.store = {}
-        // Hapus catatan jika masih ada
         if (parsed.catatan) delete parsed.catatan
 
-        // Migrasi jika ada item nyasar di root object
         for (const [key, val] of Object.entries(parsed)) {
             if (key !== 'store' && key !== 'catatan') {
                 parsed.store[key] = val
@@ -85,7 +76,6 @@ function getFlattenedItems(data) {
     return allItems
 }
 
-// ── Sender Helper ────────────────────────────────────────────────────────────
 async function sendStoreItem(m, conn, item, keyName) {
     if (!item) return m.reply('*Item tidak ditemukan di database store.*')
 
@@ -152,13 +142,11 @@ async function sendStoreItem(m, conn, item, keyName) {
     }
 }
 
-// ── Main Handler ─────────────────────────────────────────────────────────────
 let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) => {
     const isCallerOwner = checkIsOwner(m, isOwner, isROwner)
     const data = loadStore()
     const allItems = getFlattenedItems(data)
 
-    // Normalize command / sub-command
     let sub = ''
     let subArgs = ''
 
@@ -185,7 +173,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
             subArgs = ''
         }
     } else {
-        // Command is .store
         const parts = (text || '').trim().split(/\s+/)
         const first = parts[0]?.toLowerCase() || ''
 
@@ -240,7 +227,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         }
     }
 
-    // ── SUBCOMMAND: ADD / TAMBAH ─────────────────────────────────────────────
     if (sub === 'add') {
         if (!isCallerOwner) {
             return m.reply('*AKSES DITOLAK*\nHanya Owner yang dapat menambah item store.')
@@ -359,7 +345,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         }, { quoted: m })
     }
 
-    // ── SUBCOMMAND: GET / LIHAT ──────────────────────────────────────────────
     if (sub === 'get') {
         if (!subArgs) return m.reply(`Format: \`${usedPrefix}store get <nomor/nama>\``)
 
@@ -388,7 +373,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         return sendStoreItem(m, conn, matched.data, matched.key)
     }
 
-    // ── SUBCOMMAND: DELETE / HAPUS ───────────────────────────────────────────
     if (sub === 'del') {
         if (!isCallerOwner) {
             return m.reply('*AKSES DITOLAK*\nHanya Owner yang dapat menghapus item store.')
@@ -457,7 +441,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         }, { quoted: m })
     }
 
-    // ── SUBCOMMAND: RENAME ───────────────────────────────────────────────────
     if (sub === 'rename') {
         if (!isCallerOwner) return m.reply('*AKSES DITOLAK*\nHanya Owner yang dapat mengubah item store.')
 
@@ -504,7 +487,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── SUBCOMMAND: UPDATE (Direct Content Update) ───────────────────────────
     if (sub === 'update') {
         if (!isCallerOwner) return m.reply('*AKSES DITOLAK*\nHanya Owner yang dapat mengubah item store.')
 
@@ -567,7 +549,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── SUBCOMMAND: EDIT (Interactive) ───────────────────────────────────────
     if (sub === 'edit') {
         if (!isCallerOwner) return m.reply('*AKSES DITOLAK*\nHanya Owner yang dapat mengedit item store.')
 
@@ -610,7 +591,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         return askEditOptions(m, conn, target, usedPrefix)
     }
 
-    // ── SUBCOMMAND: SEARCH / CARI ────────────────────────────────────────────
     if (sub === 'search') {
         if (!subArgs) return m.reply(`Format: \`${usedPrefix}store search <kata kunci>\``)
 
@@ -638,7 +618,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── SUBCOMMAND: INFO / DETAIL ────────────────────────────────────────────
     if (sub === 'info') {
         if (!subArgs) return m.reply(`Format: \`${usedPrefix}store info <nomor/nama>\``)
 
@@ -670,7 +649,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── SUBCOMMAND: STATS ────────────────────────────────────────────────────
     if (sub === 'stats') {
         const storeCount = Object.keys(data.store).length
         let sizeKB = 0
@@ -678,7 +656,9 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
             if (fs.existsSync(dbPath)) {
                 sizeKB = (fs.statSync(dbPath).size / 1024).toFixed(2)
             }
-        } catch {}
+        } catch (err) {
+            console.warn('[STORE STATS] Gagal membaca ukuran file store.json:', err?.message)
+        }
 
         let mediaCounts = { Teks: 0, Gambar: 0, Video: 0, Audio: 0, Stiker: 0, Dokumen: 0 }
         for (const item of Object.values(data.store)) {
@@ -701,7 +681,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── SUBCOMMAND: BACKUP ───────────────────────────────────────────────────
     if (sub === 'backup') {
         if (!isCallerOwner) return m.reply('*Hanya Owner yang dapat mengunduh backup database.*')
         if (!fs.existsSync(dbPath)) return m.reply('*Database store kosong.*')
@@ -715,7 +694,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         }, { quoted: m })
     }
 
-    // ── SUBCOMMAND: LIST (Default Catalog Menu) ──────────────────────────────
     if (sub === 'list') {
         if (allItems.length === 0) {
             return m.reply(
@@ -761,6 +739,7 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
                 }]
             }, { quoted: m })
         } catch (e) {
+            console.warn('[STORE CATALOG] sendButton gagal, fallback ke teks:', e?.message)
             return m.reply(
                 `📦 *JOY STORE CATALOG*\n` +
                 `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
@@ -771,7 +750,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
     }
 }
 
-// ── Interactive Edit Prompts ─────────────────────────────────────────────────
 async function askEditOptions(m, conn, target, usedPrefix) {
     try {
         await conn.sendButton(m.chat, {
@@ -807,7 +785,8 @@ async function askEditOptions(m, conn, target, usedPrefix) {
                 })
             }]
         }, { quoted: m })
-    } catch {
+    } catch (err) {
+        console.warn('[STORE EDIT] sendButton gagal, fallback ke teks:', err?.message)
         return m.reply(
             `*EDIT ITEM STORE*\n\n` +
             `Item: *${target.key}*\n\n` +
@@ -818,12 +797,10 @@ async function askEditOptions(m, conn, target, usedPrefix) {
     }
 }
 
-// ── Before Handler (Button Click & Sesi Input) ───────────────────────────────
 handler.before = async (m, { conn, usedPrefix }) => {
     conn.storeEditSession = conn.storeEditSession || new Map()
     conn.storeDelConfirmation = conn.storeDelConfirmation || {}
 
-    // 1. Handle Selection from list button: storeselect_<index>
     if (m.text?.startsWith('storeselect_')) {
         const data = loadStore()
         const allItems = getFlattenedItems(data)
@@ -842,7 +819,6 @@ handler.before = async (m, { conn, usedPrefix }) => {
         return true
     }
 
-    // 2. Handle Edit selection from button: storeedit_select_<index>
     if (m.text?.startsWith('storeedit_select_')) {
         const isCallerOwner = checkIsOwner(m, false, false)
         if (!isCallerOwner) return false
@@ -858,7 +834,6 @@ handler.before = async (m, { conn, usedPrefix }) => {
         return true
     }
 
-    // 3. Handle Edit action button: storeedit_title_<index> / storeedit_content_<index>
     if (m.text?.startsWith('storeedit_title_') || m.text?.startsWith('storeedit_content_')) {
         const isCallerOwner = checkIsOwner(m, false, false)
         if (!isCallerOwner) return false
@@ -907,7 +882,6 @@ handler.before = async (m, { conn, usedPrefix }) => {
         }
     }
 
-    // 4. Handle Delete All Confirmation (Y/N)
     if (conn.storeDelConfirmation?.[m.chat]) {
         const session = conn.storeDelConfirmation[m.chat]
         if (m.sender === session.sender) {
@@ -931,7 +905,6 @@ handler.before = async (m, { conn, usedPrefix }) => {
         }
     }
 
-    // 5. Handle Active Edit Session
     const editSession = conn.storeEditSession.get(m.sender)
     if (editSession) {
         clearTimeout(editSession.timeout)

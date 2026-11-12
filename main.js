@@ -85,11 +85,15 @@ try {
                             unlinkSync(join(dataDir, file));
                         }
                     }
-                } catch {}
+                } catch (err) {
+                    console.warn(`[CONFIG-CLEANUP] Gagal memproses ${file}:`, err?.message);
+                }
             }
         }
     }
-} catch {}
+} catch (err) {
+    console.warn('[CONFIG-CLEANUP] Gagal membaca dataDir:', err?.message);
+}
 
 // ── Bounded LRU Message Cache untuk getMessage retry/resend ───────────────────
 class MessageLRUCache {
@@ -132,7 +136,9 @@ export async function getWaVersion() {
                 return cachedWaVersion;
             }
         }
-    } catch (_) {}
+    } catch (err) {
+        console.warn('[WA-VERSION] Gagal parse wa-version.json:', err?.message);
+    }
 
     try {
         const controller = new AbortController();
@@ -145,11 +151,15 @@ export async function getWaVersion() {
                 cachedWaVersion = data.version;
                 try {
                     writeFileSync(cacheFile, JSON.stringify({ version: cachedWaVersion, timestamp: Date.now() }));
-                } catch (_) {}
+                } catch (writeErr) {
+                    console.warn('[WA-VERSION] Gagal menyimpan cache versi:', writeErr?.message);
+                }
                 return cachedWaVersion;
             }
         }
-    } catch (_) {}
+    } catch (err) {
+        console.warn('[WA-VERSION] Gagal fetch versi GitHub Baileys:', err?.message);
+    }
 
     try {
         const { version: v } = await fetchLatestBaileysVersion();
@@ -157,10 +167,14 @@ export async function getWaVersion() {
             cachedWaVersion = v;
             try {
                 writeFileSync(cacheFile, JSON.stringify({ version: cachedWaVersion, timestamp: Date.now() }));
-            } catch (_) {}
+            } catch (writeErr) {
+                console.warn('[WA-VERSION] Gagal menyimpan cache versi:', writeErr?.message);
+            }
             return cachedWaVersion;
         }
-    } catch (_) {}
+    } catch (err) {
+        console.warn('[WA-VERSION] fetchLatestBaileysVersion gagal:', err?.message);
+    }
 
     cachedWaVersion = [2, 3000, 1043857760];
     return cachedWaVersion;
@@ -444,8 +458,8 @@ function startKeepAlive() {
         try {
             const readyState = global.conn?.ws?.readyState;
             if (readyState === ws.OPEN) {
-                try { global.conn.ws.ping(); } catch {}
-                try { await global.conn?.sendPresenceUpdate?.('available'); } catch {}
+                try { global.conn.ws.ping(); } catch (err) { console.warn('[KEEP-ALIVE] Ping gagal:', err?.message); }
+                try { await global.conn?.sendPresenceUpdate?.('available'); } catch (err) { console.warn('[KEEP-ALIVE] Presence update gagal:', err?.message); }
                 reconnectAttempts = 0;
             } else if (readyState === ws.CLOSED || readyState === ws.CLOSING) {
                 reconnectAttempts++;

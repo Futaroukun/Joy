@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Pinterest Search & Media Downloader (HD Image, HD Video MP4, GIF, Carousel)
- * @Description : Cari gambar di Pinterest atau unduh media dari link pin.it / pinterest.com
- * @Version     : 4.0 (React-Driven Pipeline)
- */
-
 import {
     searchPinterest,
     downloadPinterest,
@@ -49,7 +42,6 @@ async function sendMedia(conn, chatId, buffer, mediaType, caption, quotedMsg) {
 let handler = async (m, { usedPrefix, command, conn, text }) => {
     const rawInput = (text || m.quoted?.text || '').trim()
 
-    // ── 1. HELP / GUIDE ───────────────────────────────────────────────────────
     if (!rawInput || /^(help|menu|panduan|\?)$/i.test(rawInput)) {
         return m.reply(
             `╭── ✦ *PINTEREST* ✦\n\n` +
@@ -63,7 +55,6 @@ let handler = async (m, { usedPrefix, command, conn, text }) => {
         )
     }
 
-    // ── 2. DOWNLOADER (Link Pinterest / pin.it) ───────────────────────────────
     if (isPinterestUrl(rawInput)) {
         const cleanUrl = extractPinterestUrl(rawInput) || rawInput
         await m.react?.('⏳').catch(() => {})
@@ -82,7 +73,6 @@ let handler = async (m, { usedPrefix, command, conn, text }) => {
 
             await m.react?.('📤').catch(() => {})
 
-            // Handle Carousel / Multi-slide Idea Pin
             if (detail.mediaType === 'carousel' && detail.slides?.length > 0) {
                 const dlSlides = await Promise.all(detail.slides.map(async (item, i) => {
                     try {
@@ -131,7 +121,6 @@ let handler = async (m, { usedPrefix, command, conn, text }) => {
                 return
             }
 
-            // Single Media (Video / GIF / Image)
             const buffer = await downloadMedia(detail.mediaUrl)
             await sendMedia(conn, m.chat, buffer, detail.mediaType, caption, m)
             await m.react?.('✅').catch(() => {})
@@ -144,11 +133,9 @@ let handler = async (m, { usedPrefix, command, conn, text }) => {
         }
     }
 
-    // ── 3. SEARCH (Kata Kunci + Dynamic Count) ─────────────────────────────────
     let query = rawInput
     let count = 5
 
-    // Parse count dari query: e.g. "anime 8", "10 cats", "aesthetic --6"
     const flagMatch = query.match(/--?(\d+)\b/)
     const endMatch = query.match(/\s+(\d+)$/)
     const startMatch = query.match(/^(\d+)\s+/)
@@ -210,14 +197,12 @@ let handler = async (m, { usedPrefix, command, conn, text }) => {
 
         await m.react?.('📤').catch(() => {})
 
-        // Single Image Direct Send
         if (mediaForAlbum.length === 1) {
             await sendMedia(conn, m.chat, mediaForAlbum[0].image, 'image', mediaForAlbum[0].caption, m)
             await m.react?.('✅').catch(() => {})
             return
         }
 
-        // Multiple Images: Selalu kirim via sendAlbum
         const albumItems = mediaForAlbum.map(item => ({
             image: item.image,
             caption: item.caption
@@ -249,3 +234,4 @@ handler.command = /^(pin|pinterest|pindl)$/i
 handler.limit   = false
 
 export default handler
+

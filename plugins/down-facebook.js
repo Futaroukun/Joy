@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Facebook Downloader
-- @Description: Download video Facebook via Nexray Engine (Primary) & SnapSave (Fallback).
-*/
-
 function decodeSnapSave(data) {
     function decode(h, u, n, t, e, r) {
         r = "";
@@ -78,7 +72,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         let quality = 'HD';
         let title = '';
 
-        // 1. Coba Nexray Engine
         try {
             const apiRes = await fetch(`https://api.nexray.web.id/api/downloader/facebook?url=${encodeURIComponent(text.trim())}`, {
                 signal: AbortSignal.timeout(20000)
@@ -93,7 +86,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         } catch (_) {}
 
-        // 2. Fallback: SnapSave Scraper
         if (!videoUrl) {
             const snaps = await downloadSnapSave(text.trim());
             const picked = snaps.find(v => v.quality === 'HD') || snaps[0];

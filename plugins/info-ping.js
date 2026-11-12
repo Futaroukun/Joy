@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Ping & System Performance Monitor
- * @Description : Menampilkan kecepatan respons gateway WhatsApp, latensi pesan masuk, benchmark query database SQLite, serta status memori dan sistem.
- * @Version     : 3.0 (Fast Ping Split & Non-Blocking CPU Sampling)
- */
-
 import { performance } from 'perf_hooks'
 import { cpus as _cpus, totalmem, freemem, arch, platform } from 'os'
 import { sizeFormatter } from 'human-readable'

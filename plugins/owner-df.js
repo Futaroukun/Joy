@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Delete Plugin & File
- * @Description : Menghapus plugin atau file/folder dari server secara permanen.
- * @Version     : 2.1 (No Decorational Emoji & Safe Cleanup)
- */
 
 import fs from 'fs';
 import path from 'path';

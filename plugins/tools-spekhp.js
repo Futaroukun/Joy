@@ -1,9 +1,3 @@
-/*
- * @Author     : Joy Multi-Device Assistant
- * @Feature    : Cek Spesifikasi HP & Gadget Lengkap (GSMArena Direct Engine)
- * @Description: Menampilkan spesifikasi teknis lengkap dari GSMArena tanpa hambatan Cloudflare.
- */
-
 import {
   searchPhones,
   getDeviceDetail
@@ -29,7 +23,6 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
   await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } });
 
   try {
-    // 1. INPUT BERUPA ID ATAU SLUG LANGSUNG
     if (/^\d+$/.test(query) || /-\d+$/.test(query)) {
       const detail = await getDeviceDetail(query);
       if (!detail) {
@@ -48,10 +41,8 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
       return await conn.sendMessage(m.chat, { text: detail.card }, { quoted: m });
     }
 
-    // 2. PENCARIAN DATABASE GSMARENA (INSTANT LOCAL INDEX)
     const results = await searchPhones(query, 10);
 
-    // KASUS A: Ditemukan Persis 1 Perangkat -> Langsung Tampilkan Rincian
     if (results.length === 1) {
       const detail = await getDeviceDetail(results[0].slug || results[0].id);
       if (detail) {
@@ -67,7 +58,6 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
       }
     }
 
-    // KASUS B: Ditemukan Banyak Varian (> 1) -> Tampilkan Menu Single Select / List
     if (results.length > 1) {
       const rows = results.map((r, i) => {
         const shortName = r.name.length > 24 ? r.name.slice(0, 21) + '...' : r.name;
@@ -81,7 +71,6 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
 
       await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
 
-      // Coba kirim via Single Select Button Baileys
       try {
         await conn.sendButton(m.chat, {
           header: 'HASIL PENCARIAN GADGET',
@@ -97,7 +86,6 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
         }, { quoted: m });
         return;
       } catch {
-        // Fallback teks jika Single Select Button gagal / tidak didukung
         const listText = [
           `*HASIL PENCARIAN GADGET*\n`,
           `Ditemukan *${results.length}* model untuk pencarian "${query}".\n`,
@@ -109,7 +97,6 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
       }
     }
 
-    // KASUS C: Tidak ditemukan di database (0 hasil)
     await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
     return m.reply(`Perangkat *"${query}"* tidak ditemukan dalam database spesifikasi.\nPastikan penulisan merek dan tipe perangkat sudah benar.`);
 

@@ -1,16 +1,11 @@
-/*
- * @Author      : Rafli
- * @Feature     : Internet Speedtest & Network Benchmark
- * @Description : Mengukur kecepatan unduh (download), unggah (upload), latensi (ping), dan penyedia layanan internet (ISP) server bot.
- * @Version     : 2.1 (No Decorational Emoji & Multi-Engine Benchmark)
- */
-
 import cp from 'child_process'
 import { promisify } from 'util'
 import axios from 'axios'
 import { performance } from 'perf_hooks'
+import { fileURLToPath } from 'url'
 
 const exec = promisify(cp.exec)
+const speedtestScript = fileURLToPath(new URL('../function/scrapers/speedtest.py', import.meta.url))
 
 function calculateQuality(dl, ul, ping) {
     if (dl >= 100 && ul >= 50 && ping <= 30) return 'Sangat Baik (Ultra Fast)'
@@ -42,7 +37,6 @@ async function fastHttpBenchmark() {
 
     const avgPing = successCount > 0 ? (totalLatency / successCount).toFixed(1) : '85.0'
 
-    // Benchmark download 5MB sample file
     let downloadSpeedMbps = '10.50'
     try {
         const sampleUrl = 'https://speed.cloudflare.com/__down?bytes=5000000'
@@ -74,9 +68,8 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
     let data = null
 
-    // ── 1. JALANKAN SPEEDTEST PYTHON ENGINE ──────────────────────────────────
     try {
-        const { stdout } = await exec('python3 function/speedtest.py --json', { timeout: 35000 })
+        const { stdout } = await exec(`python3 "${speedtestScript}" --json`, { timeout: 35000 })
         const jsonMatch = stdout.match(/\{[\s\S]*\}/)
         if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0])
@@ -96,7 +89,6 @@ let handler = async (m, { conn, usedPrefix, command }) => {
         console.warn('[SPEEDTEST] Python engine gagal atau timeout:', e1.message)
     }
 
-    // ── 2. FALLBACK KE FAST HTTP BENCHMARK ──────────────────────────────────
     if (!data) {
         try {
             data = await fastHttpBenchmark()

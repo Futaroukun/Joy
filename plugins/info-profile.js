@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : User Profile Inspector
- * @Description : Menampilkan informasi profil pengguna yang menggabungkan data WhatsApp (Baileys) dan database bot secara realtime, akurat, dan elegan.
- */
-
 import moment from 'moment-timezone'
 import fetch from 'node-fetch'
 import fs from 'fs'
@@ -13,9 +7,6 @@ import { formatCoins } from '../function/scrapers/currency.js'
 
 const LOCAL_THUMBNAIL = path.join(process.cwd(), 'src', 'thumbnail.jpg')
 
-/**
- * Timeout helper agar request Baileys/eksternal tidak pernah hanging
- */
 function withTimeout(promise, ms = 2000, fallback = null) {
     if (!promise || typeof promise.then !== 'function') return Promise.resolve(fallback)
     let timer
@@ -31,18 +22,12 @@ function withTimeout(promise, ms = 2000, fallback = null) {
     ])
 }
 
-/**
- * Normalisasi JID WhatsApp (hapus device suffix :1, :2 dll)
- */
 function normalizeJid(jid) {
     if (!jid) return ''
     const decoded = jid.split('@')[0].split(':')[0]
     return jid.endsWith('@lid') ? `${decoded}@lid` : `${decoded}@s.whatsapp.net`
 }
 
-/**
- * Download buffer gambar profil dengan timeout ketat dan fallback instan
- */
 async function fetchImageBuffer(url) {
     if (url) {
         try {
@@ -60,16 +45,12 @@ async function fetchImageBuffer(url) {
         } catch {}
     }
 
-    // Fallback instan: memory global.thum atau thumbnail lokal (tanpa request eksternal)
     if (Buffer.isBuffer(global.thum)) return global.thum
     if (fs.existsSync(LOCAL_THUMBNAIL)) return fs.readFileSync(LOCAL_THUMBNAIL)
 
     return null
 }
 
-/**
- * Parser respon Bio / Status WhatsApp dari berbagai format Baileys (USync / IQ)
- */
 function parseBioResult(waBioRaw) {
     if (!waBioRaw) return { text: 'Tidak ada bio / Privasi disembunyikan', date: '-' }
 
@@ -108,9 +89,6 @@ function parseBioResult(waBioRaw) {
     }
 }
 
-/**
- * Mengambil Status / Bio WhatsApp secara cepat dengan timeout ketat (Phone Number only)
- */
 async function fetchWhatsAppBio(conn, pnJid, cleanJid) {
     const rawTarget = (pnJid && pnJid.endsWith('@s.whatsapp.net'))
         ? pnJid
@@ -121,7 +99,6 @@ async function fetchWhatsAppBio(conn, pnJid, cleanJid) {
         return { text: 'Tidak ada bio / Privasi disembunyikan', date: '-' }
     }
 
-    // 1. Coba via Baileys fetchStatus (timeout 2000ms)
     try {
         if (typeof conn.fetchStatus === 'function') {
             const res = await withTimeout(conn.fetchStatus(targetJid), 2000, null)
@@ -132,7 +109,6 @@ async function fetchWhatsAppBio(conn, pnJid, cleanJid) {
         }
     } catch {}
 
-    // 2. Coba via Direct IQ Query (timeout 1500ms)
     try {
         if (typeof conn.query === 'function') {
             const iqPromise = conn.query({
@@ -158,9 +134,6 @@ async function fetchWhatsAppBio(conn, pnJid, cleanJid) {
     return { text: 'Tidak ada bio / Privasi disembunyikan', date: '-' }
 }
 
-/**
- * Mengambil URL Foto Profil Baileys secara cepat dengan deduplikasi & timeout
- */
 async function fetchProfilePictureUrl(conn, pnJid, cleanJid, lidJid) {
     const candidates = [...new Set([
         pnJid ? normalizeJid(pnJid) : null,
@@ -178,7 +151,6 @@ async function fetchProfilePictureUrl(conn, pnJid, cleanJid, lidJid) {
 }
 
 function resolveUserData(conn, lidJid, pnJid, rawNumber) {
-    // 1. Coba dari cache memory global.db.data.users
     const memoryKeys = [lidJid, pnJid, rawNumber ? `${rawNumber}@s.whatsapp.net` : null].filter(Boolean)
     for (const key of memoryKeys) {
         const u = global.db?.data?.users?.[key]
@@ -187,7 +159,6 @@ function resolveUserData(conn, lidJid, pnJid, rawNumber) {
         }
     }
 
-    // 2. Fallback query SQLite database jika memory belum tersinkronisasi
     try {
         if (global.sqlite && global.sqlite.open) {
             if (!lidJid || !pnJid) {
@@ -256,7 +227,6 @@ let handler = async (m, { conn, text, usedPrefix, isOwner, isROwner }) => {
     try {
         await conn.sendMessage(m.chat, { react: { text: '🔍', key: m.key } }).catch(() => {})
 
-        // 1. Tentukan target JID
         let who = m.sender
         if (m.quoted && m.quoted.sender) {
             who = m.quoted.sender
@@ -278,7 +248,6 @@ let handler = async (m, { conn, text, usedPrefix, isOwner, isROwner }) => {
         const cleanJid = conn.decodeJid ? conn.decodeJid(who) : who
         const isSelf = (cleanJid === m.sender || cleanJid === m.userJid)
 
-        // 2. Resolve LID & Phone Number (PN)
         let pnJid = ''
         let lidJid = ''
 
@@ -312,16 +281,13 @@ let handler = async (m, { conn, text, usedPrefix, isOwner, isROwner }) => {
 
         const rawNumber = (pnJid || cleanJid || '').split('@')[0].split(':')[0].replace(/[^0-9]/g, '')
 
-        // 3. Ambil data User dari Database (Memory + SQLite Fallback)
         const { user } = resolveUserData(conn, lidJid, pnJid, rawNumber)
 
-        // 4. Ambil data WhatsApp (Baileys) secara paralel (Foto Profil + Bio/Status) dengan timeout ketat
         const [ppResult, bioResult] = await Promise.all([
             fetchProfilePictureUrl(conn, pnJid, cleanJid, lidJid),
             fetchWhatsAppBio(conn, pnJid, cleanJid)
         ])
 
-        // 5. Olah Informasi Profil
         let pushName = ''
         if (who === m.sender && m.pushName) {
             pushName = m.pushName
@@ -363,7 +329,6 @@ let handler = async (m, { conn, text, usedPrefix, isOwner, isROwner }) => {
         const level = progress.level
         const role = progress.role
 
-        // SN Masking (hanya pemilik akun atau owner yang melihat SN lengkap)
         let snDisplay = '-'
         if (user.register && user.sn) {
             if (isSelf || isOwner || isROwner) {
@@ -373,7 +338,6 @@ let handler = async (m, { conn, text, usedPrefix, isOwner, isROwner }) => {
             }
         }
 
-        // 6. Susun Pesan
         let caption = `*USER PROFILE*\n`
         caption += `━━━━━━━━━━━━━━━━━━━━━━━\n\n`
 
@@ -433,7 +397,6 @@ let handler = async (m, { conn, text, usedPrefix, isOwner, isROwner }) => {
 
         const mentions = [pnJid, lidJid, who, cleanJid, `${rawNumber}@s.whatsapp.net`].filter(Boolean)
 
-        // 7. Ambil buffer gambar profil dengan fallback otomatis
         const imageBuffer = await fetchImageBuffer(ppResult, pushName)
 
         if (imageBuffer) {
@@ -469,3 +432,4 @@ handler.tags = ['info']
 handler.command = /^(profile|profil|me|myprofile)$/i
 
 export default handler
+

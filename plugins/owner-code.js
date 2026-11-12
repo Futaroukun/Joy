@@ -1,8 +1,3 @@
-/*
- * @Author      : Rafli / Joy Bot
- * @Feature     : Redeem Code Management (Owner Wizard & Subcommands)
- * @Description : Manajemen pembuatan, pengecekan, dan penghapusan kode redeem hadiah bot.
- */
 
 import moment from 'moment-timezone'
 import { getAllCodes, getCode, createCode, deleteCode } from '../function/core/redeem.js'
@@ -30,7 +25,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
     const args = (text || '').trim().split(/\s+/)
     const sub = (args[0] || '').toLowerCase()
 
-    // ── SUBCOMMAND: BATAL SESI ────────────────────────────────────────────────
     if (sub === 'batal' || sub === 'cancel') {
         if (conn.createCodeSession.has(m.sender)) {
             const sess = conn.createCodeSession.get(m.sender)
@@ -41,7 +35,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         return m.reply('Tidak ada sesi pembuatan kode yang sedang berjalan.')
     }
 
-    // ── SUBCOMMAND: LIST KODE AKTIF ───────────────────────────────────────────
     if (sub === 'list') {
         const codes = getAllCodes()
         const entries = Object.values(codes)
@@ -88,7 +81,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         return m.reply(textList)
     }
 
-    // ── SUBCOMMAND: CEK DETAIL KODE ───────────────────────────────────────────
     if (sub === 'cek' || sub === 'detail') {
         const targetCode = args[1]?.toUpperCase()
         if (!targetCode) {
@@ -137,7 +129,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         }, { quoted: m })
     }
 
-    // ── SUBCOMMAND: HAPUS KODE ────────────────────────────────────────────────
     if (sub === 'del' || sub === 'delete' || sub === 'hapus') {
         const targetCode = args[1]?.toUpperCase()
         if (!targetCode) {
@@ -156,10 +147,7 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── SUBCOMMAND: CREATE / BUAT KODE ────────────────────────────────────────
     if (sub === 'create' || sub === 'buat' || sub === 'add') {
-        // Cek jika owner pakai format cepat 1 baris:
-        // .code create <KODE> <LIMIT> <MONEY> <PREM_HARI> <KUOTA>
         if (args.length >= 6) {
             const rawCode = args[1].toUpperCase()
             const limit = parseInt(args[2]) || 0
@@ -190,7 +178,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
             }
         }
 
-        // Jalankan Sesi Interaktif Wizard
         if (conn.createCodeSession.has(m.sender)) {
             clearTimeout(conn.createCodeSession.get(m.sender).timeout)
         }
@@ -225,7 +212,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── DEFAULT: PANDUAN MENU ─────────────────────────────────────────────────
     return m.reply(
         `╭── ✦ *PANDUAN KODE REDEEM* ✦\n` +
         `Kelola hadiah kode redeem untuk pengguna bot.\n\n` +
@@ -247,7 +233,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
     )
 }
 
-// ── HANDLER INTERAKTIF (WIZARD STEPS) ──────────────────────────────────────────
 handler.before = async function (m, { conn, isOwner, isROwner }) {
     if (!m.text || m.isBaileys) return false
     conn.createCodeSession = conn.createCodeSession || new Map()
@@ -267,7 +252,6 @@ handler.before = async function (m, { conn, isOwner, isROwner }) {
 
     const sess = conn.createCodeSession.get(m.sender)
 
-    // Reset timeout 2 menit tiap respon baru
     clearTimeout(sess.timeout)
     sess.timeout = setTimeout(() => {
         if (conn.createCodeSession?.has(m.sender)) {
@@ -276,7 +260,6 @@ handler.before = async function (m, { conn, isOwner, isROwner }) {
         }
     }, 120000)
 
-    // ── STEP 1: NAMA KODE ─────────────────────────────────────────────────────
     if (sess.step === 'waiting_code') {
         const cleanCode = raw.toUpperCase().replace(/[^A-Z0-9_\-]/g, '')
         if (!cleanCode || cleanCode.length < 3) {
@@ -306,7 +289,6 @@ handler.before = async function (m, { conn, isOwner, isROwner }) {
         return true
     }
 
-    // ── STEP 2: PILIH TIPE HADIAH ─────────────────────────────────────────────
     if (sess.step === 'waiting_reward_types') {
         const nums = raw.split(/[,+\s]+/).map(n => n.trim()).filter(n => ['1', '2', '3', '4'].includes(n))
         const unique = [...new Set(nums)]
@@ -318,7 +300,6 @@ handler.before = async function (m, { conn, isOwner, isROwner }) {
 
         sess.data.selectedTypes = unique
 
-        // Mulai tanya nilai reward pertama
         if (unique.includes('1')) {
             sess.step = 'waiting_limit'
             await m.reply(`Berapa jumlah *Limit* yang ingin diberikan?\n(Ketik angka, contoh: \`50\`)`)
@@ -338,7 +319,6 @@ handler.before = async function (m, { conn, isOwner, isROwner }) {
         }
     }
 
-    // ── STEP 3: NILAI LIMIT ───────────────────────────────────────────────────
     if (sess.step === 'waiting_limit') {
         const val = parseInt(raw.replace(/\D/g, '')) || 0
         if (val <= 0) {
@@ -366,7 +346,6 @@ handler.before = async function (m, { conn, isOwner, isROwner }) {
         }
     }
 
-    // ── STEP 4: NILAI MONEY ───────────────────────────────────────────────────
     if (sess.step === 'waiting_money') {
         const val = parseInt(raw.replace(/\D/g, '')) || 0
         if (val <= 0) {
@@ -390,7 +369,6 @@ handler.before = async function (m, { conn, isOwner, isROwner }) {
         }
     }
 
-    // ── STEP 5: NILAI EXP ─────────────────────────────────────────────────────
     if (sess.step === 'waiting_exp') {
         const val = parseInt(raw.replace(/\D/g, '')) || 0
         if (val <= 0) {
@@ -410,7 +388,6 @@ handler.before = async function (m, { conn, isOwner, isROwner }) {
         }
     }
 
-    // ── STEP 6: NILAI PREMIUM ─────────────────────────────────────────────────
     if (sess.step === 'waiting_prem') {
         const val = parseInt(raw.replace(/\D/g, '')) || 0
         if (val <= 0) {
@@ -423,7 +400,6 @@ handler.before = async function (m, { conn, isOwner, isROwner }) {
         return true
     }
 
-    // ── STEP 7: KUOTA PENUKARAN & FINALISASI ───────────────────────────────────
     if (sess.step === 'waiting_quota') {
         const val = parseInt(raw.replace(/\D/g, '')) || 10
         if (val <= 0) {

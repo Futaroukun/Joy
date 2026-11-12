@@ -1,8 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Backup Creds
-- @Description: Kirim file creds.json ke owner via WhatsApp. Jika di grup, otomatis kirim ke DM owner.
-*/
 
 import fs from 'fs'
 import { join } from 'path'

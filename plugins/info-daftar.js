@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Register, Unregister & Serial Number Verification
- * @Description : Sistem pendaftaran akun terpusat (Nama & Umur/Tgl Lahir), serial number unik, dan update limit pendaftaran.
- * @Version     : 3.0 (Age Mandatory in .daftar, Increased Limits & Clean Format)
- */
-
 import moment from 'moment-timezone'
 import { createHash, randomBytes } from 'crypto'
 import { sendButtons } from '../function/media/button.js'
@@ -53,7 +46,6 @@ function extractNameAndDate(rawText) {
     if (!rawText) return null
     const text = rawText.trim()
 
-    // 1. Pemisah eksplisit (| , /)
     if (text.includes('|')) {
         const [n, ...d] = text.split('|')
         return { name: n.trim(), dateStr: d.join('|').trim() }
@@ -63,13 +55,11 @@ function extractNameAndDate(rawText) {
         return { name: n.trim(), dateStr: d.join(',').trim() }
     }
 
-    // 2. Pemisah titik jika setelah titik adalah angka tanggal atau umur (misal Rafli.18 atau Rafli.14-06-2006)
     const dotMatch = text.match(/^(.+?)\s*\.\s*(\d{1,2}[\-\/\.]\d{1,2}[\-\/\.]\d{2,4}|\d{8}|\d{1,2}\s+[a-zA-Z]+\s+\d{4}|\d{1,3})$/)
     if (dotMatch) {
         return { name: dotMatch[1].trim(), dateStr: dotMatch[2].trim() }
     }
 
-    // 3. Pemisah spasi sebelum pola tanggal atau umur (misal Rafli 18 atau Rafli 14-06-2006)
     const spaceMatch = text.match(/^(.+?)\s+(\d{1,2}[\-\/\.]\d{1,2}[\-\/\.]\d{2,4}|\d{8}|\d{1,2}\s+[a-zA-Z]+\s+\d{4}|\d{1,3})$/)
     if (spaceMatch) {
         return { name: spaceMatch[1].trim(), dateStr: spaceMatch[2].trim() }
@@ -82,7 +72,6 @@ function parseBirthDateOrAge(input) {
     if (!input) return null
     const clean = input.trim()
 
-    // Jika input berupa angka umur langsung (misal "18" atau "25")
     if (/^\d{1,3}$/.test(clean)) {
         const ageNum = parseInt(clean, 10)
         if (ageNum < 5 || ageNum > 100) {
@@ -97,7 +86,6 @@ function parseBirthDateOrAge(input) {
         }
     }
 
-    // Jika input berupa format tanggal lahir lengkap
     moment.locale('id')
     let parsed = null
     for (const fmt of DATE_FORMATS) {
@@ -195,7 +183,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const { user, targetKey, sender, pnJid, phone } = resolveUserAndKey(m, conn)
     const rawNumber = phone || sender.replace(/[^0-9]/g, '')
 
-    // ── CEK SERIAL NUMBER (SN) ────────────────────────────────────────────────
     if (/^(ceksn|mysn|sn)$/i.test(command)) {
         if (!user.register) {
             return m.reply(
@@ -239,7 +226,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
     }
 
-    // ── UNREGISTER ────────────────────────────────────────────────────────────
     if (/^(unreg|unregister|hapusakun|logout)$/i.test(command)) {
         if (!user.register) {
             return m.reply(
@@ -250,7 +236,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             )
         }
 
-        // Unreg cepat menggunakan Serial Number: .unreg <SN>
         if (text && text.trim()) {
             const inputSN = text.trim().toUpperCase()
             if (user.sn && inputSN === user.sn.toUpperCase()) {
@@ -280,7 +265,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Unreg interaktif dengan konfirmasi Y / N
         if (!conn.unregConfirm) conn.unregConfirm = new Map()
 
         if (!conn.unregConfirm.has(sender)) {
@@ -311,7 +295,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         return m.reply('Penghapusan akun dibatalkan.')
     }
 
-    // ── REGISTER ──────────────────────────────────────────────────────────────
     if (user.register) {
         return m.reply(
             `╭── ✦ *STATUS PENDAFTARAN* ✦\n` +
@@ -374,7 +357,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const sn = generateSN(targetKey)
     const { birthDate, age } = birthData
 
-    // Simpan data pendaftaran baru & berikan bonus limit 50
     user.name      = cleanName
     user.birthdate = birthDate.format('DD-MM-YYYY')
     user.age       = age

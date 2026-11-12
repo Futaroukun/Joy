@@ -1,16 +1,8 @@
-/*
-  - @Author: Joy / DeepChat Engine
-  - @Feature: Multi-Model AI Assistant (DeepChat)
-  - @Description: Asisten AI multi-model dengan latensi rendah, model switchable, obrolan bersambung, dan format WhatsApp standar.
-*/
-
 import { AVAILABLE_MODELS, DEFAULT_MODEL, chatAI } from '../function/ai/deepchat.js'
 
-// Cache percakapan & model preference per user: userId -> { model, history, lastActive }
 const userSessions = new Map()
-const SESSION_TIMEOUT = 60 * 60 * 1000 // 1 Jam
+const SESSION_TIMEOUT = 60 * 60 * 1000
 
-// Auto-sweep sesi expired setiap 30 menit
 setInterval(() => {
     const now = Date.now()
     for (const [uid, sess] of userSessions.entries()) {
@@ -42,7 +34,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
     const rawInput = (text || '').trim()
     const subCommand = (args[0] || '').toLowerCase()
 
-    // ── 1. Reset Percakapan (.dc reset) ──────────────────────────────────────────
     if (subCommand === 'reset' || rawInput.toLowerCase() === 'reset') {
         session.history = []
         await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
@@ -54,11 +45,9 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
         )
     }
 
-    // ── 2. Cek / Ubah Model (.dc model [nomor/nama]) ─────────────────────────────
     if (subCommand === 'model' || subCommand === 'models') {
         const target = args.slice(1).join(' ').trim().toLowerCase()
 
-        // Jika hanya ketik `.dc model` tanpa argumen: Tampilkan daftar model
         if (!target) {
             const listText = AVAILABLE_MODELS.map(m => {
                 const isSelected = m.modelId === session.model.modelId ? ' *(Aktif)*' : ''
@@ -75,7 +64,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
             )
         }
 
-        // Cari model berdasarkan ID (nomor), alias, atau sebagian nama
         const found = AVAILABLE_MODELS.find(m =>
             m.id === target ||
             m.alias.toLowerCase() === target ||
@@ -93,7 +81,7 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
         }
 
         session.model = found
-        session.history = [] // Reset riwayat percakapan saat beralih arsitektur model
+        session.history = []
         await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
         return m.reply(
             `╭── ✦ *MODEL DIPERBARUI* ✦\n` +
@@ -105,7 +93,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
         )
     }
 
-    // ── 3. Ambil Pesan & Media Gambar (Jika ada) ─────────────────────────────────
     const q = m.quoted ? m.quoted : m
     const mime = (q.msg || q).mimetype || q.mediaType || ''
     const isImage = /image/.test(mime)
@@ -155,7 +142,7 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
         const res = await chatAI(query, {
             providerId: currentModel.providerId,
             modelId: currentModel.modelId,
-            conversationHistory: session.history.slice(-8), // 8 percakapan terakhir untuk efisiensi
+            conversationHistory: session.history.slice(-8),
             imageBuffer,
             imageMime,
             systemPrompt: 'Kamu adalah asisten AI cerdas di WhatsApp. Berikan jawaban yang informatif, akurat, ringkas, dan langsung pada inti tanpa pengantar basa-basi.'
@@ -165,7 +152,6 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
             throw new Error('AI tidak memberikan respon.')
         }
 
-        // Simpan ke riwayat obrolan (hanya teks)
         session.history.push({ role: 'user', content: query })
         session.history.push({ role: 'assistant', content: res.reply })
 

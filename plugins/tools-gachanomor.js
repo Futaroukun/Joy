@@ -1,27 +1,14 @@
-/*
- * @Author      : Joy / Rafli
- * @Feature     : WhatsApp Number Gacha (Hybrid Vault & Safe Discovery)
- * @Description : Gacha nomor WhatsApp aktif dengan sistem hibrida: pengumpulan 100 nomor aktif ke database lokal, dan penambahan berkelanjutan secara aman tanpa resiko ban.
- * @Version     : 1.0 (Hybrid Pool Architecture)
- */
-
 import { getPoolCount, getRandomFromPool, addNumbersToPool } from '../function/core/gacha-pool.js';
 
 const userCooldowns = new Map();
-const COOLDOWN_MS = 15000; // 15 detik jeda per pengguna
+const COOLDOWN_MS = 15000;
 const TARGET_POOL = 100;
 
-// Daftar prefix operator seluler Indonesia
 const PROVIDER_PREFIXES = [
-  // Telkomsel
   { name: 'Telkomsel', prefixes: ['62812', '62813', '62821', '62822', '62852', '62853'] },
-  // Indosat Ooredoo
   { name: 'Indosat', prefixes: ['62815', '62816', '62856', '62857', '62858'] },
-  // XL Axiata / Axis
   { name: 'XL/Axis', prefixes: ['62817', '62818', '62819', '62831', '62838', '62877', '62878'] },
-  // Tri Indonesia
   { name: 'Tri (3)', prefixes: ['62895', '62896', '62897', '62898', '62899'] },
-  // Smartfren
   { name: 'Smartfren', prefixes: ['62881', '62882', '62887', '62888'] }
 ];
 
@@ -33,7 +20,6 @@ function getRandomProvider() {
 
 function generateRandomNumber() {
   const { providerName, prefix } = getRandomProvider();
-  // Generate 7 digit acak agar panjang total 12 digit (standar Indonesia)
   const suffix = Math.floor(1000000 + Math.random() * 9000000).toString();
   return { number: prefix + suffix, providerName };
 }
@@ -43,15 +29,12 @@ function checkRarity(number) {
   const last3 = number.slice(-3);
   const last2 = number.slice(-2);
 
-  // 4 angka kembar (contoh: 7777) atau urutan 4 angka
   if (/^(\d)\1{3}$/.test(last4) || ['1234', '2345', '3456', '4567', '5678', '6789'].includes(last4)) {
     return { grade: 'Mythic (SSS)', emoji: '👑' };
   }
-  // 3 angka kembar (contoh: 888) atau pola abab (contoh: 2121)
   if (/^(\d)\1{2}$/.test(last3) || (last4[0] === last4[2] && last4[1] === last4[3])) {
     return { grade: 'Legendary (SS)', emoji: '⭐' };
   }
-  // 2 angka kembar di ujung atau akhiran 00
   if (/^(\d)\1$/.test(last2) || last2 === '00') {
     return { grade: 'Epic (S)', emoji: '✨' };
   }
@@ -63,7 +46,6 @@ let handler = async (m, { conn, usedPrefix, command, isPremium, isOwner }) => {
   const now = Date.now();
   const lastUsed = userCooldowns.get(userId) || 0;
 
-  // Jeda gacha: User biasa 15s, User premium dipersingkat 5s, Owner 0s
   const effectiveCooldownMs = isOwner ? 0 : (isPremium ? 5000 : COOLDOWN_MS);
   const remainingCooldown = Math.ceil((effectiveCooldownMs - (now - lastUsed)) / 1000);
 
@@ -83,13 +65,9 @@ let handler = async (m, { conn, usedPrefix, command, isPremium, isOwner }) => {
     let resultNumber = null;
     let modeText = '';
 
-    // ==========================================
-    // FASE 1: Database Belum Mencapai 100 Nomor
-    // ==========================================
     if (currentPoolCount < TARGET_POOL) {
       modeText = `Koleksi Vault (${currentPoolCount}/${TARGET_POOL})`;
 
-      // Cek 2 nomor acak secara aman agar tidak memicu rate-limit WA
       const candidate1 = generateRandomNumber().number;
       const candidate2 = generateRandomNumber().number;
 
@@ -105,16 +83,13 @@ let handler = async (m, { conn, usedPrefix, command, isPremium, isOwner }) => {
         }
       }
 
-      // Jika ada nomor aktif baru yang ditemukan, simpan langsung ke database lokal
       if (activeFound.length > 0) {
         addNumbersToPool(activeFound);
         resultNumber = activeFound[0];
       } else {
-        // Jika kedua nomor acak zonk, ambil nomor cadangan dari pool jika ada
         if (currentPoolCount > 0) {
           resultNumber = getRandomFromPool();
         } else {
-          // Pool masih 0 dan acakan pertama zonk
           await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } }).catch(() => {});
           return m.reply(
             `╭── ✦ *GACHA NOMOR WHATSAPP* ✦\n` +
@@ -127,17 +102,11 @@ let handler = async (m, { conn, usedPrefix, command, isPremium, isOwner }) => {
         }
       }
 
-    // ==========================================
-    // FASE 2: Database Sudah Matang (>= 100 Nomor)
-    // ==========================================
     } else {
       modeText = `Vault Penuh (${currentPoolCount} nomor tersimpan)`;
 
-      // Ambil 1 nomor acak dari database lokal (instan & 100% aman dari ban)
       resultNumber = getRandomFromPool();
 
-      // Background Discovery: 50% peluang mencari 1 nomor acak baru secara hening
-      // agar isi database tetap terus bertambah (tidak monoton di 100)
       if (Math.random() < 0.5) {
         (async () => {
           try {
@@ -168,7 +137,6 @@ let handler = async (m, { conn, usedPrefix, command, isPremium, isOwner }) => {
 
     await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } }).catch(() => {});
 
-    // CTA copy button jika didukung
     if (typeof conn.sendButton === 'function') {
       try {
         const buttons = [

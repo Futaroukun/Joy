@@ -110,6 +110,7 @@ export function initChatSchema(chat) {
             detect: true,
             sambutan: true,
             autogempa: false,
+            autodownload: false,
             sewa: false,
             sWelcome: '',
             sBye: '',
@@ -132,6 +133,7 @@ export function initChatSchema(chat) {
     if (!('detect' in chat)) chat.detect = true;
     if (!('sambutan' in chat)) chat.sambutan = true;
     if (!('autogempa' in chat)) chat.autogempa = false;
+    if (!('autodownload' in chat)) chat.autodownload = false;
     if (!('sewa' in chat)) chat.sewa = false;
     if (!('sWelcome' in chat)) chat.sWelcome = '';
     if (!('sBye' in chat)) chat.sBye = '';

@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Quote Chat (QC) Generator
-- @Description: Mengubah teks atau pesan reply menjadi stiker gelembung chat ala Telegram dengan foto profil user.
-*/
-
 import fetch from 'node-fetch'
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
@@ -31,7 +25,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     try {
         await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
 
-        // Deteksi apakah pengirim adalah bot atau user biasa
         const botJid    = conn.user.id.split(':')[0] + '@s.whatsapp.net'
         const senderJid = m.sender.split(':')[0] + '@s.whatsapp.net'
         const isBot     = senderJid === botJid

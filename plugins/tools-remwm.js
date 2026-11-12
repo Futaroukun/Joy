@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : AI Watermark, Logo & Text Remover
- * @Description : Menghapus watermark, logo, dan teks dari gambar secara otomatis menggunakan deep learning inpainting AI.
- * @Version     : 2.1 (No Decorational Emoji & Fast Inpainting Pipeline)
- */
-
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 import crypto from 'crypto';
@@ -107,7 +100,6 @@ async function unwatermarkPrimary(imageBuffer) {
 }
 
 async function unwatermarkBackup(imageBuffer) {
-    // Cadangan dinonaktifkan sementara karena domain upstream offline
     throw new Error('Server cadangan sedang pemeliharaan.');
 }
 
@@ -140,14 +132,12 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
         let result = null;
 
-        // ── 1. ENGINE UTAMA ──────────────────────────────────────────────────
         try {
             result = await unwatermarkPrimary(media);
         } catch (e1) {
             console.warn('[REMOVEWM] Engine utama gagal:', e1.message);
         }
 
-        // ── 2. ENGINE CADANGAN ────────────────────────────────────────────────
         if (!result) {
             try {
                 result = await unwatermarkBackup(media);

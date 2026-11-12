@@ -1,21 +1,10 @@
-/*
- * @Author: Rafli
- * @Feature: Owner Management (Add / Delete / List Owner & Contact Card)
- * @Description: Menambahkan dan menghapus owner sekunder (Khusus Developer).
- *               Menampilkan daftar otoritas dengan tag kontak WhatsApp resmi.
- */
-
 import { jidNormalizedUser } from '@whiskeysockets/baileys';
 
-/**
- * Helper untuk me-resolve nomor telepon (Phone Number / PN) dari berbagai format ID (JID, LID, atau raw).
- */
 async function resolvePhoneNumber(conn, id) {
     if (!id) return null;
     let str = typeof id === 'object' ? (id.pn || id.lid || id.jid || '') : id.toString().trim();
     if (!str) return null;
 
-    // Jika sudah berupa JID nomor telepon (@s.whatsapp.net)
     if (str.endsWith('@s.whatsapp.net')) {
         let raw = str.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
         if (raw.startsWith('0')) raw = '62' + raw.slice(1);
@@ -25,17 +14,14 @@ async function resolvePhoneNumber(conn, id) {
     let clean = str.replace(/[^0-9]/g, '');
     if (!clean) return null;
 
-    // Jika bukan format LID (bukan @lid dan panjang nomor biasa < 15 digit)
     const isLid = str.endsWith('@lid') || clean.length >= 15;
     if (!isLid) {
         if (clean.startsWith('0')) clean = '62' + clean.slice(1);
         return clean;
     }
 
-    // Jika ID adalah LID, cari nomor telepon asli (PN) yang terpetakan:
     const lidJid = str.endsWith('@lid') ? str : `${clean}@lid`;
 
-    // 1. Coba lookup via conn.storeLid (hanya ambil jika hasilnya adalah @s.whatsapp.net)
     if (conn?.storeLid) {
         const mapped = conn.storeLid[lidJid] || conn.storeLid[clean];
         if (mapped && typeof mapped === 'string' && mapped.endsWith('@s.whatsapp.net')) {
@@ -45,7 +31,6 @@ async function resolvePhoneNumber(conn, id) {
         }
     }
 
-    // 2. Coba lookup via signalRepository lidMapping
     try {
         const pnJid = await conn?.signalRepository?.lidMapping?.getPNForLID?.(lidJid);
         if (pnJid && typeof pnJid === 'string' && pnJid.endsWith('@s.whatsapp.net')) {
@@ -55,7 +40,6 @@ async function resolvePhoneNumber(conn, id) {
         }
     } catch (_) {}
 
-    // 3. Coba lookup via conn.getJid
     if (typeof conn?.getJid === 'function') {
         const jid = conn.getJid(lidJid);
         if (jid && typeof jid === 'string' && jid.endsWith('@s.whatsapp.net')) {
@@ -65,7 +49,6 @@ async function resolvePhoneNumber(conn, id) {
         }
     }
 
-    // 4. Coba periksa record database owner jika tersimpan PN valid (< 15 digit)
     const record = global.db?.data?.owners?.[lidJid] || global.db?.data?.owners?.[clean] || global.db?.data?.owners?.[str];
     if (record && typeof record === 'object' && record.pn) {
         let recPn = record.pn.toString().replace(/[^0-9]/g, '');
@@ -75,7 +58,6 @@ async function resolvePhoneNumber(conn, id) {
         }
     }
 
-    // 5. Coba cari di database users
     const userObj = global.db?.data?.users?.[lidJid] || global.db?.data?.users?.[clean];
     if (userObj && userObj.phoneNumber) {
         let userPn = userObj.phoneNumber.toString().replace(/[^0-9]/g, '');
@@ -88,9 +70,6 @@ async function resolvePhoneNumber(conn, id) {
     return null;
 }
 
-/**
- * Helper pemanggilan nama user secara aman (menghindari error jika return string sinkron).
- */
 async function safeGetName(conn, jid) {
     if (!jid || typeof conn?.getName !== 'function') return '';
     try {
@@ -104,9 +83,6 @@ async function safeGetName(conn, jid) {
     }
 }
 
-/**
- * Helper untuk mengambil informasi lengkap otoritas (PN, JID, LID, Nama).
- */
 async function resolveAuthorityInfo(conn, id, defaultRole = '') {
     const rawStr = typeof id === 'object' ? (id.pn || id.lid || id.jid || '') : id.toString().trim();
     const clean = rawStr.replace(/[^0-9]/g, '');
@@ -126,7 +102,6 @@ async function resolveAuthorityInfo(conn, id, defaultRole = '') {
         name = await safeGetName(conn, jid);
     }
 
-    // Filter out nama jika hanya berupa angka / ID
     if (name && (name.match(/^\+?[0-9\s-]+$/) || name.includes('@'))) {
         name = '';
     }
@@ -145,12 +120,10 @@ const handler = async (m, { conn, text, args, usedPrefix, command, isROwner }) =
     let cmd = (command || '').toLowerCase();
     let sub = (args[0] || '').toLowerCase();
 
-    // Map alias direct command
     if (cmd === 'addowner') sub = 'add';
     if (cmd === 'delowner' || cmd === 'remowner') sub = 'del';
     if (cmd === 'listowner') sub = 'list';
 
-    // Jika user biasa mengetik .owner (tanpa sub-command)
     if (!isROwner && (!sub || sub === 'list')) {
         const name = global.info?.namaowner || 'Owner';
         const number = (global.info?.nomorowner || global.developer?.[0] || '6283854551575').replace(/[^0-9]/g, '');
@@ -171,7 +144,6 @@ const handler = async (m, { conn, text, args, usedPrefix, command, isROwner }) =
         }, { quoted: m });
     }
 
-    // Jika user biasa mencoba menambah/menghapus owner
     if (!isROwner) {
         return global.dFail('rowner', m, conn);
     }
@@ -180,7 +152,6 @@ const handler = async (m, { conn, text, args, usedPrefix, command, isROwner }) =
         global.db.data.owners = {};
     }
 
-    // ── HELP / PANDUAN ───────────────────────────────────────────────────────
     if (sub === 'help') {
         return m.reply(
             `*PANDUAN MANAJEMEN OWNER *\n` +
@@ -195,7 +166,6 @@ const handler = async (m, { conn, text, args, usedPrefix, command, isROwner }) =
         );
     }
 
-    // ── 1. LIST OWNER ────────────────────────────────────────────────────────
     if (sub === 'list' || !sub) {
         const devs = (global.developer || []).concat(global.info?.nomorowner ? [global.info.nomorowner] : []);
         const rawDevs = Array.from(new Set(devs.map(d => d.toString().trim())));
@@ -269,7 +239,6 @@ const handler = async (m, { conn, text, args, usedPrefix, command, isROwner }) =
         return conn.sendMessage(m.chat, { text: txt, mentions: allMentions }, { quoted: m });
     }
 
-    // ── Helper Resolve Target User ───────────────────────────────────────────
     let target = null;
     if (m.mentionedJid && m.mentionedJid[0]) {
         target = m.mentionedJid[0];
@@ -316,7 +285,6 @@ const handler = async (m, { conn, text, args, usedPrefix, command, isROwner }) =
     const mentionJid = effectivePn ? `${effectivePn}@s.whatsapp.net` : (targetLID || target);
     const tagDisplay = effectivePn ? `@${effectivePn}` : ((await safeGetName(conn, mentionJid)) || `@${cleanTarget}`);
 
-    // ── 2. ADD OWNER ─────────────────────────────────────────────────────────
     if (sub === 'add') {
         const isAlreadyDev = (global.developer || []).some(d => {
             const cleanD = d.toString().replace(/[^0-9]/g, '');
@@ -351,7 +319,6 @@ const handler = async (m, { conn, text, args, usedPrefix, command, isROwner }) =
             global.saveData('owners', targetLID);
         }
 
-        // Berikan akses unlimited limit
         if (targetLID && global.db.data.users[targetLID]) {
             global.db.data.users[targetLID].limit = Infinity;
             global.saveData('users', targetLID);
@@ -367,7 +334,6 @@ const handler = async (m, { conn, text, args, usedPrefix, command, isROwner }) =
         }, { quoted: m });
     }
 
-    // ── 3. DELETE / REMOVE OWNER ─────────────────────────────────────────────
     if (sub === 'del' || sub === 'rem' || sub === 'remove') {
         const isDev = (global.developer || []).some(d => {
             const cleanD = d.toString().replace(/[^0-9]/g, '');
@@ -414,3 +380,4 @@ handler.command = /^(addowner|delowner|listowner)$/i
 handler.owner   = true
 
 export default handler
+

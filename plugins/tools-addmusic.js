@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Add / Mix Music to Video & Photo (BGM Media Editor)
-- @Description: Menambahkan musik ke video (ganti total/mix) atau ke foto (menghasilkan video musik), dengan fitur potong/atur durasi mulai & panjang durasi.
-*/
-
 import { promises as fsPromises } from 'fs';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
@@ -11,7 +5,6 @@ import tmpManager from '../function/core/safe-tmp.js';
 
 const execAsync = promisify(exec);
 
-// Map penampung sesi aktif per user
 const sessions = new Map();
 
 function normalizeTime(str) {
@@ -166,7 +159,6 @@ async function renderVideoWithMusic(videoBuf, audioBuf, mode = 'replace', startT
         tmpAud = await tmpManager.writeBuffer(audioBuf, '.mp3');
         tmpOut = tmpVid.replace(/\.mp4$/, '_out.mp4');
 
-        // Cek apakah video asal memiliki audio stream
         let hasOriginalAudio = false;
         try {
             const { stdout } = await execAsync(
@@ -404,16 +396,13 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
     let isImage = /image/.test(mime);
     let isAudio = /audio/.test(mime);
 
-    // Cek jika user mengirim media langsung bersama pesan perintah
     let directMime = (m.msg || m).mimetype || m.mediaType || '';
     let directIsVideo = /video/.test(directMime);
     let directIsImage = /image/.test(directMime);
     let directIsAudio = /audio/.test(directMime);
 
-    // Parsir mode, start time, dan duration dari text/args
     const parsed = parseModeAndStart(text || '');
 
-    // ── KASUS 1: FOTO & AUDIO TERSEDIA LANGSUNG (Quoted + Direct Message) ──
     if ((isImage && directIsAudio) || (isAudio && directIsImage)) {
         await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } }).catch(() => {});
         try {
@@ -436,7 +425,6 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
         }
     }
 
-    // ── KASUS 2: VIDEO & AUDIO TERSEDIA LANGSUNG (Quoted + Direct Message) ──
     if ((isVideo && directIsAudio) || (isAudio && directIsVideo)) {
         await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } }).catch(() => {});
         try {
@@ -484,7 +472,6 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
         }
     }
 
-    // ── KASUS 3: USER REPLY / KIRIM FOTO ──
     if (isImage) {
         await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } }).catch(() => {});
         try {
@@ -526,7 +513,6 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
         }
     }
 
-    // ── KASUS 4: USER REPLY / KIRIM VIDEO ──
     if (isVideo) {
         await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } }).catch(() => {});
         try {
@@ -569,7 +555,6 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
         }
     }
 
-    // ── KASUS 5: USER REPLY / KIRIM AUDIO ──
     if (isAudio) {
         await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } }).catch(() => {});
         try {
@@ -607,7 +592,6 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
         }
     }
 
-    // ── KASUS 6: TIDAK ADA MEDIA YANG DI-REPLY (PANDUAN) ──
     return m.reply(
         `╭── ✦ *TAMBAH MUSIK KE FOTO / VIDEO* ✦\n` +
         `• Menambahkan musik/lagu ke foto (menjadi video animasi musik) atau video.\n` +
@@ -628,7 +612,6 @@ let handler = async (m, { conn, usedPrefix, command, text, args }) => {
     );
 };
 
-// ── BEFORE HOOK: MENDETEKSI LANJUTAN SESI ──
 handler.before = async (m, { conn }) => {
     if (!m.sender || m.isBaileys) return false;
     if (!sessions.has(m.sender)) return false;
@@ -636,7 +619,6 @@ handler.before = async (m, { conn }) => {
     const session = sessions.get(m.sender);
     const textMsg = (m.text || '').trim();
 
-    // 1. Opsi Pembatalan
     if (/^(batal|cancel)$/i.test(textMsg)) {
         clearTimeout(session.timeout);
         sessions.delete(m.sender);
@@ -650,7 +632,6 @@ handler.before = async (m, { conn }) => {
     let isImage = /image/.test(mime);
     let isAudio = /audio/.test(mime);
 
-    // 2. Menunggu Audio (Session memiliki Media foto/video, belum punya Audio)
     if (session.media && !session.audio) {
         if (!isAudio) {
             if (textMsg && !/^(batal|cancel)$/i.test(textMsg)) {
@@ -675,19 +656,16 @@ handler.before = async (m, { conn }) => {
             if (parsed.start && parsed.start !== '00:00:00') session.startTime = parsed.start;
             if (parsed.duration) session.duration = parsed.duration;
 
-            // Jika media adalah FOTO: langsung render tanpa perlu tanya opsi replace/mix
             if (session.mediaType === 'image') {
                 await handleRenderExecution(m, conn, session);
                 return true;
             }
 
-            // Jika media adalah VIDEO dan sudah ada mode
             if (session.mode) {
                 await handleRenderExecution(m, conn, session);
                 return true;
             }
 
-            // Jika media VIDEO dan belum ada mode: minta user pilih
             await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } }).catch(() => {});
             await m.reply(
                 `╭── ✦ *PILIH OPSI AUDIO* ✦\n` +
@@ -710,7 +688,6 @@ handler.before = async (m, { conn }) => {
         }
     }
 
-    // 3. Menunggu Media (Session memiliki Audio, belum punya Media Foto/Video)
     if (session.audio && !session.media) {
         if (!isVideo && !isImage) {
             if (textMsg && !/^(batal|cancel)$/i.test(textMsg)) {
@@ -737,19 +714,16 @@ handler.before = async (m, { conn }) => {
             if (parsed.start && parsed.start !== '00:00:00') session.startTime = parsed.start;
             if (parsed.duration) session.duration = parsed.duration;
 
-            // Jika media FOTO: langsung render
             if (isImage) {
                 await handleRenderExecution(m, conn, session);
                 return true;
             }
 
-            // Jika media VIDEO dan sudah ada mode
             if (session.mode) {
                 await handleRenderExecution(m, conn, session);
                 return true;
             }
 
-            // Jika media VIDEO dan belum ada mode: minta user pilih
             await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } }).catch(() => {});
             await m.reply(
                 `╭── ✦ *PILIH OPSI AUDIO* ✦\n` +
@@ -770,7 +744,6 @@ handler.before = async (m, { conn }) => {
         }
     }
 
-    // 4. Kedua Media Video & Audio Lengkap, Menunggu Pemilihan Mode
     if (session.media && session.audio && !session.mode) {
         if (textMsg) {
             const parsed = parseModeAndStart(textMsg);

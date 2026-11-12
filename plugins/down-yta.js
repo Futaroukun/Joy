@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: YouTube Audio Downloader
-- @Description: Download audio YouTube via yt-dlp, YouTube Music API, SaveTube, dan lbserver.
-*/
-
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
@@ -30,7 +24,6 @@ function isValidAudioBuffer(buf) {
     return isId3 || isMp3Sync || isM4a || isOgg || isWebm || isRiff;
 }
 
-// ── yt-dlp local fallback ─────────────────────────────────────────────────────
 
 let _ytDlpPath = undefined;
 function getYtDlpPath() {
@@ -113,7 +106,6 @@ function downloadViaYtDlp(url) {
     });
 }
 
-// ── Engine 3: SaveTube scraper ────────────────────────────────────────────────
 
 class SaveTube {
     constructor() {
@@ -202,7 +194,6 @@ function formatViews(n) {
     return String(n);
 }
 
-// ── Handler ───────────────────────────────────────────────────────────────────
 
 const savetube = new SaveTube();
 
@@ -232,7 +223,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         if (!videoId) throw new Error('ID YouTube tidak valid atau tidak ditemukan pada link.');
         const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-        // 1. Ambil metadata video (yts fallback ke ytmusic)
         let meta = null;
         try {
             meta = await yts({ videoId });
@@ -255,11 +245,9 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             } catch (_) {}
         }
 
-        // 2. Unduh audio melalui multi-engine fallback
         let buffer = null;
         let lastErr = null;
 
-        // Engine 1: Convert1s / Ytmp3 Scraper (Fast 320kbps)
         try {
             const c1s = await convert1s.downloadAudio(canonicalUrl);
             if (c1s?.buffer && isValidAudioBuffer(c1s.buffer)) {
@@ -273,7 +261,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             console.warn('[YTMP3] Convert1s/Ytmp3 gagal, mencoba engine berikutnya:', err.message);
         }
 
-        // Engine 2: YouTube Music Innertube Direct (Pure JS)
         if (!buffer) {
             try {
                 const ytmDl = await ytmusic.download(videoId, {
@@ -289,7 +276,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Engine 3: yt-dlp local (hanya jika terinstal di sistem)
         if (!buffer && isYtDlpAvailable()) {
             try {
                 const dlBuf = await downloadViaYtDlp(canonicalUrl);
@@ -301,7 +287,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Engine 4: SaveTube scraper
         if (!buffer) {
             try {
                 const st = await savetube.download(canonicalUrl);
@@ -336,13 +321,11 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             `└ Link: ${canonicalUrl}`
         ].join('\n');
 
-        // 3. Kirim thumbnail + caption
         await conn.sendMessage(m.chat, {
             image  : { url: thumbUrl },
             caption: caption
         }, { quoted: m });
 
-        // 4. Pastikan format AAC M4A WhatsApp-compatible (+faststart)
         let audioToSend = buffer;
         let mimeToSend = 'audio/mp4';
         const isNativeM4A = buffer.length > 8 && buffer.slice(4, 8).toString('ascii') === 'ftyp';
@@ -366,7 +349,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         const cleanTitle = title.replace(/[\\/:*?"<>|]/g, '').trim();
         const durationSec = meta?.seconds || meta?.duration?.seconds || 0;
 
-        // 5. Kirim file audio
         try {
             await conn.sendMessage(m.chat, {
                 audio   : audioToSend,

@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: NPM Search
-- @Description: Cari package di NPM registry.
-*/
-
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!text) return m.reply(
         `*NPM SEARCH*\n\n` +
@@ -45,7 +39,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             msg += `*Update:* ${update}\n`
             msg += `*Download:* ${item.downloads.monthly}\n`
             msg += `${pkg.links.npm}\n`
-            
+
             if (i < data.objects.length - 1) msg += `\n`
         })
 

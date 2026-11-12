@@ -1,8 +1,3 @@
-/*
-- @Author     : Rafli
-- @Feature    : Catatan Owner (Dedicated Private Notes)
-- @Description: Fitur manajemen catatan pribadi khusus Owner bot (.catatan <add|del|edit|get|list|search|rename|update|info|stats|backup>) terpisah penuh dari sistem store.
-*/
 
 import fs from 'fs'
 import path from 'path'
@@ -10,11 +5,9 @@ import path from 'path'
 const dbPath = path.join(process.cwd(), 'data', 'catatan.json')
 const storeDbPath = path.join(process.cwd(), 'data', 'store.json')
 
-// ── Database Helper ──────────────────────────────────────────────────────────
 function loadCatatan() {
     if (!fs.existsSync(dbPath)) {
         let initialData = {}
-        // Migrasi dari store.json jika ada
         try {
             if (fs.existsSync(storeDbPath)) {
                 const storeRaw = JSON.parse(fs.readFileSync(storeDbPath, 'utf8'))
@@ -88,7 +81,6 @@ function getFlattenedCatatan(data) {
     return list
 }
 
-// ── Sender Helper ────────────────────────────────────────────────────────────
 async function sendCatatanItem(m, conn, item, keyName) {
     if (!item) return m.reply('*Catatan tidak ditemukan di database.*')
 
@@ -155,7 +147,6 @@ async function sendCatatanItem(m, conn, item, keyName) {
     }
 }
 
-// ── Main Handler ─────────────────────────────────────────────────────────────
 let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) => {
     const isCallerOwner = checkIsOwner(m, isOwner, isROwner)
     if (!isCallerOwner) {
@@ -220,7 +211,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         subArgs = ''
     }
 
-    // ── SUBCOMMAND: ADD ──────────────────────────────────────────────────────
     if (sub === 'add') {
         if (!subArgs && !m.quoted) {
             return m.reply(
@@ -331,7 +321,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         }, { quoted: m })
     }
 
-    // ── SUBCOMMAND: GET ──────────────────────────────────────────────────────
     if (sub === 'get') {
         if (!subArgs) return m.reply(`Format: \`${usedPrefix + command} get <nomor/nama>\``)
 
@@ -360,7 +349,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         return sendCatatanItem(m, conn, matched.data, matched.key)
     }
 
-    // ── SUBCOMMAND: DELETE ───────────────────────────────────────────────────
     if (sub === 'del') {
         if (!subArgs) {
             if (allItems.length === 0) return m.reply('*Belum ada catatan untuk dihapus.*')
@@ -425,7 +413,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         }, { quoted: m })
     }
 
-    // ── SUBCOMMAND: RENAME ───────────────────────────────────────────────────
     if (sub === 'rename') {
         if (!subArgs || !subArgs.includes('|')) {
             return m.reply(
@@ -470,7 +457,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── SUBCOMMAND: UPDATE ───────────────────────────────────────────────────
     if (sub === 'update') {
         if (!m.quoted) {
             return m.reply(`*Reply pesan/media baru* lalu ketik:\n\`${usedPrefix + command} update <nama/nomor>\``)
@@ -531,7 +517,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── SUBCOMMAND: EDIT ─────────────────────────────────────────────────────
     if (sub === 'edit') {
         if (allItems.length === 0) return m.reply('*Belum ada catatan yang tersimpan.*')
 
@@ -572,7 +557,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         return askCatatanEditOptions(m, conn, target, usedPrefix, command)
     }
 
-    // ── SUBCOMMAND: SEARCH ───────────────────────────────────────────────────
     if (sub === 'search') {
         if (!subArgs) return m.reply(`Format: \`${usedPrefix + command} search <kata kunci>\``)
 
@@ -599,7 +583,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── SUBCOMMAND: INFO ─────────────────────────────────────────────────────
     if (sub === 'info') {
         if (!subArgs) return m.reply(`Format: \`${usedPrefix + command} info <nomor/nama>\``)
 
@@ -631,7 +614,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── SUBCOMMAND: STATS ────────────────────────────────────────────────────
     if (sub === 'stats') {
         let sizeKB = 0
         try {
@@ -659,7 +641,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         )
     }
 
-    // ── SUBCOMMAND: BACKUP ───────────────────────────────────────────────────
     if (sub === 'backup') {
         if (!fs.existsSync(dbPath)) return m.reply('*Database catatan kosong.*')
         const buffer = fs.readFileSync(dbPath)
@@ -671,7 +652,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         }, { quoted: m })
     }
 
-    // ── SUBCOMMAND: LIST (Default Catalog Menu) ──────────────────────────────
     if (sub === 'list') {
         if (allItems.length === 0) {
             return m.reply(
@@ -729,7 +709,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
     }
 }
 
-// ── Interactive Edit Prompts ─────────────────────────────────────────────────
 async function askCatatanEditOptions(m, conn, target, usedPrefix, command) {
     try {
         await conn.sendButton(m.chat, {
@@ -775,12 +754,10 @@ async function askCatatanEditOptions(m, conn, target, usedPrefix, command) {
     }
 }
 
-// ── Before Handler (Button Click & Sesi Input) ───────────────────────────────
 handler.before = async (m, { conn, usedPrefix, command }) => {
     conn.catatanEditSession = conn.catatanEditSession || new Map()
     conn.catatanDelConfirmation = conn.catatanDelConfirmation || {}
 
-    // 1. Handle Selection from list button: catatanselect_<index>
     if (m.text?.startsWith('catatanselect_')) {
         const isCallerOwner = checkIsOwner(m, false, false)
         if (!isCallerOwner) return false
@@ -802,7 +779,6 @@ handler.before = async (m, { conn, usedPrefix, command }) => {
         return true
     }
 
-    // 2. Handle Edit selection from button: catatanedit_select_<index>
     if (m.text?.startsWith('catatanedit_select_')) {
         const isCallerOwner = checkIsOwner(m, false, false)
         if (!isCallerOwner) return false
@@ -819,7 +795,6 @@ handler.before = async (m, { conn, usedPrefix, command }) => {
         return true
     }
 
-    // 3. Handle Edit action button: catatanedit_title_<index> / catatanedit_content_<index>
     if (m.text?.startsWith('catatanedit_title_') || m.text?.startsWith('catatanedit_content_')) {
         const isCallerOwner = checkIsOwner(m, false, false)
         if (!isCallerOwner) return false
@@ -868,7 +843,6 @@ handler.before = async (m, { conn, usedPrefix, command }) => {
         }
     }
 
-    // 4. Handle Delete All Confirmation (Y/N)
     if (conn.catatanDelConfirmation?.[m.chat]) {
         const session = conn.catatanDelConfirmation[m.chat]
         if (m.sender === session.sender) {
@@ -890,7 +864,6 @@ handler.before = async (m, { conn, usedPrefix, command }) => {
         }
     }
 
-    // 5. Handle Active Edit Session
     const editSession = conn.catatanEditSession.get(m.sender)
     if (editSession) {
         clearTimeout(editSession.timeout)

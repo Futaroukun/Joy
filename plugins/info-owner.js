@@ -1,12 +1,4 @@
-/*
- * @Author: Rafli
- * @Feature: Info Kontak Owner & Developer
- * @Description: Mengirim kartu kontak resmi WhatsApp (vCard) serta informasi detail kontak,
- *               sosial media, dan saluran resmi pemilik/developer bot Joy.
- */
-
 let handler = async (m, { conn, args, usedPrefix }) => {
-    // Jika ada sub-perintah add/del/list, arahkan ke modul manajemen owner
     if (args && args[0] && /^(add|del|rem|remove|list)$/i.test(args[0])) {
         return m.reply(
             `*PEMBERITAHUAN*\n` +
@@ -23,7 +15,6 @@ let handler = async (m, { conn, args, usedPrefix }) => {
     const botName = global.info?.namabot || 'Joy';
     const botNumber = (global.info?.nomorbot || conn.user?.jid || '').replace(/[^0-9]/g, '');
 
-    // Cek daftar owner tambahan (di luar developer utama dan nomor bot)
     const extraOwners = [];
     if (Array.isArray(global.owner)) {
         for (const o of global.owner) {
@@ -42,7 +33,6 @@ let handler = async (m, { conn, args, usedPrefix }) => {
         }
     }
 
-    // Susun vCard resmi
     const vcard = `BEGIN:VCARD\n`
                 + `VERSION:3.0\n`
                 + `FN:${name}\n`
@@ -54,7 +44,6 @@ let handler = async (m, { conn, args, usedPrefix }) => {
                 + (global.lig ? `URL;type=Instagram:${global.lig}\n` : '')
                 + `END:VCARD`;
 
-    // Susun caption informasi kontak
     let caption = `╭── ✦ *KONTAK OWNER & DEVELOPER* ✦\n`
                 + `• Nama: ${name}\n`
                 + `• Peran: Developer Utama & Creator\n`
@@ -74,7 +63,6 @@ let handler = async (m, { conn, args, usedPrefix }) => {
             + `> _Silakan hubungi owner untuk urusan penting, pelaporan bug, atau kerja sama._\n`
             + `> _Dilarang melakukan spam chat atau spam call._`;
 
-    // 1. Kirim kartu kontak WhatsApp (vCard)
     await conn.sendMessage(m.chat, {
         contacts: {
             displayName: name,
@@ -82,7 +70,6 @@ let handler = async (m, { conn, args, usedPrefix }) => {
         }
     }, { quoted: m });
 
-    // 2. Kirim rincian teks info kontak & tautan sosial media
     const thumbObj = Buffer.isBuffer(global.thum)
         ? { thumbnail: global.thum }
         : (global.thum ? { thumbnailUrl: global.thum } : {});
@@ -101,7 +88,6 @@ let handler = async (m, { conn, args, usedPrefix }) => {
         }
     }, { quoted: m });
 
-    // React functional emoji
     await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } }).catch(() => {});
 };
 

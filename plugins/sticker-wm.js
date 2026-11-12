@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Sticker Watermark
-- @Description: Ubah watermark (packname & author) pada stiker yang sudah ada.
-*/
-
 import { writeExif } from '../function/media/exif.js'
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {

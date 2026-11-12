@@ -1,9 +1,3 @@
-/*
- * @Author: Rafli
- * @Feature: YouTube Music Downloader & Streamer
- * @Description: Putar dan unduh musik dari YouTube Music dengan kualitas tinggi, metadata ID3, dan lirik otomatis.
- */
-
 import ytmusic from '../function/scrapers/ytmusic.js';
 import convert1s from '../function/scrapers/convert1s.js';
 import { toAudioM4A } from '../function/media/converter.js';

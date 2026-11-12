@@ -1,9 +1,3 @@
-/*
-- @Author     : Rafli
-- @Feature    : AFK Handler (Auto Return & Mention Detector)
-- @Description: Mendeteksi saat user AFK kembali online (dengan proteksi grace period 5 detik) dan memberitahu ketika user AFK di-mention di grup.
-*/
-
 function msToTime(duration) {
     let seconds = Math.floor((duration / 1000) % 60),
         minutes = Math.floor((duration / (1000 * 60)) % 60),
@@ -36,9 +30,7 @@ export async function before(m, { conn }) {
     const senderLid = getLid(m.sender)
     const user = global.db.data.users[senderLid] || global.db.data.users[m.sender]
 
-    // ── 1. USER AFK KEMBALI ONLINE ───────────────────────────────────────────
     if (user && user.afk) {
-        // Grace period: Abaikan pesan dalam 5 detik pertama setelah set AFK
         if (Date.now() - (user.afkTime || 0) > 5000) {
             const afkDuration = Date.now() - (user.afkTime || Date.now())
             let phone = conn.storeNumber?.[m.sender] || (conn.getNumber ? conn.getNumber(m.sender) : '')
@@ -69,7 +61,6 @@ export async function before(m, { conn }) {
         }
     }
 
-    // ── 2. DETEKSI MENTION USER YANG SEDANG AFK DI GRUP ─────────────────────
     if (m.isGroup) {
         let mentionedJids = m.mentionedJid?.length ? m.mentionedJid : []
         if (m.quoted?.sender && !mentionedJids.includes(m.quoted.sender)) {
@@ -89,7 +80,6 @@ export async function before(m, { conn }) {
                     const cooldownKey = `${m.chat}-${lid}`
                     const lastNotified = cooldowns.get(cooldownKey) || 0
 
-                    // Cooldown 30 detik per user per chat agar tidak spam
                     if (Date.now() - lastNotified < 30000) continue
                     cooldowns.set(cooldownKey, Date.now())
 

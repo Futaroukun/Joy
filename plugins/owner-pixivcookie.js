@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Pixiv Session & Cookie Manager
- * @Description : Atur cookie PHPSESSID, pantau status OAuth auto-refresh, dan koneksi akun Pixiv
- * @Version     : 5.0 (Dual-Mode Permanent Auth)
- */
 
 import fetch from 'node-fetch'
 import {
@@ -16,7 +10,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const subCmd      = rawInput.toLowerCase()
     const isStatusCmd = /^(pcheck|pixivcheck|pixivstatus)$/i.test(command)
 
-    // ── 1. STATUS CHECK (.pcheck / .pixivcheck / .pcookie status) ─────────────
     if (isStatusCmd || subCmd === 'status' || subCmd === 'cek' || subCmd === 'check') {
         const loadMsg = await m.reply('_Memeriksa status sesi Pixiv..._')
         try {
@@ -47,14 +40,12 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
     }
 
-    // ── 2. RESET / DELETE CREDENTIALS (.pcookie reset / del) ───────────────────
     if (subCmd === 'del' || subCmd === 'delete' || subCmd === 'reset') {
         saveConfig({ cookie: '', refreshToken: '', accessToken: '', userId: '', userName: '' })
         global.pixiv = { cookie: '', userId: '', userName: '' }
         return m.reply(`*Semua sesi & token Pixiv berhasil dihapus.*\nBot sekarang beroperasi dalam mode publik/anonim (SFW).`)
     }
 
-    // ── 3. HELP / GUIDE ───────────────────────────────────────────────────────
     if (!rawInput) {
         return m.reply(
             `*🔑 PIXIV SESSION & COOKIE MANAGER*\n\n` +
@@ -65,7 +56,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         )
     }
 
-    // ── 4. PARSE & SET PHPSESSID COOKIE ───────────────────────────────────────
     let cookie = rawInput
     const match = rawInput.match(/PHPSESSID=([a-zA-Z0-9_\-]+)/i)
     if (match) {

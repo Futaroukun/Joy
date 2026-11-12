@@ -1,8 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Fantasy Wallet & Coin Inspector
- * @Description : Menampilkan rincian kantung koin petualang (Perunggu, Perak, Emas, Platina) dan kurs konversi mata uang anime.
- */
 
 import { parseCoins, formatWalletBox } from '../function/scrapers/currency.js'
 import { getLevelProgress } from '../function/core/levelling.js'

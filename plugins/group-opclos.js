@@ -1,9 +1,3 @@
-/*
- * @Author     : Rafli & Antigravity
- * @Feature    : Group Open/Close & Auto Schedule Setting
- * @Description: Buka/tutup grup manual serta pengaturan jadwal buka/tutup otomatis (.gc open 06.00 / .gc close 15.00).
- */
-
 function parseTime(input) {
     if (!input || typeof input !== 'string') return null;
     const cleaned = input.trim().replace('.', ':');
@@ -58,11 +52,9 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
             return m.reply(text);
         }
 
-        // ── Buka Grup (Manual atau Set Jam Buka Otomatis) ─────────────
         if (action === 'open' || action === 'buka') {
             const timeParam = args[1];
 
-            // Jika ada parameter jam -> Atur jam buka otomatis
             if (timeParam) {
                 const parsed = parseTime(timeParam);
                 if (!parsed) {
@@ -88,7 +80,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
                 return m.reply(replyText);
             }
 
-            // Tanpa parameter jam -> Buka grup manual langsung
             if (!isAnnounce) {
                 return m.reply('Grup sudah dalam mode terbuka.');
             }
@@ -96,11 +87,9 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
             return m.reply('🔓 *Grup telah dibuka*\n\nSemua member sekarang bisa mengirim pesan.');
         }
 
-        // ── Tutup Grup (Manual atau Set Jam Tutup Otomatis) ────────────
         if (action === 'close' || action === 'tutup') {
             const timeParam = args[1];
 
-            // Jika ada parameter jam -> Atur jam tutup otomatis
             if (timeParam) {
                 const parsed = parseTime(timeParam);
                 if (!parsed) {
@@ -126,7 +115,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
                 return m.reply(replyText);
             }
 
-            // Tanpa parameter jam -> Tutup grup manual langsung
             if (isAnnounce) {
                 return m.reply('Grup sudah dalam mode tertutup.');
             }
@@ -134,7 +122,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
             return m.reply('🔒 *Grup telah ditutup*\n\nHanya admin yang bisa mengirim pesan.');
         }
 
-        // ── Sakelar Cepat On / Off ────────────────────────────────────
         if (/^(on|enable|aktif|1|true)$/i.test(action)) {
             chat.autoOpenClose = true;
             global.saveData?.('chats', m.chat);
@@ -184,3 +171,4 @@ handler.admin = true;
 handler.botAdmin = true;
 
 export default handler;
+

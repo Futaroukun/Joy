@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Video Quality & Media Inspector (Probe)
-- @Description: Cek kualitas video mendalam (resolusi 4K/2K/1080p/SD, FPS 120/90/60/30/24, codec H.264/HEVC/AV1, bitrate, bit depth 8/10-bit HDR, audio specs, & kesesuaian WhatsApp).
-*/
-
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { join } from 'path';

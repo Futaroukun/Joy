@@ -1,8 +1,3 @@
-/*
-- @Author: Rafli 
-- @Feature: Upload Status WhatsApp 
-- @Description: Post status WA dengan support image, video, text, dan audio (auto-convert ke VN)
-*/
 
 import { spawn } from 'child_process'
 import { promises } from 'fs'

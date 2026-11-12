@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Alight Motion Premium Generator (Random & Custom Email)
- * @Description : Generator akun Alight Motion gratis & unlimited via otomasi sistem MotionPlus.
- * @Version     : 1.1 (Support Custom Email & Session Checker)
- */
-
 import https from 'https';
 
 class MotionPlusClient {
@@ -159,7 +152,6 @@ class MotionPlusClient {
 
         const account = createRes.data;
 
-        // Polling aktivasi akun
         for (let i = 0; i < 6; i++) {
             await new Promise(r => setTimeout(r, 2000));
             const emails = await this.request('/api/emails');
@@ -217,7 +209,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const args = (text || '').trim().split(/\s+/);
     const sub = (args[0] || '').toLowerCase();
 
-    // Guard: Cek ketersediaan server upstream sebelum memproses perintah aktif
     if (['status', 'stats', 'cek', 'check', 'custom', 'add', 'verif', 'verify', 'gen', 'create', 'free'].includes(sub)) {
         try {
             const check = await fetch('https://motionplus.my.id/api/public/api-status', { signal: AbortSignal.timeout(4000) });
@@ -239,7 +230,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
     }
 
-    // ── SUBCOMMAND: STATUS SERVER ──────────────────────────────────────────────
     if (sub === 'status' || sub === 'stats') {
         await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } }).catch(() => {});
         try {
@@ -262,7 +252,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
     }
 
-    // ── SUBCOMMAND: CEK SESI / LINK LOGIN ─────────────────────────────────────
     if (sub === 'cek' || sub === 'check') {
         const code = args[1];
         if (!code) {
@@ -310,7 +299,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
     }
 
-    // ── SUBCOMMAND: CUSTOM EMAIL (PRIBADI) ───────────────────────────────────
     if (sub === 'custom' || sub === 'pribadi' || sub === 'personal') {
         const targetEmail = (args[1] || '').trim().toLowerCase();
         if (!targetEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
@@ -323,7 +311,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             );
         }
 
-        // Cek status server API terlebih dahulu
         try {
             const { api } = await MotionPlusClient.getStatus();
             if (api?.status && api.status !== 'aktif') {
@@ -343,7 +330,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             const client = new MotionPlusClient();
             await client.createPersonal(targetEmail);
 
-            // Simpan sesi verifikasi di memory bot (berlaku 30 menit)
             conn.alightCustom = conn.alightCustom || {};
             conn.alightCustom[m.sender] = {
                 email: targetEmail,
@@ -376,7 +362,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
     }
 
-    // ── SUBCOMMAND: VERIFIKASI LINK CUSTOM EMAIL ─────────────────────────────
     if (sub === 'verif' || sub === 'verify') {
         conn.alightCustom = conn.alightCustom || {};
         const session = conn.alightCustom[m.sender];
@@ -391,7 +376,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             targetLink = args.slice(1).join(' ').trim();
         }
 
-        // Pembersihan karakter petik / kurung di link
         targetLink = targetLink.replace(/^['"<]|['">]$/g, '').trim();
 
         if (!targetEmail) {
@@ -450,7 +434,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
     }
 
-    // ── SUBCOMMAND: GENERATE AKUN RANDOM ──────────────────────────────────────
     if (sub === 'gen' || sub === 'create' || sub === 'free') {
         let loadingMsg = null;
         try {
@@ -491,7 +474,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
     }
 
-    // ── MENU / PANDUAN PENGGUNAAN ─────────────────────────────────────────────
     return m.reply(
         `╭── ✦ *ALIGHT MOTION GENERATOR* ✦\n` +
         `Generator akun Alight Motion Premium gratis & otomatis.\n\n` +

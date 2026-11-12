@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Get File & Search
- * @Description : Mengambil dan mengirimkan file dari server ke chat (via path langsung, alias, atau pencarian rekursif).
- * @Version     : 2.1 (No Decorational Emoji & Robust File Transfer)
- */
 
 import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from 'fs'
 import { join, extname, basename, resolve } from 'path'

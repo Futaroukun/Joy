@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Menu / Help
-- @Description: Tampilkan daftar fitur bot berdasarkan kategori dengan thumbnail, info user, total fitur, dan perbaikan urutan kategori.
-*/
-
 import { jidNormalizedUser } from '@whiskeysockets/baileys'
 import fs   from 'fs'
 import { join } from 'path'
@@ -255,7 +249,7 @@ let handler = async (m, { conn, usedPrefix, command, text, isOwner }) => {
                 if (!filtered.length) continue
 
                 menuText.push(header.replace(/%category/g, tags[tag]))
-                
+
                 const commandEntries = [];
                 for (const p of filtered) {
                     const helpList = p.help;

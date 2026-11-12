@@ -1,8 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: GitHub Auto Update & Git Manager
-- @Description: Push otomatis ke GitHub dengan smart commit / custom commit, sinkronisasi pull, manajemen token, dan jadwal harian.
-*/
 
 import cp from 'child_process'
 import { promisify } from 'util'
@@ -61,10 +56,8 @@ async function setupGitCredential() {
         const r = await exec('git config --get remote.origin.url')
         let url = r.stdout.trim()
 
-        // Bersihkan kredensial lama dari URL kalau ada
         url = url.replace(/(https?:\/\/)[^@]+@/, '$1')
 
-        // Sisipkan token baru ke URL remote
         const authedUrl = url.replace(/^https:\/\//, `https://${username}:${fullToken}@`)
 
         await exec(`git remote set-url origin "${authedUrl}"`)
@@ -81,7 +74,6 @@ async function setupGitCredential() {
 async function fetchGitHubProfile(token) {
     const fullToken = normalizeToken(token)
 
-    // 1. Ambil profil user
     const res = await fetch('https://api.github.com/user', {
         headers: {
             Authorization: `Bearer ${fullToken}`,
@@ -99,7 +91,6 @@ async function fetchGitHubProfile(token) {
     const name = user.name || user.login
     let email = user.email
 
-    // 2. Ambil email utama jika tidak public
     if (!email) {
         try {
             const emailsRes = await fetch('https://api.github.com/user/emails', {
@@ -114,14 +105,15 @@ async function fetchGitHubProfile(token) {
                 const primaryEmail = emails.find(e => e.primary) || emails[0]
                 if (primaryEmail) email = primaryEmail.email
             }
-        } catch {}
+        } catch (err) {
+            console.warn('[UPDATE GITHUB CONFIG] Gagal fetch email GitHub API:', err?.message)
+        }
     }
 
     if (!email) {
         email = `${username}@users.noreply.github.com`
     }
 
-    // 3. Konfigurasi Git lokal
     await exec(`git config user.name "${name}"`)
     await exec(`git config user.email "${email}"`)
 
@@ -257,7 +249,9 @@ async function getRepoInfo() {
     const branch   = (await exec('git branch --show-current')).stdout.trim() || 'main'
 
     let lastCommit = 'No commits yet'
-    try { lastCommit = (await exec('git log -1 --format="%h - %s (%cr)"')).stdout.trim() } catch {}
+    try { lastCommit = (await exec('git log -1 --format="%h - %s (%cr)"')).stdout.trim() } catch (err) {
+        console.warn('[GIT REPO INFO] Gagal membaca commit terakhir:', err?.message)
+    }
 
     return { repoUrl: url, username, repoName, branch, lastCommit }
 }
@@ -299,7 +293,9 @@ function backupDataShield() {
                     fs.copyFileSync(src, dst)
                     backedUp[f] = fs.statSync(src).size
                 }
-            } catch (_) {}
+            } catch (err) {
+                console.warn(`[GIT SHIELD BACKUP] Gagal backup ${f}:`, err?.message)
+            }
         }
         return backedUp
     } catch (e) {
@@ -322,7 +318,9 @@ function restoreDataShield(backedUp) {
                         console.log(chalk.green(`[GIT SHIELD RESTORE] Memulihkan ${f} (${origSize} bytes)`))
                     }
                 }
-            } catch (_) {}
+            } catch (err) {
+                console.warn(`[GIT SHIELD RESTORE] Gagal memulihkan ${f}:`, err?.message)
+            }
         }
     } catch (e) {
         console.error('[GIT SHIELD RESTORE ERROR]', e.message)
@@ -363,7 +361,6 @@ async function gitPush(branch, isForce = false) {
     if (!r.success) {
         const msg = r.error?.message || ''
 
-        // Jika push ditolak karena remote lebih baru, coba rebase otomatis
         if (msg.includes('rejected') && !isForce) {
             console.log(chalk.yellow('[GIT PUSH] Push ditolak, mencoba rebase dari remote origin...'))
             const pullRes = await runGit(`git pull --rebase origin ${branch}`)
@@ -387,7 +384,9 @@ async function gitPull(branch, isForce = false) {
     let oldHead = ''
     try {
         oldHead = (await exec('git rev-parse HEAD')).stdout.trim()
-    } catch {}
+    } catch (err) {
+        console.warn('[GIT PULL] Gagal membaca old HEAD:', err?.message)
+    }
 
     const shieldedFiles = backupDataShield()
 
@@ -427,7 +426,9 @@ async function gitPull(branch, isForce = false) {
         let newHead = ''
         try {
             newHead = (await exec('git rev-parse HEAD')).stdout.trim()
-        } catch {}
+        } catch (err) {
+            console.warn('[GIT PULL] Gagal membaca new HEAD:', err?.message)
+        }
 
         const hasUpdate = Boolean(oldHead && newHead && oldHead !== newHead)
         let commitList = ''
@@ -438,12 +439,16 @@ async function gitPull(branch, isForce = false) {
             try {
                 const logRes = await exec(`git log ${oldHead}..${newHead} --format="› \`%h\` %s"`)
                 commitList = logRes.stdout.trim()
-            } catch {}
+            } catch (err) {
+                console.warn('[GIT PULL] Gagal membaca commit log:', err?.message)
+            }
 
             try {
                 const statRes = await exec(`git diff --shortstat ${oldHead}..${newHead}`)
                 shortStat = parseShortStat(statRes.stdout.trim())
-            } catch {}
+            } catch (err) {
+                console.warn('[GIT PULL] Gagal membaca shortstat:', err?.message)
+            }
 
             try {
                 const diffTreeRes = await exec(`git diff --name-status ${oldHead}..${newHead}`)
@@ -456,7 +461,9 @@ async function gitPull(branch, isForce = false) {
                 if (lines.length > 15) {
                     fileList += `\n› ...dan ${lines.length - 15} berkas lainnya`
                 }
-            } catch {}
+            } catch (err) {
+                console.warn('[GIT PULL] Gagal membaca diff name-status:', err?.message)
+            }
         }
 
         return {
@@ -613,7 +620,8 @@ async function sendReport(conn, jid, result, mode = 'manual', quoted = null) {
                 }
             ]
         }, { quoted })
-    } catch {
+    } catch (btnErr) {
+        console.warn('[AUTOUPDATE] Gagal kirim button notif, fallback ke pesan teks:', btnErr?.message)
         try {
             await conn.sendMessage(jid, { text: result.message }, { quoted })
         } catch (e) {
@@ -666,7 +674,6 @@ const handler = async (m, { conn, args, command, usedPrefix }) => {
 
     const sub = (args[0] || '').toLowerCase().trim()
 
-    // ── 1. SUBCOMMAND: TOKEN SETUP & INSPECTION ─────────────────────────────
     if (sub === 'token') {
         const token = args[1]
         if (!token) return m.reply(`Format: \`${usedPrefix + command} token <github_token>\``)
@@ -737,7 +744,6 @@ const handler = async (m, { conn, args, command, usedPrefix }) => {
         )
     }
 
-    // ── 2. SUBCOMMAND: PULL / SYNC ──────────────────────────────────────────
     if (sub === 'pull' || sub === 'sync') {
         const isForce = args.some(a => /--force|-f|reset/i.test(a))
         const loading = await m.reply('_Menarik pembaruan dari GitHub..._')
@@ -779,7 +785,6 @@ const handler = async (m, { conn, args, command, usedPrefix }) => {
         }
     }
 
-    // ── 3. SUBCOMMAND: STATUS ───────────────────────────────────────────────
     if (sub === 'status' && command !== 'autoupdate') {
         const repo = await getRepoInfo().catch(() => ({ repoName: 'Joy', branch: 'main' }))
         const changes = await getChanges()
@@ -821,7 +826,6 @@ const handler = async (m, { conn, args, command, usedPrefix }) => {
         )
     }
 
-    // ── 4. SUBCOMMAND: LOG ──────────────────────────────────────────────────
     if (sub === 'log') {
         const repo = await getRepoInfo().catch(() => ({ branch: 'main' }))
         const limitArg = args.find((a, i) => i > 0 && /^\d+$/.test(a))
@@ -850,7 +854,6 @@ const handler = async (m, { conn, args, command, usedPrefix }) => {
         }
     }
 
-    // ── 5. SUBCOMMAND: DIFF ─────────────────────────────────────────────────
     if (sub === 'diff') {
         try {
             const statRes = await exec('git diff --stat')
@@ -876,7 +879,6 @@ const handler = async (m, { conn, args, command, usedPrefix }) => {
         }
     }
 
-    // ── 6. SUBCOMMAND: AUTO UPDATE CRON ─────────────────────────────────────
     if (command === 'autoupdate' || sub === 'auto' || sub === 'cron') {
         const action = (command === 'autoupdate' ? sub : (args[1] || '').toLowerCase().trim())
 
@@ -930,7 +932,6 @@ const handler = async (m, { conn, args, command, usedPrefix }) => {
         )
     }
 
-    // ── 7. SUBCOMMAND: GIT RAW COMMANDS FALLBACK ─────────────────────────────
     if (command === 'git' && sub && !['push', 'commit'].includes(sub)) {
         const gitCmd = args.join(' ')
         const loading = await m.reply(`_Menjalankan git ${gitCmd}..._`)
@@ -957,7 +958,6 @@ const handler = async (m, { conn, args, command, usedPrefix }) => {
         }
     }
 
-    // ── 5. PUSH / UPDATE MANUAL ─────────────────────────────────────────────
     const isForce = args.includes('-f') || args.includes('--force')
     const filteredArgs = args.filter(a => a !== '-f' && a !== '--force')
     const customMessage = (filteredArgs[0]?.toLowerCase() === 'push' ? filteredArgs.slice(1) : filteredArgs).join(' ').trim()

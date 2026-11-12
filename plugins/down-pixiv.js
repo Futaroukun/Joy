@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Pixiv Downloader (Single, Multi-page, Specific Page Targeting)
- * @Description : Unduh artwork Pixiv via link/ID. Support unduh halaman tertentu (misal: .pixivdl <id> 2)
- * @Version     : 4.0 (Enterprise Hardened)
- */
-
 import {
     extractArtworkId,
     getArtwork,

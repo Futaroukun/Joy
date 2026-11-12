@@ -1,22 +1,14 @@
-/*
- * @Author      : Joy / Rafli
- * @Feature     : WhatsApp Number Scanner / Checker
- * @Description : Memindai ketersediaan nomor WhatsApp dengan wildcard 'x' (1-2 digit) dilengkapi sistem proteksi anti-ban (batching, delay throttled, dan cooldown).
- * @Version     : 2.0 (Anti-Ban & Safe USync Query)
- */
-
 import { addNumbersToPool } from '../function/core/gacha-pool.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const userCooldowns = new Map();
-const COOLDOWN_MS = 15000; // 15 detik jeda per pengguna
+const COOLDOWN_MS = 15000;
 
 let handler = async (m, { conn, text, usedPrefix, command, isPremium, isOwner }) => {
   const userId = m.sender;
   const now = Date.now();
   const lastUsed = userCooldowns.get(userId) || 0;
 
-  // Jeda keamanan: User biasa 15s, User premium dipersingkat 5s, Owner 0s
   const effectiveCooldownMs = isOwner ? 0 : (isPremium ? 5000 : COOLDOWN_MS);
   const remainingCooldown = Math.ceil((effectiveCooldownMs - (now - lastUsed)) / 1000);
 
@@ -46,19 +38,15 @@ let handler = async (m, { conn, text, usedPrefix, command, isPremium, isOwner })
     );
   }
 
-  // Bersihkan format (spasi, strip, tanda kurung, plus)
   let clean = input.replace(/[\s\-\(\)\+]/g, '');
 
-  // Normalisasi format Indonesia 08xx -> 628xx
   if (/^08/i.test(clean)) {
     clean = '62' + clean.slice(1);
   }
 
-  // Hitung jumlah karakter wildcard 'x'
   const xMatches = clean.match(/x/gi);
   const xCount = xMatches ? xMatches.length : 0;
 
-  // Batasi maksimal 2 karakter 'x' di akhir nomor demi keamanan akun bot
   if (xCount > 2) {
     return m.reply(
       `*Peringatan Batasan Keamanan*\n\n` +
@@ -67,7 +55,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isPremium, isOwner })
     );
   }
 
-  // Pastikan x hanya ada di bagian belakang
   if (xCount > 0 && !/x+$/i.test(clean)) {
     return m.reply(
       `*Format Posisi Salah*\n\n` +
@@ -97,14 +84,13 @@ let handler = async (m, { conn, text, usedPrefix, command, isPremium, isOwner })
     numbersToCheck.push(clean);
   }
 
-  // Terapkan cooldown ke user pengirim
   userCooldowns.set(userId, Date.now());
 
   await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } }).catch(() => {});
 
   try {
     const registeredMap = new Map();
-    const BATCH_SIZE = 20; // Pecah menjadi batch kecil 20 nomor per request
+    const BATCH_SIZE = 20;
 
     for (let i = 0; i < numbersToCheck.length; i += BATCH_SIZE) {
       const chunk = numbersToCheck.slice(i, i + BATCH_SIZE);
@@ -119,7 +105,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isPremium, isOwner })
         }
       }
 
-      // Jeda 1 detik antar-batch untuk menghindari rate-limit jika lebih dari 1 batch
       if (i + BATCH_SIZE < numbersToCheck.length) {
         await sleep(1000);
       }
@@ -148,7 +133,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isPremium, isOwner })
       `• Tidak Terdaftar: ${unregisteredList.length}\n` +
       `╰━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-    // Jika 10 nomor atau kurang, tampilkan seluruh detail status
     if (numbersToCheck.length <= 10) {
       caption += `*Daftar Status:*\n`;
       for (const num of numbersToCheck) {
@@ -159,7 +143,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isPremium, isOwner })
         }
       }
     } else {
-      // Jika 100 nomor (2 'x'), tampilkan hanya nomor aktif agar pesan ringkas & tidak lag
       caption += `*Nomor Terdaftar Ditemukan (${registeredList.length}):*\n`;
       if (registeredList.length === 0) {
         caption += `_Tidak ada nomor aktif yang ditemukan pada rentang 00-99._\n`;
@@ -179,7 +162,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isPremium, isOwner })
 
     await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } }).catch(() => {});
 
-    // CTA copy button jika didukung
     if (registeredList.length > 0 && typeof conn.sendButton === 'function') {
       try {
         const buttons = registeredList.slice(0, 3).map((num, idx) => ({

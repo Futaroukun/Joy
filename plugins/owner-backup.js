@@ -1,8 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Owner Database Backup Command
- * @Description : Perintah manual bagi Owner untuk membuat snapshot backup database SQLite dan mengirimkannya langsung ke chat.
- */
 
 import { sendBackupToOwner, createDatabaseBackup } from '../function/core/backup.js';
 

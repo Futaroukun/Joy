@@ -1,9 +1,3 @@
-/*
-- @Author     : Rafli
-- @Feature    : Sfile.co Toolkit (Search, Bypass Downloader, Resumable Uploader, Account Management)
-- @Description: Fitur Sfile.co lengkap: Cari file, unduh langsung tanpa iklan, unggah media/dokumen ke akun pribadi, dan manajemen akun/saldo khusus owner via (.sfile akun).
-*/
-
 import axios from 'axios';
 import { fileTypeFromBuffer } from 'file-type';
 import { sfile } from '../function/scrapers/sfile.js';
@@ -13,7 +7,6 @@ let handler = async (m, { conn, text, args, usedPrefix, command, isOwner }) => {
     let sub = (args[0] || '').toLowerCase();
     let subArgs = args.slice(1).join(' ');
 
-    // ── DIRECT COMMAND ALIASES ───────────────────────────────────────────────
     if (cmd === 'sfilesearch') {
         sub = 'search';
         subArgs = text;
@@ -29,7 +22,6 @@ let handler = async (m, { conn, text, args, usedPrefix, command, isOwner }) => {
         sub = 'myfiles';
     }
 
-    // ── HELP CARD (JIKA TANPA ARGUMEN ATAU .sfile help) ──────────────────────
     if (!sub || sub === 'help') {
         let helpText =
             `*PANDUAN TOOLKIT SFILE.CO*\n` +
@@ -59,14 +51,12 @@ let handler = async (m, { conn, text, args, usedPrefix, command, isOwner }) => {
         return m.reply(helpText.trim());
     }
 
-    // ── 1. MANAJEMEN AKUN OWNER (.sfile akun / .sfile stats / .sfile myfiles) ─
     if (sub === 'akun' || sub === 'account' || sub === 'stats' || sub === 'myfiles' || sub === 'login') {
         if (!isOwner) return m.reply('Menu manajemen akun Sfile hanya dapat diakses oleh Owner bot.');
 
         const akunAction = (args[1] || '').toLowerCase();
         const akunParam = args.slice(2).join(' ');
 
-        // A. Login / Konfigurasi Akun (.sfile akun login <email> <password>)
         if (sub === 'login' || akunAction === 'login' || akunAction === 'auth') {
             const rawCreds = sub === 'login' ? subArgs : akunParam;
             const [email, pass] = rawCreds.split(/\s+/);
@@ -83,7 +73,6 @@ let handler = async (m, { conn, text, args, usedPrefix, command, isOwner }) => {
             }
         }
 
-        // B. Daftar File Akun (.sfile akun files / .sfile myfiles)
         if (sub === 'myfiles' || akunAction === 'files' || akunAction === 'file' || akunAction === 'list') {
             await m.reply('_Mengambil daftar file dari akun Sfile..._');
             try {
@@ -110,7 +99,6 @@ let handler = async (m, { conn, text, args, usedPrefix, command, isOwner }) => {
             }
         }
 
-        // C. Dashboard Akun & Saldo (.sfile akun / .sfile stats)
         await m.reply('_📊 Mengambil data statistik & pendapatan akun Sfile..._');
         try {
             const stats = await sfile.getAccountStats();
@@ -175,7 +163,6 @@ let handler = async (m, { conn, text, args, usedPrefix, command, isOwner }) => {
         }
     }
 
-    // ── 2. PENCARIAN FILE (.sfile search <query>) ────────────────────────────
     if (sub === 'search' || sub === 'cari') {
         const query = subArgs || args.slice(1).join(' ');
         if (!query) return m.reply(`Masukkan kata kunci pencarian!\n\nContoh: \`${usedPrefix}sfile search config hc\``);
@@ -208,7 +195,6 @@ let handler = async (m, { conn, text, args, usedPrefix, command, isOwner }) => {
         }
     }
 
-    // ── 3. DOWNLOAD LANGSUNG (.sfile dl <link>) ──────────────────────────────
     if (sub === 'dl' || sub === 'download' || sub === 'get' || /^https?:\/\/sfile\.co\//i.test(sub)) {
         const targetUrl = /^https?:\/\/sfile\.co\//i.test(sub) ? sub : subArgs;
         if (!targetUrl || !targetUrl.includes('sfile.co/')) {
@@ -219,7 +205,6 @@ let handler = async (m, { conn, text, args, usedPrefix, command, isOwner }) => {
         try {
             const info = await sfile.download(targetUrl);
 
-            // Cek batas ukuran download (maksimal 100MB untuk kestabilan RAM bot)
             if (info.sizeBytes > 100 * 1024 * 1024) {
                 return m.reply(
                     `*FILE TERLALU BESAR*\n\n` +
@@ -256,13 +241,11 @@ let handler = async (m, { conn, text, args, usedPrefix, command, isOwner }) => {
         }
     }
 
-    // ── 4. UPLOAD KE SFILE (.sfile up [deskripsi]) ───────────────────────────
     if (sub === 'up' || sub === 'upload') {
         const q = m.quoted ? m.quoted : m;
         const mime = (q.msg || q).mimetype || '';
         const isMedia = /image|video|audio|document|sticker/.test(mime) || /image|video|audio|document|sticker/.test(q.mtype || '');
 
-        // Validasi: Harus me-reply pesan atau mengirim media dengan caption
         if (!isMedia && !m.quoted) {
             return m.reply(
                 `*CARA UPLOAD KE SFILE.CO*\n\n` +
@@ -271,14 +254,12 @@ let handler = async (m, { conn, text, args, usedPrefix, command, isOwner }) => {
             );
         }
 
-        // Jika quoted adalah teks biasa (bukan media)
         if (!isMedia && m.quoted && !m.quoted.text) {
             return m.reply('Pesan yang di-reply tidak memiliki konten/media yang dapat diunggah.');
         }
 
-        const maxBytes = 150 * 1024 * 1024; // Maksimal 150 MB
+        const maxBytes = 150 * 1024 * 1024;
 
-        // Cek awal dari metadata pesan jika tersedia
         const estimatedSize = q.msg?.fileLength?.low || q.msg?.fileLength || 0;
         if (estimatedSize > maxBytes) {
             return m.reply(
@@ -342,7 +323,6 @@ let handler = async (m, { conn, text, args, usedPrefix, command, isOwner }) => {
         }
     }
 
-    // Fallback: Jika pengguna langsung mengetik kata kunci pencarian
     return handler(m, { conn, text: `search ${text}`, args: ['search', ...args], usedPrefix, command, isOwner });
 };
 

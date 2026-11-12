@@ -1,13 +1,6 @@
-/*
- * @Author      : Rafli
- * @Feature     : Pi AI Assistant (Inflection AI)
- * @Description : Asisten AI empatik & personal dengan memori sesi percakapan, SSE streaming, dan auto-reply
- * @Version     : 1.0 (Clean Architecture & WhatsApp Standard Layout)
- */
-
 import { pi } from '../function/ai/pi.js';
 
-const SESSION_TIMEOUT = 14 * 24 * 60 * 60 * 1000; // 14 hari
+const SESSION_TIMEOUT = 14 * 24 * 60 * 60 * 1000;
 const userSessions = new Map();
 const processingChats = new Set();
 
@@ -63,7 +56,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
   const senderLID = conn.getLid ? (conn.getLid(m.sender) || m.sender) : m.sender;
   const opt = args?.[0]?.toLowerCase();
 
-  // Mode Auto-Reply ON
   if (opt === 'on') {
     if (!global.db.data.chats) global.db.data.chats = {};
     if (!global.db.data.chats[m.chat]) {
@@ -79,7 +71,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
     return m.reply('╭── ✦ *PI AI* ✦\n• Mode auto-reply diaktifkan. Pi akan merespon otomatis semua pesan masuk.\n╰━━━━━━━━━━━━━━━━━━━━━━━');
   }
 
-  // Mode Auto-Reply OFF
   if (opt === 'off') {
     if (!global.db.data.chats?.[m.chat]?.isPiOn) {
       return m.reply('╭── ✦ *PI AI* ✦\n• Mode auto-reply Pi AI sedang tidak aktif.\n╰━━━━━━━━━━━━━━━━━━━━━━━');
@@ -89,13 +80,11 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
     return m.reply('╭── ✦ *PI AI* ✦\n• Mode auto-reply dimatikan.\n╰━━━━━━━━━━━━━━━━━━━━━━━');
   }
 
-  // Reset Sesi Percakapan
   if (text?.toLowerCase().trim() === 'reset') {
     clearUserSession(senderLID);
     return m.reply('╭── ✦ *PI AI* ✦\n• Sesi ingatan percakapan Pi berhasil direset. Chat berikutnya akan dimulai dari awal.\n╰━━━━━━━━━━━━━━━━━━━━━━━');
   }
 
-  // Tampilkan Menu Bantuan
   if (!text && !m.quoted) {
     return m.reply(
       `╭── ✦ *PI AI ASSISTANT* ✦\n` +

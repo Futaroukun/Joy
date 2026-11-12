@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : System & Process Runtime
- * @Description : Menampilkan durasi aktif proses bot, waktu mulai, uptime server OS, dan statistik alokasi memori.
- * @Version     : 2.1 (No Decorational Emoji & Detailed Metrics)
- */
-
 import os from 'os';
 import moment from 'moment-timezone';
 

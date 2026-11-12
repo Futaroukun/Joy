@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Pixiv Search, Ranking, Artist Works & Recommendations
- * @Description : Cari artwork, ranking harian/mingguan/R18, karya artis/kreator, dan karya rekomendasi serupa
- * @Version     : 4.0 (Enterprise Hardened)
- */
-
 import {
     searchPixiv,
     getRanking,
@@ -17,7 +10,6 @@ import {
     extractArtworkId
 } from '../function/scrapers/pixiv.js'
 
-// ── Cache State ───────────────────────────────────────────────────────────────
 const searchCache = new Map()
 const CACHE_TTL   = 5 * 60 * 1000
 
@@ -31,7 +23,6 @@ const getCache    = (chat, sender) => {
 }
 const deleteCache = (chat, sender) => searchCache.delete(getCacheKey(chat, sender))
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 const VALID_SEARCH_MODES = ['safe', 'all', 'r18']
 const RANKING_LABELS = {
     daily     : 'Harian',
@@ -59,10 +50,8 @@ function makeRows(results) {
     })
 }
 
-// ── Main Handler ──────────────────────────────────────────────────────────────
 let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
 
-    // ── 1. RANKING (.pixivrank [mode]) ────────────────────────────────────────
     if (/^pixivrank$/i.test(command)) {
         const rawMode = text?.toLowerCase().trim() || 'daily'
         const label   = RANKING_LABELS[rawMode] || rawMode.toUpperCase()
@@ -100,7 +89,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
         }
     }
 
-    // ── 2. ARTIST ARTWORKS (.pixivuser / .pixivartist <user_id>) ──────────────
     if (/^(pixivuser|pixivartist|puser)$/i.test(command)) {
         if (!text) return m.reply(
             `*PIXIV ARTIST EXPLORER*\n\n` +
@@ -147,7 +135,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
         }
     }
 
-    // ── 3. RELATED RECOMMENDATIONS (.pixivrelated <id>) ───────────────────────
     if (/^(pixivrelated|prelated)$/i.test(command)) {
         const id = extractArtworkId(text)
         if (!id) return m.reply(`Masukkan ID atau link artwork Pixiv.\n\nContoh: \`${usedPrefix + command} 141097547\``)
@@ -183,7 +170,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
         }
     }
 
-    // ── 4. HELP / GUIDE DASHBOARD ────────────────────────────────────────────
     if (!text || /^(help|menu|panduan|\?)$/i.test(text.trim())) {
         let helpText =
             `*PIXIV SUITE — PUSAT FITUR & PANDUAN*\n\n` +
@@ -218,7 +204,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
         return m.reply(helpText)
     }
 
-    // ── 5. SEARCH (.pixiv <keyword> [mode]) ────────────────────────────────────
     const args    = text.trim().split(/\s+/)
     const lastArg = args[args.length - 1].toLowerCase()
     let mode      = 'safe'
@@ -265,7 +250,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     }
 }
 
-// ── Before Handler (Pilihan Button List / Angka) ──────────────────────────────
 handler.before = async (m, { conn }) => {
     if (!m.text) return false
 
@@ -321,3 +305,4 @@ handler.command = /^(pixiv|pixivrank|pixivuser|pixivrelated)$/i
 handler.limit   = false
 
 export default handler
+

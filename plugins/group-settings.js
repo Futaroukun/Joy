@@ -1,10 +1,3 @@
-/*
- * @Author     : Rafli
- * @Feature    : System & Group Settings Manager
- * @Description: Manajemen konfigurasi saklar bot per-grup dan global/owner dengan dukungan interactive buttons dan sub-command terpadu.
- * @Version    : 2.1 (No Decorational Emoji)
- */
-
 import moment from 'moment-timezone'
 import { getCacheStats, clearCache, MAX_CACHE_PER_GROUP, CACHE_DURATION, CLEANUP_INTERVAL } from '../function/events/antidelete.js'
 import { jidNormalizedUser } from '@whiskeysockets/baileys'
@@ -84,6 +77,14 @@ const featureConfig = {
         access: 'admin',
         scope: 'group',
         aliases: ['autogempa', 'notifgempa', 'gempalert', 'alertgempa']
+    },
+    autodownload: {
+        name: 'Auto Downloader',
+        description: 'Mendownload media otomatis saat mendeteksi tautan Pinterest atau TikTok.',
+        dbProperty: 'autodownload',
+        access: 'admin',
+        scope: 'group',
+        aliases: ['autodownload', 'autodl', 'autodown']
     },
     jualan: {
         name: 'Fitur Store/Jualan',

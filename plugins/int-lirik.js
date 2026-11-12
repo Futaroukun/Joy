@@ -1,12 +1,5 @@
-/*
-- @Author: Rafli / Antigravity
-- @Feature: Multi-Engine Lyrics (LRCLIB, NetEase APK, Genius)
-- @Description: Pencarian lirik lagu 100% full tanpa potongan dengan scraping database APK Spotify, Musixmatch & NetEase Cloud Music.
-*/
-
 import axios from 'axios'
 
-// 1. GENIUS ENGINE
 class Genius {
   constructor() {
     this.inst = axios.create({
@@ -42,7 +35,6 @@ class Genius {
 
 const g = new Genius()
 
-// 2. LRCLIB ENGINE (Spotify / Musixmatch Mirror)
 async function fetchLrclib(endpoint, params = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -65,7 +57,6 @@ async function fetchLrclib(endpoint, params = {}) {
   return null
 }
 
-// 3. NETEASE CLOUD MUSIC APK ENGINE
 class NetEase {
   static headers = {
     'User-Agent': 'NeteaseMusic/9.1.65 (Linux; U; Android 12; zh_CN; Pixel 6)',
@@ -120,7 +111,6 @@ class NetEase {
   }
 }
 
-// 4. HIGH RESOLUTION ARTWORK (iTunes & Deezer)
 async function getCover(title, artist) {
   try {
     const q = encodeURIComponent(`${artist} ${title}`.trim())
@@ -181,12 +171,10 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   const query = text.trim()
   const isId = query.startsWith('lrc_') || query.startsWith('netease_') || query.startsWith('gen_') || !isNaN(query)
 
-  // 1. DETAIL LIRIK BERDASARKAN ID
   if (isId) {
     await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
 
     try {
-      // Prioritas 1: ID NetEase APK
       if (query.startsWith('netease_')) {
         const cleanId = query.replace(/^netease_/, '')
         const song = await NetEase.detail(cleanId)
@@ -216,7 +204,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
       }
 
-      // Prioritas 2: ID LRCLIB (Spotify / Musixmatch Mirror)
       if (query.startsWith('lrc_') || !isNaN(query)) {
         const cleanId = query.replace(/^lrc_/, '')
         const song = await fetchLrclib(`/get/${cleanId}`)
@@ -254,7 +241,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
       }
 
-      // Prioritas 3: ID Genius (Fallback)
       const genId = query.replace(/^gen_/, '')
       const song = await g.detail(genId)
 
@@ -298,13 +284,11 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     }
   }
 
-  // 2. PENCARIAN LAGU (SEARCH MULTI-PROVIDER)
   await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
 
   try {
     let pool = []
 
-    // A. Search LRCLIB (Spotify / Musixmatch)
     const lrcData = await fetchLrclib('/search', { q: query })
     if (Array.isArray(lrcData)) {
       for (const item of lrcData) {
@@ -324,7 +308,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       }
     }
 
-    // B. Search NetEase Cloud Music APK
     const neteaseSongs = await NetEase.search(query)
     if (Array.isArray(neteaseSongs)) {
       for (const s of neteaseSongs.slice(0, 5)) {
@@ -339,7 +322,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       }
     }
 
-    // C. Fallback Genius jika hasil masih sedikit (< 3)
     if (pool.length < 3) {
       const gHits = await g.search(query)
       for (const h of gHits) {
@@ -360,10 +342,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       return m.reply('*Lirik tidak ditemukan. Coba masukkan judul lagu dan nama penyanyi.*')
     }
 
-    // Smart Sorting: Yang diketahui jumlah barisnya terbanyak ditaruh paling atas
     pool.sort((a, b) => b.lineCount - a.lineCount)
 
-    // Deduplikasi cerdas per (Judul + Artis)
     const seen = new Set()
     const uniqueHits = []
     for (const item of pool) {

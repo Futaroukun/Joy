@@ -1,9 +1,3 @@
-/*
-- @Author     : Rafli
-- @Feature    : Info BMKG Terpadu & Siaga Bencana Nasional (Interactive Single-Select Menu)
-- @Description: Layanan lengkap BMKG & PVMBG dengan antarmuka tombol interaktif single_select: Kategori Abjad Wilayah, Prakiraan Cuaca 3 Hari, Kualitas Udara (PM2.5/AQI), Cuaca Maritim & Gelombang, Peringatan Cuaca Ekstrem, dan Abu Vulkanik VONA MAGMA.
-*/
-
 import {
     getAutoGempa,
     getGempaTerkini,
@@ -29,14 +23,10 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
     const cmd = command.toLowerCase().trim()
     const sub = (args[0] || '').toLowerCase().trim()
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 1. PRAKIRAAN CUACA BMKG (INTERAKTIF & MANUAL)
-    // ─────────────────────────────────────────────────────────────────────────
     if (cmd === 'cuaca' || (cmd === 'bmkg' && sub === 'cuaca')) {
         const queryArgs = cmd === 'cuaca' ? args : args.slice(1)
         const subCuaca = (queryArgs[0] || '').toLowerCase().trim()
 
-        // ── A. PEMILIHAN KOTA BERDASARKAN ABJAD TERTENTU (OPSIONAL) ──
         if (subCuaca === 'abjad') {
             const groupCode = queryArgs[1] || 'A'
             const cities = getCitiesByAbjad(groupCode, 50)
@@ -83,7 +73,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
                 }
             } catch {}
 
-            // Fallback pesan teks jika sendButton gagal
             let txt = `╭── ✦ *KOTA ABJAD ${groupCode.toUpperCase()}* ✦\n` +
                 `Ketik \`${usedPrefix}cuaca <nama kota>\` untuk melihat prakiraan:\n\n`
             cities.forEach(c => {
@@ -93,7 +82,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
             return m.reply(txt)
         }
 
-        // ── B. MENU UTAMA CUACA: 1 SINGLE SELECT LENGKAP SELURUH WILAYAH SE-INDONESIA ──
         if (queryArgs.length === 0 || subCuaca === 'list') {
             const allSections = getAllCitySections(usedPrefix, 'cuaca')
 
@@ -117,7 +105,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
                 }
             } catch {}
 
-            // Fallback pesan teks
             const popular = getPopularCities()
             let txt = `╭── ✦ *PILIH WILAYAH CUACA* ✦\n` +
                 `Gunakan format: \`${usedPrefix}cuaca <nama kota>\`\n\n` +
@@ -129,7 +116,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
             return m.reply(txt)
         }
 
-        // ── C. PENCARIAN CUACA MANUAL BERDASARKAN KOTA/KODE ──
         const query = queryArgs.join(' ').trim()
         const loadingMsg = await m.reply('_Mengambil prakiraan cuaca dari BMKG..._')
         try {
@@ -145,9 +131,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 2. KUALITAS UDARA & INDEKS POLUSI (PM2.5 / AQI)
-    // ─────────────────────────────────────────────────────────────────────────
     if (cmd === 'udara' || cmd === 'aqi' || (cmd === 'bmkg' && /^(udara|aqi|polusi)$/i.test(sub))) {
         const queryArgs = (cmd === 'bmkg') ? args.slice(1) : args
         const query = queryArgs.join(' ').trim()
@@ -197,9 +180,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 3. CUACA MARITIM & TINGGI GELOMBANG BMKG
-    // ─────────────────────────────────────────────────────────────────────────
     if (cmd === 'maritim' || cmd === 'gelombang' || (cmd === 'bmkg' && /^(maritim|gelombang|laut)$/i.test(sub))) {
         const queryArgs = (cmd === 'bmkg') ? args.slice(1) : args
         const query = queryArgs.join(' ').trim()
@@ -260,9 +240,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 4. PERINGATAN DINI CUACA EKSTREM BMKG (NOWCASTING)
-    // ─────────────────────────────────────────────────────────────────────────
     if (cmd === 'cuacaekstrem' || (cmd === 'bmkg' && /^(ekstrem|warning|alert|nowcast)$/i.test(sub))) {
         const loadingMsg = await m.reply('_Mengambil peringatan dini cuaca ekstrem BMKG..._')
         try {
@@ -278,9 +255,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 5. ABU VULKANIK & ERUPSI GUNUNG API (PVMBG MAGMA INDONESIA - VONA)
-    // ─────────────────────────────────────────────────────────────────────────
     if (cmd === 'vona' || cmd === 'gunungapi' || cmd === 'erupsi' || (cmd === 'bmkg' && /^(vona|gunung|gunungapi|abu|erupsi)$/i.test(sub))) {
         const loadingMsg = await m.reply('_Mengambil data abu vulkanik dari PVMBG..._')
         try {
@@ -296,9 +270,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 6. SUBCOMMAND: AUTO GEMPA ON / OFF / STATUS
-    // ─────────────────────────────────────────────────────────────────────────
     if (/^(auto|alert|notif|siaga|status)$/i.test(sub)) {
         if (!m.isGroup && !isOwner) {
             return m.reply('*AKSES DITOLAK*\nFitur Auto Gempa hanya dapat diatur di dalam grup.')
@@ -340,9 +311,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 7. SUBCOMMAND: GEMPA TERKINI & SHAKEMAP
-    // ─────────────────────────────────────────────────────────────────────────
     if (/^(terkini|latest|now|shakemap|peta|gambar)$/i.test(sub)) {
         const loadingMsg = await m.reply('_Mengambil data gempa terkini dari BMKG..._')
         try {
@@ -372,9 +340,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 8. SUBCOMMAND: GEMPA DIRASAKAN (MMI)
-    // ─────────────────────────────────────────────────────────────────────────
     if (/^(dirasakan|mmi|skala|rasa)$/i.test(sub)) {
         const loadingMsg = await m.reply('_Mengambil data gempa dirasakan dari BMKG..._')
         try {
@@ -393,9 +358,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 9. SUBCOMMAND: DAFTAR GEMPA M 5.0+
-    // ─────────────────────────────────────────────────────────────────────────
     if (/^(list|m5|5|daftar|5plus)$/i.test(sub)) {
         const loadingMsg = await m.reply('_Mengambil daftar gempa M 5.0+ dari BMKG..._')
         try {
@@ -414,9 +376,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // 10. DEFAULT: PUSAT MENU BMKG (INTERACTIVE SINGLE-SELECT)
-    // ─────────────────────────────────────────────────────────────────────────
     const mainSections = [
         {
             title: 'Layanan Cuaca & Udara',
@@ -492,7 +451,6 @@ let handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin }) =
         }
     } catch {}
 
-    // Fallback menu teks statis
     const helpText =
         `╭── ✦ *BMKG & BENCANA* ✦\n` +
         `│ Sumber: BMKG & PVMBG Indonesia\n` +

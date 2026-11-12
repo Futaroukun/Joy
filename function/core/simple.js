@@ -15,7 +15,7 @@ import { parsePhoneNumber } from 'awesome-phonenumber';
 import { watchFile, unwatchFile } from "fs";
 import { fileURLToPath } from "url";
 import { toAudio } from "../media/converter.js";
-import { imageToWebp, videoToWebp, writeExifImg, writeExifVid } from "../media/exif.js";
+import { imageToWebp, videoToWebp, writeExifImg, writeExifVid, writeExif } from "../media/exif.js";
 import { processProfilePicture } from "../media/profile-picture.js";
 import tmpManager from './safe-tmp.js'
 
@@ -845,12 +845,18 @@ export function makeWASocket(connectionOptions, options = {}) {
             if (data.length === 0) throw new TypeError('File tidak ditemukan');
             
             const exif = { 
-               packName: options.packname || global.stickpack, 
-               packPublish: options.packpublish || global.stickauth 
+               packname: options.packname || options.packName || global.stickpack, 
+               author: options.author || options.packPublish || global.stickauth 
             };
             
-            const stickerModule = await import('./exif.js');
-            const sticker = await stickerModule.writeExif({ mimetype: mime, data }, exif);
+            let sticker;
+            if (/webp/i.test(mime)) {
+               sticker = await writeExif(data, exif);
+            } else if (/video/i.test(mime)) {
+               sticker = await writeExifVid(data, exif);
+            } else {
+               sticker = await writeExifImg(data, exif);
+            }
             
             return conn.sendMessage(jid, { sticker }, { 
                quoted: m, 

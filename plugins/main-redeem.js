@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli / Joy Bot
- * @Feature     : User Redeem Code
- * @Description : Penukaran kode redeem berhadiah (Limit, Money, EXP, Premium) oleh pengguna.
- */
-
 import { claimCode } from '../function/core/redeem.js'
 
 function formatNumber(num) {
@@ -23,7 +17,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         )
     }
 
-    // Resolusi user JID / LID di database Joy
     const sender = m.sender
     const targetKey = conn.getLid ? (conn.getLid(sender) || sender) : sender
 
@@ -43,7 +36,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
     const user = global.db.data.users[targetKey]
 
-    // Proses klaim kode
     const result = claimCode(rawCode, sender)
 
     if (!result.success) {
@@ -86,7 +78,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         return m.reply(`Gagal klaim kode: ${result.message}`)
     }
 
-    // Tambahkan reward ke akun user
     const { rewards } = result
     const receivedLines = []
 
@@ -116,7 +107,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         receivedLines.push(`› +${rewards.premDays} Hari Status Premium Aktif`)
     }
 
-    // Simpan ke database SQLite
     global.saveData('users', targetKey)
     if (targetKey !== sender) {
         global.saveData('users', sender)
@@ -145,3 +135,4 @@ handler.command = /^(redeem|klaim)$/i
 handler.limit   = false
 
 export default handler
+

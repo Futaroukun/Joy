@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Douyin Downloader (No Watermark)
- * @Description : Unduh video tanpa watermark, slide gambar, dan audio Douyin via Nexray Engine & TikWM.
- * @Version     : 1.1 (Full Nexray Support & Raw Share Link Parser)
- */
-
 import axios from 'axios'
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
@@ -26,7 +19,6 @@ async function downloadBuffer(url, timeoutMs = 60000) {
     return Buffer.from(res.data)
 }
 
-// ── 1. Nexray Engine (Primary) ────────────────────────────────────────────────
 async function fetchNexray(url) {
     try {
         const res = await axios.get(`https://api.nexray.web.id/api/downloader/douyin?url=${encodeURIComponent(url)}`, {
@@ -42,7 +34,6 @@ async function fetchNexray(url) {
 
             const video = videos[0] || r.video || r.url || null
             const audio = audios[0] || r.audio || null
-            // Jika ada video, gambar yang ada biasanya thumbnail cover
             const isSlide = !video && images.length > 0
 
             return {
@@ -59,7 +50,6 @@ async function fetchNexray(url) {
     return null
 }
 
-// ── 2. TikWM Engine (Fallback) ────────────────────────────────────────────────
 async function fetchTikwm(url) {
     try {
         const res = await axios.get(`https://www.tikwm.com/api/?hd=1&url=${encodeURIComponent(url)}`, {
@@ -117,7 +107,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
         await deleteLoading()
 
-        // ── KASUS 1: SLIDESHOW FOTO ───────────────────────────────────────────
         if (result.images && result.images.length > 0) {
             let captionText =
                 `╭── ✦ *DOUYIN SLIDESHOW* ✦\n` +
@@ -153,7 +142,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             return
         }
 
-        // ── KASUS 2: VIDEO NO WATERMARK ───────────────────────────────────────
         let captionText =
             `╭── ✦ *DOUYIN DOWNLOADER* ✦\n` +
             (result.title ? `• *Caption*: ${result.title}\n` : '') +

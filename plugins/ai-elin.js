@@ -1,15 +1,7 @@
-/*
- * @Author      : Rafli
- * @Feature     : Elin AI Assistant v2.0
- * @Description : Asisten AI Elin dengan sistem session multi-turn, analisis gambar (Vision), saran balasan cepat, dan auto-cleanup
- * @Version     : 2.1 (No Decorational Emoji)
- */
-
 import { elin } from '../function/scrapers/elin.js';
 
-// Cache sesi pengguna: userId -> { chatId, timestamp }
 const userSessions = new Map();
-const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 Jam timeout sesi
+const SESSION_TIMEOUT = 60 * 60 * 1000;
 
 function getSession(userId) {
   const session = userSessions.get(userId);
@@ -33,18 +25,12 @@ function formatWhatsAppText(text) {
   if (!text) return 'Tidak ada respon.';
 
   return text
-    // Format bold italic
     .replace(/\*\*\*(.+?)\*\*\*/gs, '*_$1_*')
-    // Format bold
     .replace(/\*\*([^*]+)\*\*/g, '*$1*')
     .replace(/__([^_]+)__/g, '*$1*')
-    // Format headers
     .replace(/^#{1,6}\s+(.+)$/gm, '*$1*')
-    // Format bullets
     .replace(/^\s*[-*•]\s+/gm, '• ')
-    // Format horizontal rules
     .replace(/^---+$/gm, '────────────────────────')
-    // Max consecutive newlines
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
@@ -68,7 +54,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     );
   }
 
-  // Command reset sesi
   if (text && text.toLowerCase().trim() === 'reset') {
     userSessions.delete(userId);
     return m.reply('╭── ✦ *ELIN AI* ✦\n• Sesi percakapan berhasil direset. Chat berikutnya akan dimulai dari awal.\n╰━━━━━━━━━━━━━━━━━━━━━━━');
@@ -106,7 +91,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       throw new Error(response.error || 'Gagal menerima respon dari Elin AI.');
     }
 
-    // Simpan/update sesi
     if (response.chatId) {
       setSession(userId, response.chatId);
     }
@@ -114,13 +98,11 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const textResponse = formatWhatsAppText(response.result);
     let finalMessage = textResponse;
 
-    // Tambahkan saran balasan jika ada
     if (response.suggestions && response.suggestions.length > 0) {
       const suggestionList = response.suggestions.map((s) => `• _"${s}"_`).join('\n');
       finalMessage += `\n\n*Saran Balasan:*\n${suggestionList}`;
     }
 
-    // Footer info sesi
     const sessionFooter = currentChatId ? '› _Sesi berlanjut_' : '› _Sesi baru_';
     finalMessage += `\n\n${sessionFooter}`;
 

@@ -1,9 +1,3 @@
-/*
- * @Author: Rafli
- * @Feature: YouTube Music Charts
- * @Description: Menampilkan tangga lagu resmi dan musisi terpopuler di YouTube Music berdasarkan negara (default ID / Indonesia).
- */
-
 import ytmusic from '../function/scrapers/ytmusic.js';
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
@@ -72,3 +66,4 @@ handler.command = /^(ytcharts|topmusic|trendingmusic)$/i;
 handler.limit = false;
 
 export default handler;
+

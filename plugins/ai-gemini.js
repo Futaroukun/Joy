@@ -9,16 +9,10 @@ import gemini, {
 } from '../function/ai/gemini.js';
 import { sendButtons } from '../function/media/button.js';
 
-/**
- * @Author      : Rafli / Joy
- * @Feature     : All-in-One Google Gemini AI (Chat, Vision, File Analyzer, Image Generator & Editor)
- * @Description : Asisten AI Gemini terpadu dengan dukungan percakapan kontekstual, analisis dokumen/kode, text-to-image, dan image-to-image.
- */
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ===== CONSTANTS =====
 const CONFIG = {
     MAX_HISTORY: 20,
     MAX_BUTTONS: 3,
@@ -52,11 +46,9 @@ const SOURCE_PATTERNS = [
     /(?:review|analisis|periksa).*(?:code|kode|plugin|project)/i
 ];
 
-// ===== STORAGE & SESSION MANAGEMENT =====
-const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 Jam timeout sesi
-const userSessions = new Map(); // userId -> { auth, chatId, deepseekSessionId, history: [], lastActive }
+const SESSION_TIMEOUT = 60 * 60 * 1000;
+const userSessions = new Map();
 
-// Auto-sweep sesi kedaluwarsa setiap 30 menit (hemat RAM)
 setInterval(() => {
     const now = Date.now();
     for (const [uid, sess] of userSessions.entries()) {
@@ -78,7 +70,6 @@ function getUserSession(userId) {
     return session;
 }
 
-// ===== UTILITY FUNCTIONS =====
 
 function resolveFileName(q, mime = '') {
     const rawName = q.msg?.fileName || q.fileName || q.filename || q.msg?.title || q.title || q.name || '';
@@ -182,7 +173,6 @@ function parseCookieInput(input) {
     return input;
 }
 
-// ===== SYSTEM PROMPTS =====
 
 const OWNER_PROMPT = `
 IDENTITAS UTAMA:
@@ -209,13 +199,11 @@ ATURAN RESPON:
 3. INGAT KONTEKS: Pahami alur percakapan sebelumnya.
 `;
 
-// ===== MAIN HANDLER =====
 
 let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     const userId = m.sender;
     const cmd = command.toLowerCase();
 
-    // ── Media & Quoted Message Parsing ──────────────────────────────────────────
     const q = m.quoted ? m.quoted : m;
     const mime = (q.msg || q).mimetype || q.mediaType || '';
     const fileName = resolveFileName(q, mime);
@@ -223,13 +211,11 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
     const isFile = !isImage && (/document|application|text\//.test(mime) || q.mtype === 'documentMessage' || !!q.msg?.fileName);
     const hasMedia = isImage || isFile || /video|audio/.test(mime);
 
-    // ── Command: Set Gemini Cookie (Mendukung Upload/Reply File .json) ───────────
     if (cmd === 'setgeminicookie' || text?.startsWith('--setcookie')) {
         if (!isOwner) return m.reply('*Fitur ini khusus Owner untuk mengatur cookie Google Gemini.*');
         
         let cookieRaw = text?.startsWith('--setcookie') ? text.replace(/^--setcookie\s*/i, '').trim() : (text ? text.trim() : '');
 
-        // Jika user reply file dokumen (.json / .txt) atau mengirim file dengan caption
         if (!cookieRaw && (isFile || mime || q.mtype === 'documentMessage')) {
             try {
                 const docBuffer = await q.download();
@@ -249,7 +235,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
             }
         }
 
-        // Jika user reply pesan teks biasa yang berisi JSON cookie
         if (!cookieRaw && m.quoted?.text) {
             cookieRaw = m.quoted.text.trim();
         }
@@ -292,7 +277,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
         }
     }
 
-    // ── Command: Reset Percakapan ────────────────────────────────────────────────
     if (text?.toLowerCase().trim() === 'reset' || cmd === 'reset' || cmd === 'geminireset') {
         userSessions.delete(userId);
         await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
@@ -304,7 +288,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
         );
     }
 
-    // ── Mode Text to Image (Nano Banana / Imagen) ───────────────────────────────
     const isImgGenCmd = cmd === 'gimg' || cmd === 'geminiimg' || text?.startsWith('--img');
     if (isImgGenCmd) {
         const prompt = text?.startsWith('--img') ? text.replace(/^--img\s*/i, '').trim() : (text ? text.trim() : '');
@@ -352,7 +335,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
         return;
     }
 
-    // ── Mode Image to Image (Edit Image) ────────────────────────────────────────
     const isImg2ImgCmd = cmd === 'gimg2img' || text?.startsWith('--edit');
     if (isImg2ImgCmd) {
         if (!isImage) {
@@ -404,7 +386,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
         return;
     }
 
-    // ── Mode Vision Dokumen / Script / File Analisis ─────────────────────────────
     if (isFile || cmd === 'gfile' || cmd === 'geminifile') {
         const prompt = text ? text.trim() : 'Jelaskan dan analisis isi file ini secara mendalam.';
         await conn.sendMessage(m.chat, { react: { text: '📄', key: m.key } });
@@ -431,7 +412,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
         return;
     }
 
-    // ── Mode Vision Gambar Murni (gvision) ───────────────────────────────────────
     if (cmd === 'gvision' || cmd === 'geminivision') {
         if (!isImage) {
             return m.reply(
@@ -467,7 +447,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
         }
     }
 
-    // ── Tampilkan Menu Bantuan jika input kosong ─────────────────────────────────
     const hasInput = text || m.quoted || (m.msg && (m.msg.caption || m.msg.text));
     if (!hasInput && !hasMedia) {
         return m.reply(
@@ -484,7 +463,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner }) => {
         );
     }
 
-    // ── Mode Chat Interaktif / Multi-Turn Vision ────────────────────────────────
     try {
         const needSourceCode = isOwner && detectSourceCodeRequest(text);
         const systemPrompt = isOwner ? OWNER_PROMPT : USER_PROMPT;

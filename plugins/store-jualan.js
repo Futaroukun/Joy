@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Jualan Mode & Group Store
-- @Description: Mode jualan per-grup. Support alias produk.
-*/
-
 async function sendProductItem(conn, m, item, keyName) {
     if (!item) return m.reply(`Produk *${keyName}* tidak ditemukan.`)
 
@@ -62,7 +56,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
     let sub = (args[0] || '').toLowerCase()
     let subText = args.slice(1).join(' ')
 
-    // Normalisasi Sub-command .jualan
     if (cmd === 'jualan') {
         if (sub === 'add' || sub === 'tambah') {
             cmd = 'addproduk'
@@ -91,7 +84,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
         }
     }
 
-    // ── TOGGLE JUALAN MODE ──────────────────────────────────────────────────
     if (/^jualan$/i.test(cmd)) {
         if (!isAdmin && !isOwner) return m.reply('*Hanya admin yang bisa mengatur mode jualan.*')
 
@@ -144,7 +136,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
         return m.reply(`Pilihan tidak valid. Gunakan: \`jualan on\` atau \`jualan off\``)
     }
 
-    // ── ADD PRODUK ──────────────────────────────────────────────────────────
     if (/^addproduk$/i.test(command)) {
         if (!isAdmin && !isOwner) return m.reply('*Hanya admin yang bisa menambah produk.*')
 
@@ -199,7 +190,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
         )
     }
 
-    // ── ADD ALIAS ───────────────────────────────────────────────────────────
     if (/^addalias$/i.test(command)) {
         if (!isAdmin && !isOwner) return m.reply('*Hanya admin yang bisa menambah alias.*')
 
@@ -220,7 +210,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
 
         if (!aliasName) return m.reply('Nama alias tidak boleh kosong.')
 
-        // resolve nomor atau nama
         let keyName = targetTrimmed.toLowerCase()
         if (!isNaN(targetTrimmed)) {
             const idx = parseInt(targetTrimmed) - 1
@@ -236,7 +225,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
             return m.reply(`Alias *${aliasName}* sudah ada di produk *${keyName}*.`)
         }
 
-        // pastikan alias tidak bentrok dengan nama produk lain atau alias lain
         const conflict = keys.find(k => {
             if (k === aliasName) return true
             return (items[k]?.aliases || []).includes(aliasName)
@@ -261,7 +249,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
         )
     }
 
-    // ── REMOVE ALIAS ────────────────────────────────────────────────────────
     if (/^delalias$/i.test(command)) {
         if (!isAdmin && !isOwner) return m.reply('*Hanya admin yang bisa menghapus alias.*')
 
@@ -302,7 +289,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
         )
     }
 
-    // ── DELETE PRODUK ───────────────────────────────────────────────────────
     if (/^delproduk$/i.test(command)) {
         if (!isAdmin && !isOwner) return m.reply('*Hanya admin yang bisa menghapus produk.*')
         if (keys.length === 0) return m.reply('Belum ada produk yang tersimpan.')
@@ -328,7 +314,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
         return m.reply(`*PRODUK DIHAPUS *\n\nProduk *${targetKey}* berhasil dihapus.`)
     }
 
-    // ── EDIT PRODUK ──────────────────────────────────────────────────────────
     if (/^editproduk$/i.test(command)) {
         if (!isAdmin && !isOwner) return m.reply('*Hanya admin yang bisa mengedit produk.*')
         if (keys.length === 0) return m.reply('Belum ada produk yang tersimpan.')
@@ -387,7 +372,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
         )
     }
 
-    // ── LIST PRODUK ──────────────────────────────────────────────────────────
     if (/^listproduk$/i.test(command)) {
         if (keys.length === 0) {
             return m.reply(
@@ -415,7 +399,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
         )
     }
 
-    // ── LIHAT PRODUK (mode normal) ────────────────────────────────────────────
     if (/^lihat$/i.test(command)) {
         if (keys.length === 0) {
             return m.reply(`Belum ada produk di grup ini.\n\nAdmin tambah dengan \`addproduk\``)
@@ -435,22 +418,18 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner, arg
         const textInput = text.trim().toLowerCase()
         let targetKey = null
 
-        // cek nomor
         if (!isNaN(text.trim())) {
             const idx = parseInt(text.trim()) - 1
             if (idx < 0 || idx >= keys.length) return m.reply(`Nomor tidak valid. Gunakan 1-${keys.length}`)
             targetKey = keys[idx]
         }
 
-        // cek nama langsung
         if (!targetKey) targetKey = keys.find(k => k.toLowerCase() === textInput) || null
 
-        // cek alias
         if (!targetKey) {
             targetKey = keys.find(k => (items[k]?.aliases || []).some(a => a.toLowerCase() === textInput)) || null
         }
 
-        // fuzzy
         if (!targetKey) {
             targetKey = keys.find(k =>
                 k.includes(textInput) || textInput.includes(k) ||

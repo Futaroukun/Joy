@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: Money Tracker
-- @Description: Catatan keuangan pemasukan dan pengeluaran dengan database terpisah.
-*/
-
 let handler = async (m, { conn, text, usedPrefix, command }) => {
 
     let db = global.uangDb.data
@@ -19,7 +13,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     let cmd = command.toLowerCase()
     let input = text
 
-    // ── DUKUNGAN SUBCOMMAND .uang in / .uang out ────────────────────────────────
     if (cmd === 'uang' || cmd === 'keuangan') {
         const parts = (text || '').trim().split(/\s+/)
         const sub = parts[0]?.toLowerCase()
@@ -32,7 +25,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         }
     }
 
-    // ── DASHBOARD ──────────────────────────────────────────────────────────────
     if (cmd === 'uang' || cmd === 'keuangan') {
         if (input === 'reset') {
             db[m.sender] = { saldo: 0, history: [] }
@@ -63,7 +55,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         return m.reply(txt)
     }
 
-    // ── INPUT TRANSAKSI ────────────────────────────────────────────────────────
     if (!input) {
         const tipe = (cmd === 'in' || cmd === 'masuk') ? 'pemasukan' : 'pengeluaran'
         return m.reply(

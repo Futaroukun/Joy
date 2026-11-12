@@ -1,10 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Password & Username Generator
- * @Description : Generator kata sandi dan nama pengguna berkekuatan kriptografis tinggi dengan estimasi ketahanan brute-force, anti-karakter ambigu, dan tombol salin cepat.
- * @Version     : 2.1 (No Decorational Emoji & High Entropy)
- */
-
 import { randomBytes } from 'crypto'
 
 const adjectives = [

@@ -1,9 +1,3 @@
-/*
- * @Author      : Rafli
- * @Feature     : Alight Motion Preset Finder
- * @Description : Ekstraksi otomatis link preset Alight Motion, XML, Drive, & metadata dari URL TikTok
- */
-
 import axios from 'axios'
 import * as cheerio from 'cheerio'
 
@@ -223,7 +217,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Ambil komentar balasan (reply)
         for (const cand of candidateReplies) {
             const replies = await fetchCommentReplies(cand.id, videoData.id)
             for (const r of replies) {
@@ -231,7 +224,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Filter tautan
         const linkRegex = /https?:\/\/[^\s"'<>)\]]+/gi
         const amLinks = new Set()
         const xmlLinks = new Set()
@@ -256,7 +248,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Jika link preset langsung belum ditemukan atau judul menyebut bio, periksa bio profil kreator
         const mentionsBio = /di\s*bio|cek\s*bio|link\s*bio/i.test(videoData.title || '')
         if ((amLinks.size === 0 && xmlLinks.size === 0) || mentionsBio) {
             if (videoData.author?.unique_id) {
@@ -278,7 +269,6 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Jika link preset langsung belum ditemukan, cek isi Linktree jika ada
         if (amLinks.size === 0 && bioLinks.size > 0) {
             for (const bio of Array.from(bioLinks)) {
                 if (/linktr\.ee/i.test(bio)) {
@@ -296,14 +286,12 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }
         }
 
-        // Ambil OpenGraph Alight Motion jika ada tautan AM
         let amMetadata = null
         if (amLinks.size > 0) {
             const mainAmUrl = Array.from(amLinks)[0]
             amMetadata = await scrapeAlightMetadata(mainAmUrl)
         }
 
-        // Susun teks respon
         const title = videoData.title || '-'
         const authorName = videoData.author?.nickname || 'Creator'
         const authorUser = videoData.author?.unique_id ? `@${videoData.author.unique_id}` : ''

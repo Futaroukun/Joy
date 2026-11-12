@@ -1,9 +1,3 @@
-/*
-- @Author: Rafli
-- @Feature: iPhone Chat Generator
-- @Description: Buat gambar chat gaya iPhone.
-*/
-
 import moment from 'moment-timezone'
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {

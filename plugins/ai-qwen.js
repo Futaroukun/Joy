@@ -1,9 +1,3 @@
-/*
-  - @Author: Rafli
-  - @Feature: Qwen Ai
-  - @Description: Ai qwen yang memiliki berbagai macam model
-*/
-
 import { qwen } from '../function/ai/qwen.js';
 import tmpManager from '../function/core/safe-tmp.js';
 
@@ -206,7 +200,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
         }
     }
 
-    // ── RESET ──────────────────────────────────────────────────────────────────
     if (/^qwenreset$/i.test(command)) {
         const chatId  = getUserChatId(senderLID);
         const session = sessions.get(senderLID);
@@ -225,7 +218,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
         );
     }
 
-    // ── GANTI MODEL ────────────────────────────────────────────────────────────
     if (/^qwenmodel$/i.test(command)) {
         const modelArg = args[0]?.trim();
         const current  = getUserModel(senderLID);
@@ -277,7 +269,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
         text = 'analisis gambar/berkas ini';
     }
 
-    // ── HELP ───────────────────────────────────────────────────────────────────
     if (!text && !hasMedia) {
         const current = getUserModel(senderLID);
         return m.reply(
@@ -311,7 +302,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
         );
     }
 
-    // ── PARSE FLAGS ────────────────────────────────────────────────────────────
     const { thinkingEnabled: msgThinking, searchEnabled: msgSearch, prompt } = parseFlags(text);
     let thinkingEnabled = msgThinking;
     let searchEnabled = msgSearch;
@@ -330,7 +320,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
                 thinkingEnabled = true;
                 searchEnabled = true;
             } else {
-                // Default/Smart mode
                 const smartRes = classifySmartMode(prompt || text);
                 thinkingEnabled = smartRes.thinkingEnabled;
                 searchEnabled = smartRes.searchEnabled;
@@ -342,12 +331,10 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
         return m.reply(`Tulis pertanyaan setelah flag!\n\nContoh: \`${usedPrefix}qwen -t apa itu quantum computing?\``);
     }
 
-    // ── DETEKSI MEDIA ──────────────────────────────────────────────────────
     let uploadedFile = null;
     let mediaSource  = null;
     let sourceMtype  = null;
 
-    // Cek pesan langsung dulu
     if (m.mediaMessage) {
         const mtype = m.mediaType;
         if (SUPPORTED_TYPES.includes(mtype)) {
@@ -358,10 +345,8 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
 
     let quotedMsg = m.quoted;
 
-    // Jika tidak ada media di pesan langsung, cek quoted/reply
     if (!mediaSource && quotedMsg) {
         
-        // Cek jika objek quoted memiliki url/directPath langsung (terutama hasil bongkar viewOnce/ephemeral)
         if (quotedMsg.url || quotedMsg.directPath) {
             const mime = quotedMsg.mimetype || '';
             let resolvedMtype = null;
@@ -379,7 +364,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
                 sourceMtype = resolvedMtype;
             }
         } else {
-            // Fallback jika tidak dibongkar, cek mediaType atau mtype
             const qMtype = quotedMsg.mediaType || quotedMsg.mtype;
             if (SUPPORTED_TYPES.includes(qMtype)) {
                 mediaSource = quotedMsg;
@@ -419,9 +403,7 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
         const session      = await getOrCreateSession(senderLID);
         const currentModel = getUserModel(senderLID);
 
-        // ── DOWNLOAD & UPLOAD MEDIA ────────────────────────────────────────────
         if (mediaSource) {
-            // Tentukan ekstensi
             let ext = 'bin';
             if (sourceMtype === 'imageMessage')    ext = 'jpg';
             else if (sourceMtype === 'videoMessage') ext = 'mp4';
@@ -429,10 +411,8 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
                 const rawMime = mediaSource.mimetype || mediaSource.msg?.mimetype || '';
                 ext = rawMime.split('/')[1]?.split(';')[0] || 'bin';
             }
-            // Download dengan fallback untuk quoted msg
             let buffer = null;
             try {
-                // 1. Coba download menggunakan method .download() bawaan mediaSource
                 if (mediaSource.download && typeof mediaSource.download === 'function') {
                     try {
                         buffer = await mediaSource.download(false);
@@ -440,7 +420,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
                     }
                 }
                 
-                // 2. Fallback menggunakan conn.downloadM langsung ke objek medianya
                 if (!buffer && conn.downloadM) {
                     const dlType = sourceMtype.replace(/Message$/i, '').toLowerCase();
                     const mediaObj = (mediaSource.url || mediaSource.directPath) ? mediaSource : 
@@ -468,7 +447,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
             if (!uploadedFile) throw new Error('Gagal mengupload file ke Qwen AI. Coba lagi nanti.');
         }
 
-        // ── PROSES CHAT ────────────────────────────────────────────────────────
         const parentIdToSend = getUserParentId(senderLID);
         let result = await qwen.chat(session.token, session.chatId, prompt, {
             stream         : false,
@@ -479,7 +457,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
             ...(uploadedFile && { file: uploadedFile })
         });
 
-        // Jika respons kosong/error, kemungkinan chatId/token kadaluarsa. Coba buat sesi baru & retry sekali.
         if (!result || result.status === 'error' || !result.response) {
             const oldSession = sessions.get(senderLID);
             if (oldSession) oldSession.token = null;
@@ -511,7 +488,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
             setUserParentId(senderLID, result.responseId);
         }
 
-        // ── FORMAT RESPONS ─────────────────────────────────────────────────────
         let responseText = '';
 
         if (thinkingEnabled && result.thinking) {
@@ -544,7 +520,6 @@ let handler = async (m, { conn, text, usedPrefix, command, args }) => {
             conn.sendMessage(m.chat, { delete: loadingMsg.key }).catch(() => {});
         }
 
-        // Reset auth jika token expired atau terdeteksi blokir/anti-bot
         if (/401|unauthorized|token|invalid|captcha|anti-bot|blokir|html/i.test(error.message)) {
             const session = sessions.get(senderLID);
             if (session) session.token = null;
