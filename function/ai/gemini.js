@@ -123,28 +123,45 @@ export async function chat(messages = [], fileBuffer = null, options = {}) {
 
     // ── Mode 2: Gemini Web Client (Menggunakan Cookie atau Guest Fallback) ────
     try {
-        // Jika sesi baru (belum ada chatId), sertakan instruksi sistem atau ringkasan riwayat ke prompt awal
+        if (!auth) {
+            auth = await startSession();
+        }
+
+        const isGuest = !auth?.atToken;
+        const targetChatId = isGuest ? null : chatId;
+
+        // Jika sesi baru atau mode guest (tanpa atToken), sertakan instruksi sistem dan riwayat ke prompt
         let sendPrompt = prompt;
-        if (!chatId) {
+        if (!targetChatId) {
             const nonSys = msgs.filter(m => m.role !== 'system');
-            if (systemPrompt && nonSys.length <= 1) {
-                sendPrompt = `[Instruksi Sistem & Karakter]:\n${systemPrompt}\n\n[Pesan Pengguna]:\n${prompt}`;
-            } else if (nonSys.length > 1) {
-                const historyStr = nonSys.slice(0, -1).map(m => `${m.role === 'assistant' ? 'AI' : 'User'}: ${m.content}`).join('\n');
-                const sysHeader = systemPrompt ? `[Instruksi Sistem]:\n${systemPrompt}\n\n` : '';
-                sendPrompt = `${sysHeader}[Riwayat Percakapan Sebelumnya]:\n${historyStr}\n\n[Pesan Pengguna]:\n${prompt}`;
-            }
+            const historyMsgs = nonSys.slice(0, -1);
+            const historyStr = historyMsgs.length > 0
+                ? historyMsgs.map(m => `${m.role === 'assistant' ? 'AI' : 'User'}: ${m.content}`).join('\n')
+                : '';
+
+            const sysHeader = systemPrompt ? `[Instruksi Sistem]:\n${systemPrompt}\n\n` : '';
+            const histHeader = historyStr ? `[Riwayat Percakapan Sebelumnya]:\n${historyStr}\n\n` : '';
+            sendPrompt = `${sysHeader}${histHeader}[Pesan Pengguna]:\n${prompt}`;
         }
 
         let webRes;
         try {
-            webRes = await webChat(sendPrompt, auth, chatId, options.onChunk, fileBuffer, options.fileName);
+            webRes = await webChat(sendPrompt, auth, targetChatId, options.onChunk, fileBuffer, options.fileName);
         } catch (err) {
-            // Auto-recovery jika sesi Google expired: buat sesi baru dan ulangi 1x
-            if (chatId || auth) {
-                console.warn('[GEMINI WEB] Sesi lama kedaluwarsa, membuat sesi baru:', err.message);
+            // Auto-recovery jika sesi Google expired/bermasalah: buat sesi baru dan ulangi dengan prompt history
+            if (targetChatId || auth) {
+                console.warn('[GEMINI WEB] Sesi lama bermasalah, mencoba sesi baru:', err.message);
                 auth = await startSession();
-                webRes = await webChat(sendPrompt, auth, null, options.onChunk, fileBuffer, options.fileName);
+                const nonSys = msgs.filter(m => m.role !== 'system');
+                const historyMsgs = nonSys.slice(0, -1);
+                const historyStr = historyMsgs.length > 0
+                    ? historyMsgs.map(m => `${m.role === 'assistant' ? 'AI' : 'User'}: ${m.content}`).join('\n')
+                    : '';
+                const sysHeader = systemPrompt ? `[Instruksi Sistem]:\n${systemPrompt}\n\n` : '';
+                const histHeader = historyStr ? `[Riwayat Percakapan Sebelumnya]:\n${historyStr}\n\n` : '';
+                const fallbackPrompt = `${sysHeader}${histHeader}[Pesan Pengguna]:\n${prompt}`;
+
+                webRes = await webChat(fallbackPrompt, auth, null, options.onChunk, fileBuffer, options.fileName);
             } else {
                 throw err;
             }
@@ -155,7 +172,7 @@ export async function chat(messages = [], fileBuffer = null, options = {}) {
             return createResponseObject(replyText, {
                 provider: 'web',
                 auth: webRes.auth,
-                chatId: webRes.chatId
+                chatId: isGuest ? null : webRes.chatId
             });
         }
     } catch (e) {
