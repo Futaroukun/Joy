@@ -1,4 +1,5 @@
 import axios from 'axios'
+import sharp from 'sharp'
 import {
     downloadPinterest,
     downloadMedia,
@@ -15,10 +16,12 @@ import {
     extractTikTokUrl,
     isTikTokUrl
 } from '../function/scrapers/tiktok.js'
+import { writeExifImg, writeExifVid } from '../function/media/exif.js'
 import { initChatSchema } from '../function/core/schema.js'
 
 const activeChats = new Set()
 const chatCooldowns = new Map()
+const pendingModeSessions = new Map()
 const COOLDOWN_MS = 5000
 const MAX_VIDEO_BUFFER_BYTES = 64 * 1024 * 1024 // 64 MB
 const MAX_ABSOLUTE_VIDEO_BYTES = 100 * 1024 * 1024 // 100 MB
@@ -236,6 +239,87 @@ async function handlePinterestDownload(conn, m, targetUrl) {
         image: payload,
         caption
     }, { quoted: m })
+}
+
+async function handlePinterestSticker(conn, m, targetUrl) {
+    const detail = await downloadPinterest(targetUrl)
+    const options = {
+        packname: global.packname || 'Created By Joy',
+        author: global.author || 'wa.me/6285722157719'
+    }
+
+    if (detail.mediaType === 'carousel' && detail.slides?.length > 0) {
+        const maxSlides = Math.min(detail.slides.length, 5)
+        for (let i = 0; i < maxSlides; i++) {
+            try {
+                let buf = await downloadMedia(detail.slides[i].url)
+                if (!buf) continue
+                try {
+                    const meta = await sharp(buf).metadata()
+                    const minSize = 512
+                    if (meta.width && meta.height && (meta.width < minSize || meta.height < minSize)) {
+                        const smallestSide = Math.min(meta.width, meta.height)
+                        const mult = Math.ceil(minSize / smallestSide)
+                        buf = await sharp(buf)
+                            .resize(meta.width * mult, meta.height * mult, { kernel: sharp.kernel.lanczos3, fit: 'fill' })
+                            .toBuffer()
+                    }
+                } catch {}
+                const stiker = await writeExifImg(buf, options)
+                if (stiker) {
+                    await conn.sendMessage(m.chat, { sticker: stiker }, { quoted: m })
+                    if (i < maxSlides - 1) await delay(500)
+                }
+            } catch (err) {
+                console.warn(`[AUTODL STIKER] Slide #${i} error:`, err?.message)
+            }
+        }
+        return
+    }
+
+    if (detail.mediaType === 'video' || detail.mediaType === 'gif') {
+        const buf = await downloadMedia(detail.mediaUrl).catch(async () => {
+            if (detail.fallbackUrl && detail.fallbackUrl !== detail.mediaUrl) {
+                return await downloadMedia(detail.fallbackUrl).catch(() => null)
+            }
+            return null
+        })
+        if (!buf) throw new Error('Gagal mengunduh media Pinterest.')
+        const stiker = await writeExifVid(buf, options).catch(() => null)
+        if (stiker) {
+            return await conn.sendMessage(m.chat, { sticker: stiker }, { quoted: m })
+        }
+        return await conn.sendMessage(m.chat, {
+            video: buf,
+            caption: `╭── ✦ *AUTODL PINTEREST* ✦\n• *Catatan:* Media video tidak dapat dikonversi ke stiker (durasi > 8s atau format tidak didukung).\n╰━━━━━━━━━━━━━━━━━━━━━━━`,
+            mimetype: 'video/mp4'
+        }, { quoted: m })
+    }
+
+    let buf = await downloadMedia(detail.mediaUrl).catch(async () => {
+        if (detail.fallbackUrl && detail.fallbackUrl !== detail.mediaUrl) {
+            return await downloadMedia(detail.fallbackUrl).catch(() => null)
+        }
+        return null
+    })
+    if (!buf) throw new Error('Gagal mengunduh gambar Pinterest.')
+
+    try {
+        const meta = await sharp(buf).metadata()
+        const minSize = 512
+        if (meta.width && meta.height && (meta.width < minSize || meta.height < minSize)) {
+            const smallestSide = Math.min(meta.width, meta.height)
+            const mult = Math.ceil(minSize / smallestSide)
+            buf = await sharp(buf)
+                .resize(meta.width * mult, meta.height * mult, { kernel: sharp.kernel.lanczos3, fit: 'fill' })
+                .toBuffer()
+        }
+    } catch {}
+
+    const stiker = await writeExifImg(buf, options)
+    if (!stiker) throw new Error('Gagal mengonversi gambar ke stiker.')
+
+    return await conn.sendMessage(m.chat, { sticker: stiker }, { quoted: m })
 }
 
 async function handleTikTokDownload(conn, m, targetUrl) {
@@ -492,17 +576,22 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner }) =
 
     if (!opt || opt === 'status') {
         const status = chat.autodownload ? 'ON (Aktif)' : 'OFF (Nonaktif)'
+        const modeText = chat.autodownloadMode === 'sticker'
+            ? 'Stiker (Khusus Pinterest, TikTok Nonaktif)'
+            : 'Media Biasa (Pinterest & TikTok)'
+
         return m.reply(
             `╭── ✦ *AUTO DOWNLOADER* ✦\n` +
-            `• *Status Saat Ini:* ${status}\n\n` +
-            `*Perintah:*\n` +
-            `• \`${usedPrefix + command} on\` : Mengaktifkan auto download\n` +
+            `• *Status:* ${status}\n` +
+            (chat.autodownload ? `• *Mode:* ${modeText}\n\n` : '\n') +
+            `*Perintah Pengaturan:*\n` +
+            `• \`${usedPrefix + command} on\` : Mengaktifkan dengan pilihan mode\n` +
+            `• \`${usedPrefix + command} on media\` : Langsung aktif Mode Media\n` +
+            `• \`${usedPrefix + command} on stiker\` : Langsung aktif Mode Stiker\n` +
             `• \`${usedPrefix + command} off\` : Menonaktifkan auto download\n\n` +
-            `*Dukungan Platform:*\n` +
-            `• *Pinterest:* Gambar, Video, GIF, dan Carousel / Slide\n` +
-            `• *TikTok:* Video HD/SD, Slideshow Foto, dan Musik\n\n` +
-            `*Cara Kerja:*\n` +
-            `Kirimkan teks pesan apapun yang memuat tautan Pinterest atau TikTok valid, bot akan otomatis memproses dan mengirimkan media.\n` +
+            `*Dukungan Mode:*\n` +
+            `› *Mode Media (1):* Unduh foto/video otomatis dari Pinterest & TikTok.\n` +
+            `› *Mode Stiker (2):* Unduh foto Pinterest langsung jadi stiker (TikTok dinonaktifkan).\n` +
             `╰━━━━━━━━━━━━━━━━━━━━━━━`
         )
     }
@@ -515,19 +604,12 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner }) =
         )
     }
 
-    if (/^(on|enable|aktif|1|true)$/i.test(opt)) {
-        chat.autodownload = true
-        if (typeof global.saveData === 'function') global.saveData('chats', m.chat)
-        return m.reply(
-            `╭── ✦ *AUTO DOWNLOADER* ✦\n` +
-            `• *Status:* ON (Aktif)\n` +
-            `• Bot sekarang akan otomatis mendownload setiap tautan Pinterest & TikTok yang dikirim di chat ini.\n` +
-            `╰━━━━━━━━━━━━━━━━━━━━━━━`
-        )
-    }
-
     if (/^(off|disable|mati|0|false)$/i.test(opt)) {
         chat.autodownload = false
+        if (pendingModeSessions.has(m.chat)) {
+            clearTimeout(pendingModeSessions.get(m.chat).timer)
+            pendingModeSessions.delete(m.chat)
+        }
         if (typeof global.saveData === 'function') global.saveData('chats', m.chat)
         return m.reply(
             `╭── ✦ *AUTO DOWNLOADER* ✦\n` +
@@ -537,11 +619,133 @@ let handler = async (m, { conn, text, usedPrefix, command, isAdmin, isOwner }) =
         )
     }
 
+    // Direct shortcut: on 1 / on media / on biasa / media
+    if (/^(on\s+(1|media|biasa)|1|media|biasa)$/i.test(opt)) {
+        chat.autodownload = true
+        chat.autodownloadMode = 'media'
+        if (pendingModeSessions.has(m.chat)) {
+            clearTimeout(pendingModeSessions.get(m.chat).timer)
+            pendingModeSessions.delete(m.chat)
+        }
+        if (typeof global.saveData === 'function') global.saveData('chats', m.chat)
+        return m.reply(
+            `╭── ✦ *AUTO DOWNLOADER* ✦\n` +
+            `• *Status:* ON (Aktif)\n` +
+            `• *Mode:* Media Biasa\n` +
+            `• Bot otomatis mengunduh & mengirim foto/video dari Pinterest dan TikTok.\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━━━━`
+        )
+    }
+
+    // Direct shortcut: on 2 / on stiker / on sticker / 2 / stiker / sticker
+    if (/^(on\s+(2|stiker|sticker)|2|stiker|sticker)$/i.test(opt)) {
+        chat.autodownload = true
+        chat.autodownloadMode = 'sticker'
+        if (pendingModeSessions.has(m.chat)) {
+            clearTimeout(pendingModeSessions.get(m.chat).timer)
+            pendingModeSessions.delete(m.chat)
+        }
+        if (typeof global.saveData === 'function') global.saveData('chats', m.chat)
+        return m.reply(
+            `╭── ✦ *AUTO DOWNLOADER* ✦\n` +
+            `• *Status:* ON (Aktif)\n` +
+            `• *Mode:* Stiker (Khusus Pinterest)\n` +
+            `• Setiap link Pinterest bergambar otomatis langsung dikonversi menjadi stiker.\n` +
+            `• Tautan TikTok tidak aktif pada mode ini.\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━━━━`
+        )
+    }
+
+    // "on" or "aktif" or "enable" -> show interactive mode prompt
+    if (/^(on|enable|aktif|true)$/i.test(opt)) {
+        if (pendingModeSessions.has(m.chat)) {
+            clearTimeout(pendingModeSessions.get(m.chat).timer)
+        }
+
+        pendingModeSessions.set(m.chat, {
+            sender: m.sender,
+            timer: setTimeout(() => {
+                pendingModeSessions.delete(m.chat)
+            }, 60000)
+        })
+
+        return m.reply(
+            `╭── ✦ *PILIH MODE AUTO DOWNLOAD* ✦\n` +
+            `Silakan pilih mode auto download untuk chat ini:\n\n` +
+            `1. *Mode Media (Biasa)*\n` +
+            `   › Unduh & kirim foto/video dari Pinterest & TikTok.\n\n` +
+            `2. *Mode Stiker (Khusus Pinterest)*\n` +
+            `   › Otomatis ubah gambar Pinterest langsung jadi stiker.\n` +
+            `   › URL TikTok dinonaktifkan.\n\n` +
+            `• Balas *1* untuk Mode Media\n` +
+            `• Balas *2* untuk Mode Stiker\n` +
+            `• Balas *0* untuk Batal\n` +
+            `• _Waktu tunggu: 60 detik_\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━━━━`
+        )
+    }
+
     return m.reply(`Gunakan \`${usedPrefix + command} on\` atau \`${usedPrefix + command} off\``)
 }
 
-handler.before = async function (m, { conn, usedPrefix }) {
+handler.before = async function (m, { conn, usedPrefix, isAdmin, isOwner }) {
     if (!m.text || m.isBaileys || m.fromMe) return false
+
+    // Cek sesi interaktif pemilihan mode
+    if (pendingModeSessions.has(m.chat)) {
+        const session = pendingModeSessions.get(m.chat)
+        const isAuthorized = !m.isGroup || m.sender === session.sender || isAdmin || isOwner
+        const answer = m.text.trim().toLowerCase()
+
+        if (isAuthorized) {
+            if (/^(1|media|biasa)$/i.test(answer)) {
+                clearTimeout(session.timer)
+                pendingModeSessions.delete(m.chat)
+                const chat = global.db.data?.chats?.[m.chat]
+                if (chat) {
+                    chat.autodownload = true
+                    chat.autodownloadMode = 'media'
+                    if (typeof global.saveData === 'function') global.saveData('chats', m.chat)
+                }
+                await m.reply(
+                    `╭── ✦ *AUTO DOWNLOADER* ✦\n` +
+                    `• *Status:* ON (Aktif)\n` +
+                    `• *Mode:* Media Biasa\n` +
+                    `• Bot otomatis mengunduh & mengirim foto/video dari Pinterest dan TikTok.\n` +
+                    `╰━━━━━━━━━━━━━━━━━━━━━━━`
+                )
+                return true
+            }
+
+            if (/^(2|stiker|sticker)$/i.test(answer)) {
+                clearTimeout(session.timer)
+                pendingModeSessions.delete(m.chat)
+                const chat = global.db.data?.chats?.[m.chat]
+                if (chat) {
+                    chat.autodownload = true
+                    chat.autodownloadMode = 'sticker'
+                    if (typeof global.saveData === 'function') global.saveData('chats', m.chat)
+                }
+                await m.reply(
+                    `╭── ✦ *AUTO DOWNLOADER* ✦\n` +
+                    `• *Status:* ON (Aktif)\n` +
+                    `• *Mode:* Stiker (Khusus Pinterest)\n` +
+                    `• Setiap link Pinterest bergambar otomatis langsung dikonversi menjadi stiker.\n` +
+                    `• Tautan TikTok tidak aktif pada mode ini.\n` +
+                    `╰━━━━━━━━━━━━━━━━━━━━━━━`
+                )
+                return true
+            }
+
+            if (/^(0|batal|cancel|n)$/i.test(answer)) {
+                clearTimeout(session.timer)
+                pendingModeSessions.delete(m.chat)
+                await m.reply('Aktivasi auto download dibatalkan.')
+                return true
+            }
+        }
+    }
+
     if (usedPrefix) return false
 
     const chat = global.db.data?.chats?.[m.chat]
@@ -549,6 +753,13 @@ handler.before = async function (m, { conn, usedPrefix }) {
 
     const detected = detectSupportedUrl(m.text)
     if (!detected) return false
+
+    const isStickerMode = chat.autodownloadMode === 'sticker'
+
+    // Pada Mode Stiker: hanya URL Pinterest yang diterima, TikTok diabaikan total
+    if (isStickerMode && detected.type !== 'pinterest') {
+        return false
+    }
 
     if (activeChats.has(m.chat)) return false
 
@@ -563,7 +774,11 @@ handler.before = async function (m, { conn, usedPrefix }) {
 
     try {
         if (detected.type === 'pinterest') {
-            await handlePinterestDownload(conn, m, detected.url)
+            if (isStickerMode) {
+                await handlePinterestSticker(conn, m, detected.url)
+            } else {
+                await handlePinterestDownload(conn, m, detected.url)
+            }
         } else if (detected.type === 'tiktok') {
             await handleTikTokDownload(conn, m, detected.url)
         }
@@ -585,7 +800,7 @@ handler.before = async function (m, { conn, usedPrefix }) {
     }
 }
 
-handler.help = ['autodownload <on/off>', 'autodl <on/off>']
+handler.help = ['autodownload <on/off>']
 handler.tags = ['downloader']
 handler.command = /^(autodownload|autodl)$/i
 

@@ -457,7 +457,7 @@ const handler = async (m, context) => {
 
 handler.help = ['agent *<instruksi>*'];
 handler.tags = ["ai", "owner"];
-handler.command = /^(agent|aiagent|cai|deepseek)$/i;
+handler.command = /^(agent|aiagent|cai)$/i;
 handler.rowner = true;
 handler.timeout = false;
 

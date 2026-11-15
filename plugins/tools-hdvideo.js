@@ -111,7 +111,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     }
 };
 
-handler.help = ['hdvideo', 'hdvid'];
+handler.help = ['hdvideo'];
 handler.tags = ['tools'];
 handler.command = /^(hdvid|hdvideo|vhd|upscalevid)$/i;
 

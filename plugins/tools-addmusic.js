@@ -786,7 +786,7 @@ handler.before = async (m, { conn }) => {
     return false;
 };
 
-handler.help = ['addmusic *[opsi]*', 'bgm *[opsi]*', 'fotobgm *[opsi]*'];
+handler.help = ['addmusic *[opsi]*'];
 handler.tags = ['tools'];
 handler.command = /^(addmusic|bgm|videobgm|tovideomusic|editbgm|setaudio|fotobgm|photobgm)$/i;
 

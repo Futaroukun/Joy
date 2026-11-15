@@ -182,7 +182,7 @@ let handler = async (m, _2) => {
   return m.reply(`\`\`\`js\n${formattedOutput}\n\`\`\`\n*Waktu:* ${duration}ms`);
 };
 
-handler.help = ['$ *terminal/sh*', '> *eval*', '=> *eval return*', 'exec *<sh>*', 'eval *<code>*'];
+handler.help = ['$ *terminal/sh*', '> *eval*', '=> *eval return*'];
 handler.tags = ['owner'];
 handler.customPrefix = /^(=?>|\$)\s*/;
 handler.command = ['exec', 'sh', 'eval', 'return'];

@@ -129,7 +129,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     await m.reply(caption.trim(), null, { mentions: [cleanTargetJid, m.sender] })
 }
 
-handler.help     = ['pay *@user <jumlah> [satuan]*', 'transfer *@user <jumlah> [satuan]*']
+handler.help     = ['pay *@user <jumlah> [satuan]*']
 handler.tags     = ['rpg']
 handler.command  = /^(pay|transfer|kirimkoin)$/i
 handler.register = true

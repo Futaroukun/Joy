@@ -177,7 +177,7 @@ const handler = async (m, { conn, text, usedPrefix, command, args }) => {
     }
 }
 
-handler.help = ['deepchat *teks*', 'dc *teks*']
+handler.help = ['deepchat *teks*']
 handler.tags = ['ai']
 handler.command = /^(deepchat|dc)$/i
 handler.limit = false

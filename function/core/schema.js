@@ -111,6 +111,7 @@ export function initChatSchema(chat) {
             sambutan: true,
             autogempa: false,
             autodownload: false,
+            autodownloadMode: 'media',
             sewa: false,
             sWelcome: '',
             sBye: '',
@@ -134,6 +135,7 @@ export function initChatSchema(chat) {
     if (!('sambutan' in chat)) chat.sambutan = true;
     if (!('autogempa' in chat)) chat.autogempa = false;
     if (!('autodownload' in chat)) chat.autodownload = false;
+    if (!('autodownloadMode' in chat)) chat.autodownloadMode = 'media';
     if (!('sewa' in chat)) chat.sewa = false;
     if (!('sWelcome' in chat)) chat.sWelcome = '';
     if (!('sBye' in chat)) chat.sBye = '';
