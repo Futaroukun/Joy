@@ -8,7 +8,9 @@ import {
 } from '../function/scrapers/pinterest.js'
 import {
     savetik,
-    tikwm,
+    tiksnap,
+    ssstik,
+    resolveTikTokUrl,
     downloadBuffer,
     remuxVideoFast,
     isValidVideoUrl,
@@ -29,11 +31,17 @@ const delay = ms => new Promise(r => setTimeout(r, ms))
 
 async function getMediaSize(url, timeoutMs = 7000) {
     if (!url || typeof url !== 'string' || !url.startsWith('http')) return 0
+    let referer = 'https://www.tiktok.com/'
+    if (url.includes('tiksnap.es')) referer = 'https://www.tiksnap.es/id/unduh-tiktok-hd'
+    else if (url.includes('snapcdn.app') || url.includes('savetik')) referer = 'https://savetik.io/'
+    else if (url.includes('tikcdn.io') || url.includes('ssstik')) referer = 'https://ssstik.io/'
+
     try {
         const res = await axios.head(url, {
             timeout: timeoutMs,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Referer': referer
             },
             maxRedirects: 5,
             validateStatus: s => s >= 200 && s < 400
@@ -47,6 +55,7 @@ async function getMediaSize(url, timeoutMs = 7000) {
             timeout: timeoutMs,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Referer': referer,
                 'Range': 'bytes=0-0'
             },
             maxRedirects: 5,
@@ -323,51 +332,68 @@ async function handlePinterestSticker(conn, m, targetUrl) {
 }
 
 async function handleTikTokDownload(conn, m, targetUrl) {
-    const [savetikResult, tikwmData] = await Promise.all([
-        savetik(targetUrl),
-        tikwm(targetUrl)
+    const resolvedUrl = await resolveTikTokUrl(targetUrl)
+    const [savetikResult, tiksnapData, ssstikData] = await Promise.all([
+        savetik(resolvedUrl),
+        tiksnap(resolvedUrl),
+        ssstik(resolvedUrl)
     ])
 
-    if (!savetikResult && !tikwmData) {
+    if (!savetikResult && !tiksnapData && !ssstikData) {
         throw new Error('Gagal mengambil data dari server TikTok.')
     }
 
-    const audioUrl = savetikResult?.mp3 || tikwmData?.music || tikwmData?.music_info?.play || null
+    const audioUrl =
+        savetikResult?.mp3 ||
+        tiksnapData?.music ||
+        ssstikData?.mp3 ||
+        null
     const knownMusicUrls = [
         savetikResult?.mp3,
-        tikwmData?.music,
-        tikwmData?.music_info?.play
+        tiksnapData?.music,
+        ssstikData?.mp3
     ].filter(Boolean)
 
     let videoHD = null
-    if (isValidVideoUrl(tikwmData?.hdplay, knownMusicUrls)) {
-        videoHD = tikwmData.hdplay
+    if (isValidVideoUrl(tiksnapData?.hdplay, knownMusicUrls)) {
+        videoHD = tiksnapData.hdplay
     } else if (isValidVideoUrl(savetikResult?.mp4HD, knownMusicUrls)) {
         videoHD = savetikResult.mp4HD
+    } else if (isValidVideoUrl(ssstikData?.mp4HD, knownMusicUrls)) {
+        videoHD = ssstikData.mp4HD
     }
 
     let videoSD = null
-    if (isValidVideoUrl(tikwmData?.play, knownMusicUrls)) {
-        videoSD = tikwmData.play
+    if (isValidVideoUrl(tiksnapData?.play, knownMusicUrls)) {
+        videoSD = tiksnapData.play
     } else if (isValidVideoUrl(savetikResult?.mp4SD, knownMusicUrls)) {
         videoSD = savetikResult.mp4SD
     } else if (isValidVideoUrl(savetikResult?.mp4, knownMusicUrls)) {
         videoSD = savetikResult.mp4
+    } else if (isValidVideoUrl(ssstikData?.mp4SD, knownMusicUrls)) {
+        videoSD = ssstikData.mp4SD
+    } else if (isValidVideoUrl(ssstikData?.mp4, knownMusicUrls)) {
+        videoSD = ssstikData.mp4
     }
 
     const videoUrl = videoHD || videoSD || null
     const isHD = Boolean(videoHD)
-    const images = (tikwmData?.images?.length ? tikwmData.images : savetikResult?.images) || []
+    const images = (
+        (tiksnapData?.images?.length ? tiksnapData.images : null) ||
+        (savetikResult?.images?.length ? savetikResult.images : null) ||
+        (ssstikData?.images?.length ? ssstikData.images : null) ||
+        []
+    )
 
     if (!videoUrl && images.length === 0) {
         throw new Error('Tidak ada media video atau foto yang ditemukan pada tautan TikTok ini.')
     }
 
-    const title = tikwmData?.title || savetikResult?.caption || null
-    const author = tikwmData?.author
-        ? `${tikwmData.author.nickname} (@${tikwmData.author.unique_id})`
-        : null
-    const duration = tikwmData?.duration ? formatDuration(tikwmData.duration) : null
+    const title = tiksnapData?.title || savetikResult?.caption || ssstikData?.caption || null
+    const author = tiksnapData?.author
+        ? `${tiksnapData.author.nickname} (@${tiksnapData.author.unique_id})`
+        : (ssstikData?.author || null)
+    const duration = tiksnapData?.duration ? formatDuration(tiksnapData.duration) : null
 
     if (!videoUrl && images.length > 0) {
         const captionText = [
@@ -449,10 +475,10 @@ async function handleTikTokDownload(conn, m, targetUrl) {
     ].filter(Boolean).join('\n')
 
     let estimatedSize = 0
-    if (isHD && tikwmData?.hd_size) {
-        estimatedSize = Number(tikwmData.hd_size) || 0
-    } else if (tikwmData?.size) {
-        estimatedSize = Number(tikwmData.size) || 0
+    if (isHD && tiksnapData?.hd_size) {
+        estimatedSize = Number(tiksnapData.hd_size) || 0
+    } else if (tiksnapData?.size) {
+        estimatedSize = Number(tiksnapData.size) || 0
     }
 
     if (!estimatedSize && videoUrl) {
@@ -503,8 +529,14 @@ async function handleTikTokDownload(conn, m, targetUrl) {
     try {
         videoBuffer = await downloadBuffer(videoUrl)
     } catch (dlErr) {
-        console.warn('[AutoDL TikTok] HD download fallback ke SD:', dlErr?.message)
-        if (videoSD && videoSD !== videoUrl) {
+        console.warn('[AutoDL TikTok] Gagal unduh buffer primary, coba alternatif HD/SD:', dlErr?.message)
+        const altHD = videoUrl === tiksnapData?.hdplay ? savetikResult?.mp4HD : (videoUrl === savetikResult?.mp4HD ? tiksnapData?.hdplay : null)
+        if (altHD && isValidVideoUrl(altHD, knownMusicUrls)) {
+            try {
+                videoBuffer = await downloadBuffer(altHD)
+            } catch {}
+        }
+        if (!videoBuffer && videoSD && videoSD !== videoUrl) {
             try {
                 videoBuffer = await downloadBuffer(videoSD)
             } catch (sdErr) {

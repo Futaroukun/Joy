@@ -15,13 +15,29 @@ import { tmpdir } from 'os'
 const execAsync = promisify(exec)
 
 export async function downloadBuffer(url, timeoutMs = 60000) {
+    let referer = 'https://www.tiktok.com/'
+    let origin = undefined
+    if (url.includes('tiksnap.es')) {
+        referer = 'https://www.tiksnap.es/id/unduh-tiktok-hd'
+        origin = 'https://www.tiksnap.es'
+    } else if (url.includes('snapcdn.app') || url.includes('savetik')) {
+        referer = 'https://savetik.io/'
+        origin = 'https://savetik.io'
+    } else if (url.includes('tikcdn.io') || url.includes('ssstik')) {
+        referer = 'https://ssstik.io/'
+        origin = 'https://ssstik.io'
+    }
+
+    const headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': referer
+    }
+    if (origin) headers['Origin'] = origin
+
     const res = await axios.get(url, {
         responseType: 'arraybuffer',
         timeout: timeoutMs,
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://www.tiktok.com/'
-        }
+        headers
     })
     return Buffer.from(res.data)
 }
@@ -61,6 +77,28 @@ export async function remuxVideoFast(videoInput) {
     return isBuffer ? videoInput : null
 }
 
+export async function resolveTikTokUrl(url) {
+    if (!url || typeof url !== 'string') return url
+    if (!/(?:vt|vm|v\.t)\.tiktok\.com/i.test(url)) return url
+    try {
+        const res = await fetch(url, {
+            method: 'GET',
+            redirect: 'follow',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+            },
+            signal: AbortSignal.timeout(6000)
+        })
+        if (res.url && res.url !== url && /tiktok\.com/i.test(res.url)) {
+            return res.url
+        }
+    } catch (err) {
+        console.warn('[TikTok] resolveTikTokUrl warning:', err?.message)
+    }
+    return url
+}
+
 export async function savetik(url) {
     try {
         const body = new URLSearchParams({
@@ -81,11 +119,12 @@ export async function savetik(url) {
                 'accept': '*/*'
             },
             body,
-            signal: AbortSignal.timeout(15000)
+            signal: AbortSignal.timeout(12000)
         })
 
-        const json = await res.json()
-        const html = typeof json.data === 'string' ? json.data : ''
+        if (!res.ok) return null
+        const json = await res.json().catch(() => null)
+        const html = typeof json?.data === 'string' ? json.data : ''
         if (!html) return null
 
         const $ = cheerio.load(html)
@@ -121,24 +160,130 @@ export async function savetik(url) {
     }
 }
 
-export async function tikwm(url) {
-    const endpoints = [
-        `https://www.tikwm.com/api/?hd=1&url=${encodeURIComponent(url)}`,
-        `https://sparkling-water-5288.mraflisetiawan075.workers.dev/api/?hd=1&url=${encodeURIComponent(url)}`
-    ]
+export async function tiksnap(url) {
+    try {
+        const res = await fetch('https://www.tiksnap.es/api/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Origin': 'https://www.tiksnap.es',
+                'Referer': 'https://www.tiksnap.es/id/unduh-tiktok-hd'
+            },
+            body: JSON.stringify({ url }),
+            signal: AbortSignal.timeout(15000)
+        })
 
-    for (const ep of endpoints) {
-        try {
-            const res = await axios.get(ep, {
-                timeout: 15000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
-            })
-            if (res.data?.code === 0) return res.data.data
-        } catch {}
+        if (!res.ok) return null
+        const json = await res.json().catch(() => null)
+        if (!json?.success || !json?.videoInfo) return null
+
+        const { videoInfo, signed } = json
+        const base = 'https://www.tiksnap.es'
+
+        const videoOpt = videoInfo.downloadOptions?.find(o => o.type === 'video')
+        const audioOpt = videoInfo.downloadOptions?.find(o => o.type === 'audio')
+
+        const videoHD = signed?.original ? `${base}${signed.original}` : null
+        const videoSD = videoOpt?.signedUrl ? `${base}${videoOpt.signedUrl}` : (videoOpt?.url || null)
+        const audio = audioOpt?.signedUrl ? `${base}${audioOpt.signedUrl}` : (audioOpt?.url || null)
+
+        const isPhotos = Array.isArray(videoInfo.images) && videoInfo.images.length > 0
+        const images = isPhotos
+            ? (signed?.images?.map(img => `${base}${img.signedUrl || img.url}`) || videoInfo.images)
+            : []
+
+        return {
+            id: videoInfo.id,
+            title: videoInfo.description || null,
+            author: videoInfo.author ? {
+                nickname: videoInfo.author.nickname,
+                unique_id: videoInfo.author.uniqueId
+            } : null,
+            duration: videoInfo.duration || null,
+            hdplay: videoHD,
+            play: videoSD,
+            videoHD,
+            videoSD,
+            music: audio,
+            images,
+            play_count: videoInfo.stats?.playCount || 0,
+            digg_count: videoInfo.stats?.diggCount || 0,
+            comment_count: videoInfo.stats?.commentCount || 0,
+            share_count: videoInfo.stats?.shareCount || 0,
+            stats: videoInfo.stats || null
+        }
+    } catch {
+        return null
     }
-    return null
+}
+
+export const tikwm = tiksnap
+
+export async function ssstik(url) {
+    try {
+        const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        const resHome = await fetch('https://ssstik.io/en', {
+            headers: { 'User-Agent': UA },
+            signal: AbortSignal.timeout(8000)
+        })
+        if (!resHome.ok) return null
+        const homeHtml = await resHome.text()
+        const ttMatch = homeHtml.match(/data-tt="([^"]+)"/) || homeHtml.match(/s_tt\s*=\s*'([^']+)'/)
+        const ttVal = ttMatch ? ttMatch[1] : ''
+
+        const postRes = await fetch('https://ssstik.io/abc?url=dl', {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'user-agent': UA,
+                'hx-request': 'true',
+                'hx-target': 'target',
+                'hx-current-url': 'https://ssstik.io/en'
+            },
+            body: new URLSearchParams({
+                id: url,
+                locale: 'en',
+                tt: ttVal
+            }),
+            signal: AbortSignal.timeout(12000)
+        })
+
+        if (!postRes.ok) return null
+        const postHtml = await postRes.text()
+        const $ = cheerio.load(postHtml)
+
+        const mp4 = $('a.without_watermark[href]').attr('href') ||
+            $('a[href*="tikcdn.io/ssstik/"]').attr('href') ||
+            null
+        const mp3 = $('a.music[href]').attr('href') ||
+            $('a[href*="/m/"]').attr('href') ||
+            null
+
+        const images = []
+        $('.splide__slide img, .download-box img, ul.download-box li a').each((_, el) => {
+            const src = $(el).attr('href') || $(el).attr('data-splide-lazy') || $(el).attr('src')
+            if (src && (src.startsWith('http') || src.startsWith('//'))) {
+                images.push(src.startsWith('//') ? 'https:' + src : src)
+            }
+        })
+
+        const caption = $('p.maintext').text().trim() || $('h2').first().text().trim() || null
+        const author = $('h2').first().text().trim() || null
+
+        if (!mp4 && images.length === 0) return null
+
+        return {
+            mp4,
+            mp4SD: mp4,
+            mp3,
+            images,
+            caption,
+            author
+        }
+    } catch {
+        return null
+    }
 }
 
 export const isValidVideoUrl = (url, musicUrls = []) => {
