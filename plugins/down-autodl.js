@@ -354,38 +354,46 @@ async function handleTikTokDownload(conn, m, targetUrl) {
         ssstikData?.mp3
     ].filter(Boolean)
 
+    const imageCandidates = [
+        { source: 'TikSnap', list: tiksnapData?.images || [] },
+        { source: 'SaveTik', list: savetikResult?.images || [] },
+        { source: 'SSSTik', list: ssstikData?.images || [] }
+    ].filter(item => Array.isArray(item.list) && item.list.length > 0)
+
+    imageCandidates.sort((a, b) => b.list.length - a.list.length)
+    const chosenCandidate = imageCandidates[0] || { source: '', list: [] }
+    const images = chosenCandidate.list
+    const isSlideshow = images.length > 0
+
     let videoHD = null
-    if (isValidVideoUrl(tiksnapData?.hdplay, knownMusicUrls)) {
-        videoHD = tiksnapData.hdplay
-    } else if (isValidVideoUrl(savetikResult?.mp4HD, knownMusicUrls)) {
-        videoHD = savetikResult.mp4HD
-    } else if (isValidVideoUrl(ssstikData?.mp4HD, knownMusicUrls)) {
-        videoHD = ssstikData.mp4HD
-    }
-
     let videoSD = null
-    if (isValidVideoUrl(tiksnapData?.play, knownMusicUrls)) {
-        videoSD = tiksnapData.play
-    } else if (isValidVideoUrl(savetikResult?.mp4SD, knownMusicUrls)) {
-        videoSD = savetikResult.mp4SD
-    } else if (isValidVideoUrl(savetikResult?.mp4, knownMusicUrls)) {
-        videoSD = savetikResult.mp4
-    } else if (isValidVideoUrl(ssstikData?.mp4SD, knownMusicUrls)) {
-        videoSD = ssstikData.mp4SD
-    } else if (isValidVideoUrl(ssstikData?.mp4, knownMusicUrls)) {
-        videoSD = ssstikData.mp4
+
+    if (!isSlideshow) {
+        if (isValidVideoUrl(tiksnapData?.hdplay, knownMusicUrls)) {
+            videoHD = tiksnapData.hdplay
+        } else if (isValidVideoUrl(savetikResult?.mp4HD, knownMusicUrls)) {
+            videoHD = savetikResult.mp4HD
+        } else if (isValidVideoUrl(ssstikData?.mp4HD, knownMusicUrls)) {
+            videoHD = ssstikData.mp4HD
+        }
+
+        if (isValidVideoUrl(tiksnapData?.play, knownMusicUrls)) {
+            videoSD = tiksnapData.play
+        } else if (isValidVideoUrl(savetikResult?.mp4SD, knownMusicUrls)) {
+            videoSD = savetikResult.mp4SD
+        } else if (isValidVideoUrl(savetikResult?.mp4, knownMusicUrls)) {
+            videoSD = savetikResult.mp4
+        } else if (isValidVideoUrl(ssstikData?.mp4SD, knownMusicUrls)) {
+            videoSD = ssstikData.mp4SD
+        } else if (isValidVideoUrl(ssstikData?.mp4, knownMusicUrls)) {
+            videoSD = ssstikData.mp4
+        }
     }
 
-    const videoUrl = videoHD || videoSD || null
+    const videoUrl = !isSlideshow ? (videoHD || videoSD || null) : null
     const isHD = Boolean(videoHD)
-    const images = (
-        (tiksnapData?.images?.length ? tiksnapData.images : null) ||
-        (savetikResult?.images?.length ? savetikResult.images : null) ||
-        (ssstikData?.images?.length ? ssstikData.images : null) ||
-        []
-    )
 
-    if (!videoUrl && images.length === 0) {
+    if (!isSlideshow && !videoUrl) {
         throw new Error('Tidak ada media video atau foto yang ditemukan pada tautan TikTok ini.')
     }
 
@@ -395,7 +403,7 @@ async function handleTikTokDownload(conn, m, targetUrl) {
         : (ssstikData?.author || null)
     const duration = tiksnapData?.duration ? formatDuration(tiksnapData.duration) : null
 
-    if (!videoUrl && images.length > 0) {
+    if (isSlideshow) {
         const captionText = [
             `╭── ✦ *AUTODL TIKTOK SLIDESHOW* ✦`,
             title ? `• *Caption:* ${title}` : '',
@@ -427,7 +435,7 @@ async function handleTikTokDownload(conn, m, targetUrl) {
         }
 
         let albumSent = false
-        if (typeof conn.sendAlbum === 'function') {
+        if (albumItems.length > 1 && typeof conn.sendAlbum === 'function') {
             try {
                 await conn.sendAlbum(m.chat, albumItems, { quoted: m, delay: 800 })
                 albumSent = true
@@ -441,7 +449,7 @@ async function handleTikTokDownload(conn, m, targetUrl) {
                 await conn.sendMessage(m.chat, {
                     image: albumItems[i].image,
                     caption: albumItems[i].caption
-                }, { quoted: m })
+                }, { quoted: i === 0 ? m : undefined })
                 await delay(600)
             }
         }

@@ -128,15 +128,6 @@ export async function savetik(url) {
         if (!html) return null
 
         const $ = cheerio.load(html)
-        const mp4HD = $('a:contains("Unduh MP4 HD"), a:contains("Download MP4 HD")').attr('href') || null
-        const mp4SD =
-            $('a:contains("Unduh MP4 [1]"), a:contains("Download MP4 [1]")').attr('href') ||
-            $('a:contains("Unduh MP4 [2]"), a:contains("Download MP4 [2]")').attr('href') ||
-            $('a:contains("Unduh MP4"), a:contains("Download MP4")').attr('href') ||
-            null
-
-        const mp4 = mp4HD || mp4SD || null
-        const mp3 = $('a:contains("Unduh MP3"), a:contains("Download MP3")').attr('href') || null
 
         const images = []
         $('.photo-list ul.download-box li, ul.download-box li').each((_, el) => {
@@ -145,6 +136,18 @@ export async function savetik(url) {
                 images.push(img.startsWith('//') ? 'https:' + img : img)
             }
         })
+
+        const isPhoto = images.length > 0 || $('.photo-list').length > 0
+        const mp4HD = isPhoto ? null : ($('a:contains("Unduh MP4 HD"), a:contains("Download MP4 HD")').attr('href') || null)
+        const mp4SD = isPhoto ? null : (
+            $('a:contains("Unduh MP4 [1]"), a:contains("Download MP4 [1]")').attr('href') ||
+            $('a:contains("Unduh MP4 [2]"), a:contains("Download MP4 [2]")').attr('href') ||
+            $('a:contains("Unduh MP4"), a:contains("Download MP4")').attr('href') ||
+            null
+        )
+
+        const mp4 = mp4HD || mp4SD || null
+        const mp3 = $('a:contains("Unduh MP3"), a:contains("Download MP3")').attr('href') || null
 
         const caption =
             $('.content .clearfix h3').text().trim() ||
@@ -184,14 +187,14 @@ export async function tiksnap(url) {
         const videoOpt = videoInfo.downloadOptions?.find(o => o.type === 'video')
         const audioOpt = videoInfo.downloadOptions?.find(o => o.type === 'audio')
 
-        const videoHD = signed?.original ? `${base}${signed.original}` : null
-        const videoSD = videoOpt?.signedUrl ? `${base}${videoOpt.signedUrl}` : (videoOpt?.url || null)
-        const audio = audioOpt?.signedUrl ? `${base}${audioOpt.signedUrl}` : (audioOpt?.url || null)
-
         const isPhotos = Array.isArray(videoInfo.images) && videoInfo.images.length > 0
         const images = isPhotos
             ? (signed?.images?.map(img => `${base}${img.signedUrl || img.url}`) || videoInfo.images)
             : []
+
+        const videoHD = isPhotos ? null : (signed?.original ? `${base}${signed.original}` : null)
+        const videoSD = isPhotos ? null : (videoOpt?.signedUrl ? `${base}${videoOpt.signedUrl}` : (videoOpt?.url || null))
+        const audio = audioOpt?.signedUrl ? `${base}${audioOpt.signedUrl}` : (audioOpt?.url || null)
 
         return {
             id: videoInfo.id,
@@ -253,13 +256,6 @@ export async function ssstik(url) {
         const postHtml = await postRes.text()
         const $ = cheerio.load(postHtml)
 
-        const mp4 = $('a.without_watermark[href]').attr('href') ||
-            $('a[href*="tikcdn.io/ssstik/"]').attr('href') ||
-            null
-        const mp3 = $('a.music[href]').attr('href') ||
-            $('a[href*="/m/"]').attr('href') ||
-            null
-
         const images = []
         $('.splide__slide img, .download-box img, ul.download-box li a').each((_, el) => {
             const src = $(el).attr('href') || $(el).attr('data-splide-lazy') || $(el).attr('src')
@@ -267,6 +263,17 @@ export async function ssstik(url) {
                 images.push(src.startsWith('//') ? 'https:' + src : src)
             }
         })
+
+        const isPhoto = images.length > 0 || $('.splide__slide').length > 0 || $('a.slide').length > 0
+        const mp4 = isPhoto ? null : (
+            $('a.without_watermark[href]').attr('href') ||
+            $('a.without_watermark_direct[href]').attr('href') ||
+            $('a[href*="tikcdn.io/ssstik/"]').not('.slide').not('.slides_zip').not('.slides_video').attr('href') ||
+            null
+        )
+        const mp3 = $('a.music[href]').attr('href') ||
+            $('a[href*="/m/"]').attr('href') ||
+            null
 
         const caption = $('p.maintext').text().trim() || $('h2').first().text().trim() || null
         const author = $('h2').first().text().trim() || null
