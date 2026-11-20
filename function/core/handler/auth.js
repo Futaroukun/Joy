@@ -190,8 +190,14 @@ export async function resolveGroupContext(conn, m, {
     const isRegister = global.db.data?.users[senderLID]?.register === true;
     const isBannned = global.db.data?.users[senderLID]?.banned === true;
     const isMuted = m.isGroup && global.db.data?.chats[m.chat]?.mute === true;
-    const isSewa = m.isGroup && global.db.data?.chats[m.chat]?.sewa === true;
-    const isSewaExpired = m.isGroup && global.db.data?.chats[m.chat]?.sewaExpired === true;
+
+    const currentChat = chatData || (m.isGroup ? global.db.data?.chats?.[m.chat] : {}) || {};
+    const now = Date.now();
+    const isSewa = m.isGroup && currentChat.sewa === true && (currentChat.sewaPermanent === true || currentChat.sewaDate === -1 || currentChat.sewaDate > now);
+    const isSewaExpired = m.isGroup && currentChat.sewaPermanent !== true && (
+        currentChat.sewaExpired === true ||
+        (currentChat.sewa === true && currentChat.sewaDate > 0 && currentChat.sewaDate <= now)
+    );
     const chatMode = global.db.data?.settings[botLid]?.chatMode;
 
     let shouldHalt = false;

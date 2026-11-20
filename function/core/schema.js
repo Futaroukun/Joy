@@ -118,6 +118,9 @@ export function initChatSchema(chat) {
             sPromote: '',
             sDemote: '',
             sewaDate: -1,
+            sewaPermanent: false,
+            sewaRemindedH3: false,
+            sewaRemindedH1: false,
             sewaExpired: false,
             sewaGraceUntil: -1,
             jualan: false,
@@ -144,6 +147,9 @@ export function initChatSchema(chat) {
     if (!('sPromote' in chat)) chat.sPromote = '';
     if (!('sDemote' in chat)) chat.sDemote = '';
     if (!isNumber(chat.sewaDate)) chat.sewaDate = -1;
+    if (!('sewaPermanent' in chat)) chat.sewaPermanent = false;
+    if (!('sewaRemindedH3' in chat)) chat.sewaRemindedH3 = false;
+    if (!('sewaRemindedH1' in chat)) chat.sewaRemindedH1 = false;
     if (!('sewaExpired' in chat)) chat.sewaExpired = false;
     if (!isNumber(chat.sewaGraceUntil)) chat.sewaGraceUntil = -1;
     if (!('jualan' in chat)) chat.jualan = false;

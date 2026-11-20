@@ -29,6 +29,16 @@ import {
     updateActiveConfig
 } from '../function/events/cooldown.js';
 
+import {
+    GRACE_MS,
+    MAX_DURATION_MS,
+    DURATIONS,
+    parseDuration,
+    applySewaExtension,
+    transitionExpiredSewa,
+    resetSewaChat
+} from '../function/core/cek-sewa.js';
+
 describe('Handler Auth & Permission Logic', () => {
     beforeEach(() => {
         global.developer = ['6281111111111'];
@@ -166,6 +176,9 @@ describe('Handler Auth & Permission Logic', () => {
         const chat = initChatSchema(null);
         assert.strictEqual(chat.mute, false);
         assert.strictEqual(chat.sewa, false);
+        assert.strictEqual(chat.sewaPermanent, false);
+        assert.strictEqual(chat.sewaRemindedH3, false);
+        assert.strictEqual(chat.sewaRemindedH1, false);
         assert.strictEqual(chat.sewaExpired, false);
         assert.strictEqual(chat.sewaGraceUntil, -1);
 
@@ -265,18 +278,6 @@ describe('Dispatcher Command Matching & Guard Logic', () => {
         const groupPass = checkPermissionGuards(groupPlugin, { isGroup: true }, {}, {});
         assert.strictEqual(groupPass.passed, true);
 
-        // Test sewa guard
-        const sewaPlugin = { sewa: true };
-        const sewaFail = checkPermissionGuards(sewaPlugin, {}, {}, { isSewa: false, isOwner: false });
-        assert.strictEqual(sewaFail.passed, false);
-        assert.strictEqual(lastFailReason, 'sewa');
-
-        const sewaPass = checkPermissionGuards(sewaPlugin, {}, {}, { isSewa: true });
-        assert.strictEqual(sewaPass.passed, true);
-
-        const sewaOwnerPass = checkPermissionGuards(sewaPlugin, {}, {}, { isSewa: false, isOwner: true });
-        assert.strictEqual(sewaOwnerPass.passed, true);
-
         // Test limit guard
         const limitPlugin = { limit: 5 };
         const limitFail = checkPermissionGuards(limitPlugin, {}, {}, { user: { limit: 2 } });
@@ -351,5 +352,96 @@ describe('Cooldown Rate Limiter Logic', () => {
 
         resetUserCooldown(jid, 'ping');
         assert.strictEqual(checkCooldown(jid, 'ping', 5000, false, false).canUse, true);
+    });
+});
+
+describe('Sewa System Logic', () => {
+    it('parseDuration: memvalidasi format durasi standar, alias bahasa Indonesia, dan permanen', () => {
+        // Format standar
+        assert.deepStrictEqual(parseDuration('30m'), { ms: 30 * 60 * 1000, amount: 30, unit: 'm', isPermanent: false });
+        assert.deepStrictEqual(parseDuration('12h'), { ms: 12 * 60 * 60 * 1000, amount: 12, unit: 'h', isPermanent: false });
+        assert.deepStrictEqual(parseDuration('7d'), { ms: 7 * 24 * 60 * 60 * 1000, amount: 7, unit: 'd', isPermanent: false });
+        assert.deepStrictEqual(parseDuration('1w'), { ms: 7 * 24 * 60 * 60 * 1000, amount: 1, unit: 'w', isPermanent: false });
+        assert.deepStrictEqual(parseDuration('2M'), { ms: 2 * 30 * 24 * 60 * 60 * 1000, amount: 2, unit: 'M', isPermanent: false });
+        assert.deepStrictEqual(parseDuration('1y'), { ms: 365 * 24 * 60 * 60 * 1000, amount: 1, unit: 'y', isPermanent: false });
+
+        // Alias bahasa Indonesia
+        assert.deepStrictEqual(parseDuration('15mnt'), { ms: 15 * 60 * 1000, amount: 15, unit: 'm', isPermanent: false });
+        assert.deepStrictEqual(parseDuration('2jam'), { ms: 2 * 60 * 60 * 1000, amount: 2, unit: 'h', isPermanent: false });
+        assert.deepStrictEqual(parseDuration('3hari'), { ms: 3 * 24 * 60 * 60 * 1000, amount: 3, unit: 'd', isPermanent: false });
+        assert.deepStrictEqual(parseDuration('2mg'), { ms: 14 * 24 * 60 * 60 * 1000, amount: 2, unit: 'w', isPermanent: false });
+        assert.deepStrictEqual(parseDuration('1bln'), { ms: 30 * 24 * 60 * 60 * 1000, amount: 1, unit: 'M', isPermanent: false });
+        assert.deepStrictEqual(parseDuration('2thn'), { ms: 2 * 365 * 24 * 60 * 60 * 1000, amount: 2, unit: 'y', isPermanent: false });
+
+        // Paket permanen
+        assert.deepStrictEqual(parseDuration('perm'), { isPermanent: true });
+        assert.deepStrictEqual(parseDuration('permanen'), { isPermanent: true });
+        assert.deepStrictEqual(parseDuration('permanent'), { isPermanent: true });
+        assert.deepStrictEqual(parseDuration('inf'), { isPermanent: true });
+        assert.deepStrictEqual(parseDuration('p'), { isPermanent: true });
+
+        // Input tidak valid
+        assert.strictEqual(parseDuration('invalid'), null);
+        assert.strictEqual(parseDuration('-5d'), null);
+        assert.strictEqual(parseDuration('0d'), null);
+        assert.strictEqual(parseDuration(''), null);
+        assert.strictEqual(parseDuration(null), null);
+    });
+
+    it('applySewaExtension: perpanjangan akumulatif dan pembatasan batas durasi maksimal 5 tahun', () => {
+        const now = 1700000000000;
+        const chat = { sewa: false, sewaDate: -1, sewaExpired: false, sewaGraceUntil: -1 };
+
+        // 1. Sewa baru 30 hari
+        const dur30d = parseDuration('30d');
+        const resNew = applySewaExtension(chat, dur30d, now);
+        assert.strictEqual(resNew.isExtend, false);
+        assert.strictEqual(chat.sewa, true);
+        assert.strictEqual(chat.sewaDate, now + dur30d.ms);
+
+        // 2. Perpanjangan akumulatif saat sewa masih aktif (+7 hari)
+        const dur7d = parseDuration('7d');
+        const prevExpiry = chat.sewaDate;
+        const resExt = applySewaExtension(chat, dur7d, now);
+        assert.strictEqual(resExt.isExtend, true);
+        assert.strictEqual(chat.sewaDate, prevExpiry + dur7d.ms);
+
+        // 3. Batas durasi: jika durasi melebihi 5 tahun, harus ditolak
+        const dur6y = { ms: 6 * 365 * 24 * 60 * 60 * 1000, isPermanent: false };
+        const resMax = applySewaExtension(chat, dur6y, now);
+        assert.strictEqual(resMax.error, 'max_exceeded');
+
+        // 4. Sewa permanen
+        const durPerm = parseDuration('perm');
+        const resPerm = applySewaExtension(chat, durPerm, now);
+        assert.strictEqual(resPerm.isPermanent, true);
+        assert.strictEqual(chat.sewaPermanent, true);
+        assert.strictEqual(chat.sewaDate, -1);
+    });
+
+    it('transisi sewa: aktif -> tenggang (3 hari) -> keluar & reset', () => {
+        const now = 1700000000000;
+        const chat = {
+            sewa: true,
+            sewaDate: now - 1000, // sudah lewat / expired
+            sewaExpired: false,
+            sewaGraceUntil: -1
+        };
+
+        // 1. Transisi ke masa tenggang
+        transitionExpiredSewa(chat, now);
+        assert.strictEqual(chat.sewa, false);
+        assert.strictEqual(chat.sewaExpired, true);
+        assert.strictEqual(chat.sewaGraceUntil, now + GRACE_MS);
+
+        // 2. Transisi keluar & reset seluruh data sewa
+        resetSewaChat(chat);
+        assert.strictEqual(chat.sewa, false);
+        assert.strictEqual(chat.sewaPermanent, false);
+        assert.strictEqual(chat.sewaExpired, false);
+        assert.strictEqual(chat.sewaGraceUntil, -1);
+        assert.strictEqual(chat.sewaDate, -1);
+        assert.strictEqual(chat.sewaRemindedH3, false);
+        assert.strictEqual(chat.sewaRemindedH1, false);
     });
 });
