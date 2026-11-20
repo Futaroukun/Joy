@@ -379,8 +379,8 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
     }
 };
 
-handler.help    = ['sewa', 'addsewa', 'delsewa', 'listsewa', 'ceksewa'];
-handler.tags    = ['owner', 'group'];
+handler.help    = ['sewa *add/del/list/cek*'];
+handler.tags    = ['owner'];
 handler.command = /^(sewa|addsewa|tambahsewa|delsewa|remsewa|hapussewa|listsewa|sewalist|ceksewa|sewacek)$/i;
 
 export default handler;
