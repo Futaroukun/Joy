@@ -118,6 +118,8 @@ export function initChatSchema(chat) {
             sPromote: '',
             sDemote: '',
             sewaDate: -1,
+            sewaExpired: false,
+            sewaGraceUntil: -1,
             jualan: false,
             jualanItems: {},
             autoOpenClose: false,
@@ -142,6 +144,8 @@ export function initChatSchema(chat) {
     if (!('sPromote' in chat)) chat.sPromote = '';
     if (!('sDemote' in chat)) chat.sDemote = '';
     if (!isNumber(chat.sewaDate)) chat.sewaDate = -1;
+    if (!('sewaExpired' in chat)) chat.sewaExpired = false;
+    if (!isNumber(chat.sewaGraceUntil)) chat.sewaGraceUntil = -1;
     if (!('jualan' in chat)) chat.jualan = false;
     if (!('jualanItems' in chat)) chat.jualanItems = {};
     if (!('autoOpenClose' in chat)) chat.autoOpenClose = false;

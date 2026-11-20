@@ -166,6 +166,8 @@ describe('Handler Auth & Permission Logic', () => {
         const chat = initChatSchema(null);
         assert.strictEqual(chat.mute, false);
         assert.strictEqual(chat.sewa, false);
+        assert.strictEqual(chat.sewaExpired, false);
+        assert.strictEqual(chat.sewaGraceUntil, -1);
 
         const setting = initSettingSchema(null);
         assert.strictEqual(setting.autoread, true);
@@ -262,6 +264,18 @@ describe('Dispatcher Command Matching & Guard Logic', () => {
 
         const groupPass = checkPermissionGuards(groupPlugin, { isGroup: true }, {}, {});
         assert.strictEqual(groupPass.passed, true);
+
+        // Test sewa guard
+        const sewaPlugin = { sewa: true };
+        const sewaFail = checkPermissionGuards(sewaPlugin, {}, {}, { isSewa: false, isOwner: false });
+        assert.strictEqual(sewaFail.passed, false);
+        assert.strictEqual(lastFailReason, 'sewa');
+
+        const sewaPass = checkPermissionGuards(sewaPlugin, {}, {}, { isSewa: true });
+        assert.strictEqual(sewaPass.passed, true);
+
+        const sewaOwnerPass = checkPermissionGuards(sewaPlugin, {}, {}, { isSewa: false, isOwner: true });
+        assert.strictEqual(sewaOwnerPass.passed, true);
 
         // Test limit guard
         const limitPlugin = { limit: 5 };

@@ -5,6 +5,7 @@ import { headerLog } from "./console.js";
 import { unlinkSync, readdirSync, existsSync} from "fs";
 import { join } from "path";
 import { startPremiumScheduler } from "./cek-prem.js";
+import { startSewaScheduler, stopSewaScheduler } from "./cek-sewa.js";
 
 // ── Pastel Palette ────────────────────────────────────────────────────────────
 const p = {
@@ -195,6 +196,7 @@ export async function connectionUpdate(update, conn) {
         console.log(p.green('● ') + p.green.bold('[WS] ') + p.white('Koneksi terhubung ke server WhatsApp ') + p.dimgray('(Gateway Ready)'));
         conn?.sendPresenceUpdate?.('available').catch(() => {});
         startPremiumScheduler(conn);
+        startSewaScheduler(conn);
         
         try {
         const _botLid = jidNormalizedUser(conn?.user?.lid)
@@ -231,6 +233,7 @@ export async function connectionUpdate(update, conn) {
     }
 
     if (connection === 'close') {
+        stopSewaScheduler();
         const statusCode = lastDisconnect?.error?.output?.statusCode;
         const rawReason  = lastDisconnect?.error?.message ?? (typeof lastDisconnect?.error?.toString === 'function' ? lastDisconnect.error.toString() : '');
         const reason     = String(rawReason || 'Unknown');

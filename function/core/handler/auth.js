@@ -191,9 +191,11 @@ export async function resolveGroupContext(conn, m, {
     const isBannned = global.db.data?.users[senderLID]?.banned === true;
     const isMuted = m.isGroup && global.db.data?.chats[m.chat]?.mute === true;
     const isSewa = m.isGroup && global.db.data?.chats[m.chat]?.sewa === true;
+    const isSewaExpired = m.isGroup && global.db.data?.chats[m.chat]?.sewaExpired === true;
     const chatMode = global.db.data?.settings[botLid]?.chatMode;
 
     let shouldHalt = false;
+    if (isSewaExpired && !isOwner) shouldHalt = true;
     if ((chatMode === "owneronly" || chatMode === "self" || global.opts["owneronly"] || global.opts["self"]) && !isOwner) shouldHalt = true;
     if ((chatMode === "pconly" || global.opts["pconly"]) && !isPremium && !isOwner && m.isGroup) shouldHalt = true;
     if ((chatMode === "gconly" || global.opts["gconly"]) && !isPremium && !isOwner && !m.isGroup) shouldHalt = true;
@@ -211,6 +213,7 @@ export async function resolveGroupContext(conn, m, {
         isBannned,
         isMuted,
         isSewa,
+        isSewaExpired,
         chatMode,
         shouldHalt
     };

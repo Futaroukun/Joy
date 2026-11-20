@@ -159,6 +159,7 @@ export function checkPermissionGuards(plugin, m, conn, ctx = {}) {
         isBannned = false,
         isMuted = false,
         isRegister = false,
+        isSewa = false,
         user = {}
     } = ctx;
 
@@ -176,6 +177,11 @@ export function checkPermissionGuards(plugin, m, conn, ctx = {}) {
     } else if (plugin.owner && !isOwner) {
         if (typeof global.dFail === 'function') global.dFail("owner", m, conn);
         return { passed: false, reason: 'owner' };
+    }
+
+    if (plugin.sewa && !isSewa && !isOwner) {
+        if (typeof global.dFail === 'function') global.dFail("sewa", m, conn);
+        return { passed: false, reason: 'sewa' };
     }
 
     if (plugin.premium && !isPremium) {
@@ -412,6 +418,7 @@ export async function dispatchCommand(conn, m, pluginIndex, ctx) {
             isBannned,
             isMuted,
             isRegister,
+            isSewa,
             user
         });
         if (!guardResult.passed) return true;
