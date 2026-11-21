@@ -443,5 +443,40 @@ describe('Sewa System Logic', () => {
         assert.strictEqual(chat.sewaDate, -1);
         assert.strictEqual(chat.sewaRemindedH3, false);
         assert.strictEqual(chat.sewaRemindedH1, false);
+        assert.strictEqual(chat.sewaPending, undefined);
+    });
+
+    it('sewaPending: antrean sewa saat pending join approval dan aktif saat di-acc admin', () => {
+        const reqTime = 1700000000000;
+        const dur30d = parseDuration('30d');
+        const chat = {
+            sewa: false,
+            sewaDate: -1,
+            sewaPending: {
+                duration: dur30d,
+                requestedAt: reqTime,
+                requestedBy: '628123456789@s.whatsapp.net'
+            }
+        };
+
+        // Sebelum di-acc, sewa belum aktif
+        assert.strictEqual(chat.sewa, false);
+        assert.ok(chat.sewaPending);
+
+        // Disetujui admin 2 hari kemudian
+        const approvedTime = reqTime + (2 * 24 * 60 * 60 * 1000);
+        const res = applySewaExtension(chat, chat.sewaPending.duration, approvedTime);
+        delete chat.sewaPending;
+
+        assert.strictEqual(chat.sewa, true);
+        assert.strictEqual(chat.sewaDate, approvedTime + dur30d.ms);
+        assert.strictEqual(chat.sewaPending, undefined);
+        assert.strictEqual(res.isPermanent, false);
+
+        // Reset membersihkan sewaPending jika masih ada
+        chat.sewaPending = { duration: dur30d };
+        resetSewaChat(chat);
+        assert.strictEqual(chat.sewa, false);
+        assert.strictEqual(chat.sewaPending, undefined);
     });
 });

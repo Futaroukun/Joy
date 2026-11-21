@@ -123,6 +123,7 @@ export function resetSewaChat(chat) {
     chat.sewaDate = -1;
     chat.sewaRemindedH3 = false;
     chat.sewaRemindedH1 = false;
+    delete chat.sewaPending;
 }
 
 let schedulerTime = null;

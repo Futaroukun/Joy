@@ -1,3 +1,4 @@
+import { areJidsSameUser } from '@whiskeysockets/baileys';
 import {
     GRACE_MS,
     MAX_DURATION_MS,
@@ -105,6 +106,20 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
                 `› Bot beroperasi penuh untuk seluruh anggota grup.\n` +
                 `╰━━━━━━━━━━━━━━━━━━━━━━━`
             );
+        } else if (chatData.sewaPending) {
+            const pending = chatData.sewaPending;
+            const durLabel = pending.duration?.isPermanent
+                ? 'Permanen (Tanpa Batas Waktu)'
+                : labelDuration(pending.duration?.amount, pending.duration?.unit);
+            return m.reply(
+                `╭── ✦ *STATUS SEWA: MENUNGGU ACC* ✦\n` +
+                `• *Grup*: ${groupName}\n` +
+                `• *Status*: Menunggu Persetujuan Admin (Join Request)\n` +
+                `• *Durasi Disiapkan*: +${durLabel}\n\n` +
+                `› Bot telah mengirim permintaan gabung ke grup.\n` +
+                `› Durasi sewa otomatis aktif dan mulai terhitung saat admin grup meng-acc bot.\n` +
+                `╰━━━━━━━━━━━━━━━━━━━━━━━`
+            );
         } else if (chatData.sewaExpired) {
             const graceSisa = chatData.sewaGraceUntil > now ? remainingLabel(chatData.sewaGraceUntil - now) : 'Segera berakhir';
             const graceExpDate = formatDateTime(chatData.sewaGraceUntil);
@@ -141,6 +156,7 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         const now = Date.now();
         const activeList = [];
         const graceList = [];
+        const pendingList = [];
 
         const participating = await conn.groupFetchAllParticipating().catch(() => ({}));
 
@@ -150,18 +166,21 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
                 if (data.sewaPermanent || data.sewaDate > now) {
                     activeList.push({ jid, data });
                 }
+            } else if (data.sewaPending) {
+                pendingList.push({ jid, data });
             } else if (data.sewaExpired) {
                 graceList.push({ jid, data });
             }
         }
 
-        const totalGrup = activeList.length + graceList.length;
+        const totalGrup = activeList.length + graceList.length + pendingList.length;
         if (totalGrup === 0) {
-            return m.reply('Belum ada grup yang terdaftar dalam sewa aktif maupun masa tenggang.');
+            return m.reply('Belum ada grup yang terdaftar dalam sewa aktif, pending, maupun masa tenggang.');
         }
 
         const combined = [
             ...activeList.map(item => ({ ...item, type: 'active' })),
+            ...pendingList.map(item => ({ ...item, type: 'pending' })),
             ...graceList.map(item => ({ ...item, type: 'grace' }))
         ];
 
@@ -174,6 +193,9 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
 
         let out = `╭── ✦ *DAFTAR SEWA GRUP* ✦\n`;
         out += `• *Total Aktif*: ${activeList.length} grup\n`;
+        if (pendingList.length > 0) {
+            out += `• *Menunggu ACC*: ${pendingList.length} grup\n`;
+        }
         out += `• *Total Masa Tenggang*: ${graceList.length} grup\n`;
         out += `• *Halaman*: ${page} dari ${totalPages}\n\n`;
 
@@ -194,6 +216,12 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
                     out += `   › ID: \`${item.jid}\`\n`;
                     out += `   › Sisa: ${sisa} (s.d ${expDate})\n\n`;
                 }
+            } else if (item.type === 'pending') {
+                const pDur = item.data.sewaPending.duration;
+                const durLabel = pDur?.isPermanent ? 'Permanen' : labelDuration(pDur?.amount, pDur?.unit);
+                out += `${num}. *${gName}* [MENUNGGU ACC]\n`;
+                out += `   › ID: \`${item.jid}\`\n`;
+                out += `   › Durasi Disiapkan: +${durLabel}\n\n`;
             } else {
                 const sisaGrace = item.data.sewaGraceUntil > now ? remainingLabel(item.data.sewaGraceUntil - now) : 'Habis';
                 out += `${num}. *${gName}* [NON-AKTIF]\n`;
@@ -223,10 +251,11 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         }
 
         const chat = global.db?.data?.chats?.[targetJid];
-        if (!chat || (!chat.sewa && !chat.sewaExpired)) {
-            return m.reply('Grup tersebut tidak memiliki status sewa aktif ataupun masa tenggang.');
+        if (!chat || (!chat.sewa && !chat.sewaExpired && !chat.sewaPending)) {
+            return m.reply('Grup tersebut tidak memiliki status sewa aktif, masa tenggang, maupun pending.');
         }
 
+        delete chat.sewaPending;
         resetSewaChat(chat);
         if (typeof global.saveData === 'function') {
             global.saveData('chats', targetJid);
@@ -296,26 +325,102 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
             return m.reply('*Durasi Terlalu Panjang!*\nMaksimal durasi sewa sekaligus adalah 5 tahun.');
         }
 
+        let isPendingApproval = false;
+        let inviteInfo = null;
+
         if (inviteCode) {
             try {
-                const joinRes = await conn.groupAcceptInvite(inviteCode);
-                targetJid = joinRes || null;
-                joinedViaLink = true;
-            } catch (e) {
+                inviteInfo = await conn.groupGetInviteInfo(inviteCode);
+            } catch (_) {}
+
+            if (inviteInfo?.id) {
+                targetJid = inviteInfo.id.includes('@') ? inviteInfo.id : `${inviteInfo.id}@g.us`;
+            }
+
+            let isBotInGroup = false;
+            if (targetJid) {
                 try {
-                    const info = await conn.groupGetInviteInfo(inviteCode);
-                    if (info?.id) targetJid = `${info.id}@g.us`;
+                    const groupMeta = conn.chats?.[targetJid]?.metadata || await conn.groupMetadata(targetJid).catch(() => null);
+                    if (groupMeta) {
+                        if (Array.isArray(groupMeta.participants)) {
+                            const botJid = (conn.user?.jid || conn.user?.id || '').decodeJid();
+                            const botLid = (conn.user?.lid || '').decodeJid();
+                            isBotInGroup = groupMeta.participants.some(p => {
+                                const pJid = (p.id || '').decodeJid();
+                                return (botJid && areJidsSameUser(pJid, botJid)) || (botLid && areJidsSameUser(pJid, botLid));
+                            });
+                        } else {
+                            isBotInGroup = true;
+                        }
+                    }
                 } catch (_) {}
-                if (!targetJid) {
-                    return m.reply(`*Gagal Bergabung ke Grup!*\nLink invite tidak valid atau bot gagal bergabung: ${e.message}`);
+            }
+
+            if (!isBotInGroup) {
+                try {
+                    const joinRes = await conn.groupAcceptInvite(inviteCode);
+                    if (joinRes) {
+                        targetJid = joinRes.includes('@') ? joinRes : `${joinRes}@g.us`;
+                        joinedViaLink = true;
+                    } else {
+                        isPendingApproval = true;
+                    }
+                } catch (e) {
+                    const errMsg = (e?.message || '').toLowerCase();
+                    const isAlreadyIn = errMsg.includes('409') || errMsg.includes('conflict') || errMsg.includes('already');
+                    if (isAlreadyIn) {
+                        isPendingApproval = false;
+                    } else if (inviteInfo?.joinApprovalMode) {
+                        isPendingApproval = true;
+                    } else if (errMsg.includes('approval') || errMsg.includes('request') || errMsg.includes('admin')) {
+                        isPendingApproval = true;
+                    } else if (!targetJid) {
+                        return m.reply(`*Gagal Bergabung ke Grup!*\nLink invite tidak valid atau bot gagal bergabung: ${e.message}`);
+                    }
                 }
             }
+        }
+
+        if (!targetJid || !targetJid.endsWith('@g.us')) {
+            return m.reply('*Gagal Mendapatkan ID Grup!*\nPastikan link invite valid atau bot dapat mengakses informasi grup.');
         }
 
         if (!global.db.data.chats[targetJid]) {
             global.db.data.chats[targetJid] = {};
         }
         const chat = global.db.data.chats[targetJid];
+        const groupName = inviteInfo?.subject || getGroupName(conn, targetJid);
+
+        if (isPendingApproval) {
+            chat.sewaPending = {
+                duration,
+                requestedAt: Date.now(),
+                requestedBy: m.chat.endsWith('@s.whatsapp.net') ? m.chat : m.sender
+            };
+
+            if (typeof global.saveData === 'function') {
+                global.saveData('chats', targetJid);
+            }
+
+            const addedLabel = duration.isPermanent
+                ? 'Permanen (Tanpa Batas Waktu)'
+                : labelDuration(duration.amount, duration.unit);
+
+            const replyMsg =
+                `╭── ✦ *MENUNGGU PERSETUJUAN ADMIN* ✦\n` +
+                `• *Grup*: ${groupName}\n` +
+                `• *ID*: \`${targetJid}\`\n` +
+                `• *Status*: Permintaan Bergabung Terkirim\n` +
+                `• *Durasi Disiapkan*: +${addedLabel}\n` +
+                `• *Masa Aktif*: Dihitung otomatis saat di-acc\n\n` +
+                `› Grup target mewajibkan persetujuan admin (join request).\n` +
+                `› Sewa otomatis aktif dan durasi mulai terhitung begitu admin grup menyetujui bot bergabung.\n` +
+                `╰━━━━━━━━━━━━━━━━━━━━━━━`;
+
+            return m.reply(replyMsg);
+        }
+
+        delete chat.sewaPending;
         const now = Date.now();
 
         const extResult = applySewaExtension(chat, duration, now);
@@ -326,8 +431,6 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         if (typeof global.saveData === 'function') {
             global.saveData('chats', targetJid);
         }
-
-        const groupName = getGroupName(conn, targetJid);
         let replyMsg = '';
         let groupNotice = '';
 
@@ -335,9 +438,9 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
             replyMsg =
                 `╭── ✦ *SEWA PERMANEN AKTIF* ✦\n` +
                 `• *Grup*: ${groupName}\n` +
+                `• *ID*: \`${targetJid}\`\n` +
                 `• *Paket*: Permanen (Tanpa Batas Waktu)\n` +
-                `• *Status*: Aktif Selamanya\n` +
-                `╰━━━━━━━━━━━━━━━━━━━━━━━`;
+                `• *Status*: Aktif Selamanya\n`;
 
             groupNotice =
                 `╭── ✦ *SEWA BOT PERMANEN AKTIF* ✦\n` +
@@ -350,32 +453,67 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
             const addedLabel = labelDuration(duration.amount, duration.unit);
             const sisaLabel = remainingLabel(extResult.newExpiry - now);
 
-            replyMsg =
-                `╭── ✦ *SEWA BERHASIL DIAKTIFKAN* ✦\n` +
-                `• *Grup*: ${groupName}\n` +
-                `• *Durasi Ditambah*: +${addedLabel}\n` +
-                `• *Berlaku Sampai*: ${expStr}\n` +
-                `• *Total Sisa Waktu*: ${sisaLabel}\n` +
-                `• *Tipe*: ${extResult.isExtend ? 'Perpanjangan Masa Aktif' : 'Sewa Baru'}\n` +
-                `╰━━━━━━━━━━━━━━━━━━━━━━━`;
+            if (extResult.isExtend) {
+                replyMsg =
+                    `╭── ✦ *DURASI SEWA DITAMBAHKAN* ✦\n` +
+                    `• *Grup*: ${groupName}\n` +
+                    `• *ID*: \`${targetJid}\`\n` +
+                    `• *Durasi Ditambah*: +${addedLabel}\n` +
+                    `• *Berlaku Sampai*: ${expStr}\n` +
+                    `• *Total Sisa Waktu*: ${sisaLabel}\n` +
+                    `• *Tipe*: Perpanjangan Masa Aktif\n`;
 
-            groupNotice =
-                `╭── ✦ *SEWA BOT DIAKTIFKAN* ✦\n` +
-                `Halo seluruh member grup *${groupName}*.\n\n` +
-                `Masa sewa ${global.info?.namabot || 'Joy Bot'} telah aktif di grup ini.\n` +
-                `• *Durasi*: ${addedLabel}\n` +
-                `• *Berlaku s.d*: ${expStr}\n\n` +
-                `Gunakan \`${usedPrefix}menu\` untuk melihat seluruh fitur yang tersedia.\n` +
-                `╰━━━━━━━━━━━━━━━━━━━━━━━`;
+                groupNotice =
+                    `╭── ✦ *DURASI SEWA DITAMBAHKAN* ✦\n` +
+                    `Halo seluruh member grup *${groupName}*.\n\n` +
+                    `Masa sewa ${global.info?.namabot || 'Joy Bot'} di grup ini telah berhasil diperpanjang / ditambah!\n` +
+                    `• *Durasi Ditambah*: +${addedLabel}\n` +
+                    `• *Berlaku Sampai*: ${expStr}\n` +
+                    `• *Total Sisa Waktu*: ${sisaLabel}\n\n` +
+                    `Gunakan \`${usedPrefix}menu\` untuk melihat seluruh fitur yang tersedia.\n` +
+                    `╰━━━━━━━━━━━━━━━━━━━━━━━`;
+            } else {
+                replyMsg =
+                    `╭── ✦ *SEWA BERHASIL DIAKTIFKAN* ✦\n` +
+                    `• *Grup*: ${groupName}\n` +
+                    `• *ID*: \`${targetJid}\`\n` +
+                    `• *Durasi*: ${addedLabel}\n` +
+                    `• *Berlaku Sampai*: ${expStr}\n` +
+                    `• *Total Sisa Waktu*: ${sisaLabel}\n` +
+                    `• *Tipe*: Sewa Baru\n`;
+
+                groupNotice =
+                    `╭── ✦ *SEWA BOT DIAKTIFKAN* ✦\n` +
+                    `Halo seluruh member grup *${groupName}*.\n\n` +
+                    `Masa sewa ${global.info?.namabot || 'Joy Bot'} telah resmi aktif di grup ini.\n` +
+                    `• *Durasi*: ${addedLabel}\n` +
+                    `• *Berlaku Sampai*: ${expStr}\n` +
+                    `• *Total Sisa Waktu*: ${sisaLabel}\n\n` +
+                    `Gunakan \`${usedPrefix}menu\` untuk melihat seluruh fitur yang tersedia.\n` +
+                    `╰━━━━━━━━━━━━━━━━━━━━━━━`;
+            }
         }
+
+        let noticeSent = false;
+        if (targetJid && targetJid.endsWith('@g.us')) {
+            if (targetJid !== m.chat) {
+                try {
+                    await conn.sendMessage(targetJid, { text: groupNotice });
+                    noticeSent = true;
+                } catch (err) {
+                    console.error(`[SEWA] Gagal kirim notif ke grup ${targetJid}:`, err?.message || err);
+                }
+            } else {
+                noticeSent = true;
+            }
+        }
+
+        if (targetJid !== m.chat) {
+            replyMsg += `• *Notif Grup*: ${noticeSent ? 'Terkirim ke Grup ✅' : 'Gagal terkirim ke grup ❌'}\n`;
+        }
+        replyMsg += `╰━━━━━━━━━━━━━━━━━━━━━━━`;
 
         await m.reply(replyMsg);
-
-        if (targetJid !== m.chat || joinedViaLink) {
-            try {
-                await conn.sendMessage(targetJid, { text: groupNotice });
-            } catch (_) {}
-        }
     }
 };
 
