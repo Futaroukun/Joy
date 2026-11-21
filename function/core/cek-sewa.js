@@ -24,7 +24,14 @@ export function formatDateTime(timestamp, formatStr = 'DD MMMM YYYY [pukul] HH:m
 
 export function getGroupName(conn, jid, participatingMap = null) {
     if (!jid) return 'Grup';
-    return participatingMap?.[jid]?.subject || conn?.chats?.[jid]?.metadata?.subject || jid.split('@')[0];
+    const cleanJid = jid.replace(/(@g\.us)+$/i, '@g.us');
+    return (
+        participatingMap?.[cleanJid]?.subject ||
+        conn?.chats?.[cleanJid]?.metadata?.subject ||
+        conn?.chats?.[cleanJid]?.subject ||
+        conn?.chats?.[cleanJid]?.name ||
+        cleanJid.split('@')[0]
+    );
 }
 
 export function parseDuration(text) {
@@ -154,8 +161,18 @@ export async function checkExpiredSewa(conn) {
         const nomorOwner = getNomorOwner();
         const chats = global.db.data.chats;
 
-        for (const [jid, chat] of Object.entries(chats)) {
-            if (!jid.endsWith('@g.us') || !chat) continue;
+        for (const [rawJid, chat] of Object.entries(chats)) {
+            if (!rawJid.includes('@g.us') || !chat) continue;
+            let jid = rawJid;
+            if (rawJid.includes('@g.us@g.us')) {
+                jid = rawJid.replace(/(@g\.us)+$/i, '@g.us');
+                chats[jid] = { ...(chats[jid] || {}), ...chat };
+                delete chats[rawJid];
+                if (typeof global.saveData === 'function') {
+                    global.saveData('chats', jid);
+                    global.saveData('chats', rawJid);
+                }
+            }
 
             if (chat.sewa && !chat.sewaPermanent && chat.sewaDate > now) {
                 const sisaMs = chat.sewaDate - now;

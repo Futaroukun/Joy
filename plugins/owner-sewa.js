@@ -160,8 +160,18 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
 
         const participating = await conn.groupFetchAllParticipating().catch(() => ({}));
 
-        for (const [jid, data] of Object.entries(chats)) {
-            if (!jid.endsWith('@g.us')) continue;
+        for (const [rawJid, data] of Object.entries(chats)) {
+            if (!rawJid.includes('@g.us')) continue;
+            let jid = rawJid;
+            if (rawJid.includes('@g.us@g.us')) {
+                jid = rawJid.replace(/(@g\.us)+$/i, '@g.us');
+                chats[jid] = { ...(chats[jid] || {}), ...data };
+                delete chats[rawJid];
+                if (typeof global.saveData === 'function') {
+                    global.saveData('chats', jid);
+                    global.saveData('chats', rawJid);
+                }
+            }
             if (data.sewa) {
                 if (data.sewaPermanent || data.sewaDate > now) {
                     activeList.push({ jid, data });
@@ -202,7 +212,13 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             const num = startIndex + i + 1;
-            const gName = getGroupName(conn, item.jid, participating);
+            let gName = getGroupName(conn, item.jid, participating);
+            if (gName === item.jid.split('@')[0]) {
+                try {
+                    const meta = await conn.groupMetadata(item.jid).catch(() => null);
+                    if (meta?.subject) gName = meta.subject;
+                } catch (_) {}
+            }
 
             if (item.type === 'active') {
                 if (item.data.sewaPermanent) {
