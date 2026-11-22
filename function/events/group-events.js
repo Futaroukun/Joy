@@ -6,7 +6,7 @@
  */
 
 import { jidNormalizedUser, areJidsSameUser } from '@whiskeysockets/baileys';
-import { activatePendingSewa } from '../core/cek-sewa.js';
+import { activatePendingSewa, resetSewaChat } from '../core/cek-sewa.js';
 
 const lidCache = new Map();
 const LID_CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -106,6 +106,26 @@ export async function participantsUpdate({ id, participants, action }) {
                         if (groupChat.sewaPending) {
                             await activatePendingSewa(this, id);
                         }
+                    }
+                } else if (action === "remove") {
+                    const botJid = (this.user?.jid || this.user?.id || '').decodeJid();
+                    const botLid = (this.user?.lid || '').decodeJid();
+                    const isBotRemoved = participants.some(user => {
+                        const pId = (user?.id || user || '').toString().decodeJid();
+                        return (botJid && areJidsSameUser(pId, botJid)) || (botLid && areJidsSameUser(pId, botLid));
+                    });
+
+                    if (isBotRemoved) {
+                        const groupChat = global.db?.data?.chats?.[id];
+                        if (groupChat) {
+                            resetSewaChat(groupChat);
+                            if (typeof global.saveData === 'function') {
+                                global.saveData('chats', id);
+                            }
+                        }
+                        this._groupMetaCache?.delete(id);
+                        if (this.chats?.[id]) delete this.chats[id];
+                        return;
                     }
                 }
 

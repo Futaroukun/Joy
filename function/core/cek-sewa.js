@@ -199,23 +199,57 @@ export async function activatePendingSewa(conn, id) {
     return true;
 }
 
-export async function reconcilePendingSewa(conn, participating = null) {
+export async function reconcileSewa(conn, participating = null) {
     const chats = global.db?.data?.chats;
-    if (!chats) return 0;
-
-    const pendingJids = Object.keys(chats).filter(jid => jid.endsWith('@g.us') && chats[jid]?.sewaPending);
-    if (pendingJids.length === 0) return 0;
+    if (!chats) return { activated: 0, cleaned: 0 };
 
     const joined = participating || await conn.groupFetchAllParticipating().catch(() => null);
-    if (!joined) return 0;
+    if (!joined || typeof joined !== 'object') return { activated: 0, cleaned: 0 };
 
+    const isJoinedValid = Object.keys(joined).length > 0;
     let activated = 0;
-    for (const jid of pendingJids) {
-        if (!joined[jid]) continue;
-        if (await activatePendingSewa(conn, jid)) activated++;
+    let cleaned = 0;
+    const now = Date.now();
+
+    for (const [rawJid, chat] of Object.entries(chats)) {
+        if (!rawJid.includes('@g.us') || !chat) continue;
+        const cleanJid = rawJid.replace(/(@g\.us)+$/i, '@g.us');
+
+        if (rawJid !== cleanJid) {
+            chats[cleanJid] = { ...(chats[cleanJid] || {}), ...chat };
+            delete chats[rawJid];
+            if (typeof global.saveData === 'function') {
+                global.saveData('chats', cleanJid);
+                global.saveData('chats', rawJid);
+            }
+        }
+
+        const targetChat = chats[cleanJid];
+        const isJoined = Boolean(joined[cleanJid]);
+
+        if (targetChat.sewaPending) {
+            if (isJoined) {
+                if (await activatePendingSewa(conn, cleanJid)) activated++;
+            } else if (targetChat.sewaPending.requestedAt && (now - targetChat.sewaPending.requestedAt > 3 * 24 * 60 * 60 * 1000)) {
+                delete targetChat.sewaPending;
+                if (typeof global.saveData === 'function') global.saveData('chats', cleanJid);
+                cleaned++;
+            }
+        }
+
+        if (isJoinedValid && !isJoined) {
+            if (targetChat.sewa || targetChat.sewaExpired) {
+                resetSewaChat(targetChat);
+                if (typeof global.saveData === 'function') global.saveData('chats', cleanJid);
+                cleaned++;
+            }
+        }
     }
-    return activated;
+
+    return { activated, cleaned };
 }
+
+export const reconcilePendingSewa = reconcileSewa;
 
 let schedulerTime = null;
 let isChecking = false;
@@ -241,7 +275,7 @@ export async function checkExpiredSewa(conn) {
 
     isChecking = true;
     try {
-        await reconcilePendingSewa(conn).catch(() => {});
+        await reconcileSewa(conn).catch(() => {});
         const now = Date.now();
         const nomorOwner = getNomorOwner();
         const chats = global.db.data.chats;

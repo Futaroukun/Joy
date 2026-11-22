@@ -10,6 +10,7 @@ import {
     getGroupName,
     applySewaExtension,
     resetSewaChat,
+    reconcileSewa,
     reconcilePendingSewa
 } from '../function/core/cek-sewa.js';
 
@@ -160,7 +161,9 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         const pendingList = [];
 
         const participating = await conn.groupFetchAllParticipating().catch(() => ({}));
-        await reconcilePendingSewa(conn, participating).catch(() => {});
+        await reconcileSewa(conn, participating).catch(() => {});
+
+        const isParticipatingValid = participating && typeof participating === 'object' && Object.keys(participating).length > 0;
 
         for (const [rawJid, data] of Object.entries(chats)) {
             if (!rawJid.includes('@g.us')) continue;
@@ -174,13 +177,26 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
                     global.saveData('chats', rawJid);
                 }
             }
+
+            const isJoined = Boolean(participating?.[jid]);
+
             if (data.sewa) {
+                if (isParticipatingValid && !isJoined) {
+                    resetSewaChat(data);
+                    if (typeof global.saveData === 'function') global.saveData('chats', jid);
+                    continue;
+                }
                 if (data.sewaPermanent || data.sewaDate > now) {
                     activeList.push({ jid, data });
                 }
             } else if (data.sewaPending) {
                 pendingList.push({ jid, data });
             } else if (data.sewaExpired) {
+                if (isParticipatingValid && !isJoined) {
+                    resetSewaChat(data);
+                    if (typeof global.saveData === 'function') global.saveData('chats', jid);
+                    continue;
+                }
                 graceList.push({ jid, data });
             }
         }
@@ -257,13 +273,44 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
 
     if (cmd === 'delsewa' || cmd === 'remsewa' || cmd === 'hapussewa') {
         const isKeep = args.some(a => a.toLowerCase() === 'keep' || a.toLowerCase() === '--keep');
-        const targetJid = args.find(a => a.endsWith('@g.us')) || (m.isGroup ? m.chat : null);
+        let targetJid = args.find(a => a.endsWith('@g.us'));
+
+        if (!targetJid) {
+            const rawId = args.find(a => /^\d{15,22}$/.test(a));
+            if (rawId) targetJid = `${rawId}@g.us`;
+        }
+
+        if (!targetJid && args[0] && /^\d{1,3}$/.test(args[0])) {
+            const idx = parseInt(args[0]) - 1;
+            const chats = global.db?.data?.chats || {};
+            const now = Date.now();
+            const list = [];
+            for (const [rJid, d] of Object.entries(chats)) {
+                if (!rJid.includes('@g.us')) continue;
+                const cJid = rJid.replace(/(@g\.us)+$/i, '@g.us');
+                if (d.sewa && (d.sewaPermanent || d.sewaDate > now)) list.push(cJid);
+            }
+            for (const [rJid, d] of Object.entries(chats)) {
+                if (!rJid.includes('@g.us')) continue;
+                const cJid = rJid.replace(/(@g\.us)+$/i, '@g.us');
+                if (d.sewaPending) list.push(cJid);
+            }
+            for (const [rJid, d] of Object.entries(chats)) {
+                if (!rJid.includes('@g.us')) continue;
+                const cJid = rJid.replace(/(@g\.us)+$/i, '@g.us');
+                if (d.sewaExpired) list.push(cJid);
+            }
+            if (list[idx]) targetJid = list[idx];
+        }
+
+        if (!targetJid && m.isGroup) targetJid = m.chat;
 
         if (!targetJid) {
             return m.reply(
                 `*Format Salah!*\n\n` +
-                `• Hapus sewa & bot keluar: \`${usedPrefix + command} <jid_grup>\`\n` +
-                `• Hapus sewa tapi bot tetap di grup: \`${usedPrefix + command} <jid_grup> keep\`\n` +
+                `• Hapus sewa & bot keluar: \`${usedPrefix + command} <jid|id_grup|nomor_list>\`\n` +
+                `• Hapus sewa tapi bot tetap di grup: \`${usedPrefix + command} <jid|id_grup> keep\`\n` +
+                `• Contoh: \`${usedPrefix + command} 120363432504331887\` atau \`${usedPrefix + command} 3\`\n` +
                 `• Jika dijalankan di dalam grup target: \`${usedPrefix + command} keep\``
             );
         }
