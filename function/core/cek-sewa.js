@@ -133,6 +133,90 @@ export function resetSewaChat(chat) {
     delete chat.sewaPending;
 }
 
+export async function activatePendingSewa(conn, id) {
+    const groupChat = global.db?.data?.chats?.[id];
+    if (!groupChat?.sewaPending) return false;
+
+    const pending = groupChat.sewaPending;
+    const now = Date.now();
+    const extResult = applySewaExtension(groupChat, pending.duration, now);
+    delete groupChat.sewaPending;
+
+    if (typeof global.saveData === 'function') {
+        global.saveData('chats', id);
+    }
+
+    const groupName = (await conn.getName(id).catch(() => null)) || getGroupName(conn, id);
+    const prefix = global.prefix || '.';
+    let groupNotice = '';
+
+    if (extResult.isPermanent) {
+        groupNotice =
+            `╭── ✦ *SEWA BOT PERMANEN AKTIF* ✦\n` +
+            `Halo seluruh member grup *${groupName}*.\n\n` +
+            `Masa sewa ${global.info?.namabot || 'Joy Bot'} telah diaktifkan secara *Permanen* di grup ini.\n` +
+            `Gunakan \`${prefix}menu\` untuk melihat seluruh fitur yang tersedia.\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━━━━`;
+    } else {
+        const expStr = formatDateTime(extResult.newExpiry);
+        const addedLabel = labelDuration(pending.duration.amount, pending.duration.unit);
+        const sisaLabel = remainingLabel(extResult.newExpiry - now);
+
+        groupNotice =
+            `╭── ✦ *SEWA BOT DIAKTIFKAN* ✦\n` +
+            `Halo seluruh member grup *${groupName}*.\n\n` +
+            `Bot telah disetujui bergabung dan masa sewa resmi aktif!\n` +
+            `• *Durasi*: ${addedLabel}\n` +
+            `• *Berlaku s.d*: ${expStr}\n` +
+            `• *Total Sisa Waktu*: ${sisaLabel}\n\n` +
+            `Gunakan \`${prefix}menu\` untuk melihat seluruh fitur yang tersedia.\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━━━━`;
+    }
+
+    try {
+        await conn.sendMessage(id, { text: groupNotice });
+    } catch (_) {}
+
+    if (pending.requestedBy) {
+        try {
+            const durLabel = pending.duration.isPermanent
+                ? 'Permanen (Tanpa Batas Waktu)'
+                : labelDuration(pending.duration.amount, pending.duration.unit);
+            const expStr = extResult.isPermanent ? 'Permanen' : formatDateTime(extResult.newExpiry);
+            await conn.sendMessage(pending.requestedBy, {
+                text:
+                    `╭── ✦ *PERMINTAAN SEWA DITERIMA* ✦\n` +
+                    `Bot telah disetujui bergabung ke grup *${groupName}*!\n` +
+                    `• *ID*: \`${id}\`\n` +
+                    `• *Durasi*: +${durLabel}\n` +
+                    `• *Berlaku s.d*: ${expStr}\n` +
+                    `• *Status*: Sewa Aktif\n` +
+                    `╰━━━━━━━━━━━━━━━━━━━━━━━`
+            });
+        } catch (_) {}
+    }
+
+    return true;
+}
+
+export async function reconcilePendingSewa(conn, participating = null) {
+    const chats = global.db?.data?.chats;
+    if (!chats) return 0;
+
+    const pendingJids = Object.keys(chats).filter(jid => jid.endsWith('@g.us') && chats[jid]?.sewaPending);
+    if (pendingJids.length === 0) return 0;
+
+    const joined = participating || await conn.groupFetchAllParticipating().catch(() => null);
+    if (!joined) return 0;
+
+    let activated = 0;
+    for (const jid of pendingJids) {
+        if (!joined[jid]) continue;
+        if (await activatePendingSewa(conn, jid)) activated++;
+    }
+    return activated;
+}
+
 let schedulerTime = null;
 let isChecking = false;
 
@@ -157,6 +241,7 @@ export async function checkExpiredSewa(conn) {
 
     isChecking = true;
     try {
+        await reconcilePendingSewa(conn).catch(() => {});
         const now = Date.now();
         const nomorOwner = getNomorOwner();
         const chats = global.db.data.chats;

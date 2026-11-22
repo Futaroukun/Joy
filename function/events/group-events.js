@@ -6,13 +6,7 @@
  */
 
 import { jidNormalizedUser, areJidsSameUser } from '@whiskeysockets/baileys';
-import {
-    applySewaExtension,
-    formatDateTime,
-    labelDuration,
-    remainingLabel,
-    getGroupName
-} from '../core/cek-sewa.js';
+import { activatePendingSewa } from '../core/cek-sewa.js';
 
 const lidCache = new Map();
 const LID_CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -110,64 +104,7 @@ export async function participantsUpdate({ id, participants, action }) {
                         const groupChat = global.db.data.chats[id];
 
                         if (groupChat.sewaPending) {
-                            const pending = groupChat.sewaPending;
-                            const now = Date.now();
-                            const extResult = applySewaExtension(groupChat, pending.duration, now);
-                            delete groupChat.sewaPending;
-
-                            if (typeof global.saveData === 'function') {
-                                global.saveData('chats', id);
-                            }
-
-                            const groupName = (await this.getName(id).catch(() => null)) || getGroupName(this, id);
-                            const prefix = global.prefix || '.';
-                            let groupNotice = '';
-
-                            if (extResult.isPermanent) {
-                                groupNotice =
-                                    `╭── ✦ *SEWA BOT PERMANEN AKTIF* ✦\n` +
-                                    `Halo seluruh member grup *${groupName}*.\n\n` +
-                                    `Masa sewa ${global.info?.namabot || 'Joy Bot'} telah diaktifkan secara *Permanen* di grup ini.\n` +
-                                    `Gunakan \`${prefix}menu\` untuk melihat seluruh fitur yang tersedia.\n` +
-                                    `╰━━━━━━━━━━━━━━━━━━━━━━━`;
-                            } else {
-                                const expStr = formatDateTime(extResult.newExpiry);
-                                const addedLabel = labelDuration(pending.duration.amount, pending.duration.unit);
-                                const sisaLabel = remainingLabel(extResult.newExpiry - now);
-
-                                groupNotice =
-                                    `╭── ✦ *SEWA BOT DIAKTIFKAN* ✦\n` +
-                                    `Halo seluruh member grup *${groupName}*.\n\n` +
-                                    `Bot telah disetujui bergabung dan masa sewa resmi aktif!\n` +
-                                    `• *Durasi*: ${addedLabel}\n` +
-                                    `• *Berlaku s.d*: ${expStr}\n` +
-                                    `• *Total Sisa Waktu*: ${sisaLabel}\n\n` +
-                                    `Gunakan \`${prefix}menu\` untuk melihat seluruh fitur yang tersedia.\n` +
-                                    `╰━━━━━━━━━━━━━━━━━━━━━━━`;
-                            }
-
-                            try {
-                                await this.sendMessage(id, { text: groupNotice });
-                            } catch (_) {}
-
-                            if (pending.requestedBy) {
-                                try {
-                                    const durLabel = pending.duration.isPermanent
-                                        ? 'Permanen (Tanpa Batas Waktu)'
-                                        : labelDuration(pending.duration.amount, pending.duration.unit);
-                                    const expStr = extResult.isPermanent ? 'Permanen' : formatDateTime(extResult.newExpiry);
-                                    await this.sendMessage(pending.requestedBy, {
-                                        text:
-                                            `╭── ✦ *PERMINTAAN SEWA DITERIMA* ✦\n` +
-                                            `Bot telah disetujui bergabung ke grup *${groupName}*!\n` +
-                                            `• *ID*: \`${id}\`\n` +
-                                            `• *Durasi*: +${durLabel}\n` +
-                                            `• *Berlaku s.d*: ${expStr}\n` +
-                                            `• *Status*: Sewa Aktif\n` +
-                                            `╰━━━━━━━━━━━━━━━━━━━━━━━`
-                                    });
-                                } catch (_) {}
-                            }
+                            await activatePendingSewa(this, id);
                         }
                     }
                 }

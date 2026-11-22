@@ -9,7 +9,8 @@ import {
     formatDateTime,
     getGroupName,
     applySewaExtension,
-    resetSewaChat
+    resetSewaChat,
+    reconcilePendingSewa
 } from '../function/core/cek-sewa.js';
 
 function extractInviteCode(text) {
@@ -159,6 +160,7 @@ let handler = async (m, { conn, text, usedPrefix, command, isOwner, isROwner }) 
         const pendingList = [];
 
         const participating = await conn.groupFetchAllParticipating().catch(() => ({}));
+        await reconcilePendingSewa(conn, participating).catch(() => {});
 
         for (const [rawJid, data] of Object.entries(chats)) {
             if (!rawJid.includes('@g.us')) continue;
