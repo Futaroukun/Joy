@@ -22,6 +22,7 @@ import { stopPremiumScheduler } from "./function/core/cek-prem.js";
 import { initAutoBackupScheduler } from "./function/core/backup.js";
 import { initAutoSessionCleaner } from "./function/core/session-cleaner.js";
 import { initAutoGroupScheduler } from "./function/events/autogroup.js";
+import { initAbsenScheduler } from "./function/events/absen.js";
 import { useAtomicAuthState } from "./function/core/auth.js";
 import { applyBaileysPatches } from "./function/core/patch-baileys.js";
 import cron from 'node-cron';
@@ -272,6 +273,7 @@ initAutoGempaScheduler(() => global.conn)
 initAutoBackupScheduler(() => global.conn)
 initAutoSessionCleaner()
 initAutoGroupScheduler(() => global.conn)
+initAbsenScheduler(() => global.conn)
 
 const tmpFolder = join(process.cwd(), "tmp");
 if (!existsSync(tmpFolder)) mkdirSync(tmpFolder, { recursive: true });
