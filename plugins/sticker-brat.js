@@ -1,27 +1,40 @@
 import axios from 'axios'
 
+const BRAT_APIS = [
+  (text) => `https://aqul-brat.hf.space/api/brat?text=${encodeURIComponent(text)}`,
+  (text) => `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(text)}`
+]
+
 async function getBratImage(text) {
-  try {
-    const url = `https://api.nexray.web.id/maker/brat?text=${encodeURIComponent(text)}`
-    const response = await axios.get(url, {
-      responseType: 'arraybuffer',
-      headers: { 'user-agent': 'Mozilla/5.0' },
-      timeout: 15000
-    })
-    return response.data
-  } catch (error) {
-    throw new Error('Gagal mengambil gambar dari server.')
+  let lastError = null
+  for (const getUrl of BRAT_APIS) {
+    try {
+      const url = getUrl(text)
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        timeout: 10000
+      })
+      if (response.data && response.data.length > 0) {
+        return response.data
+      }
+    } catch (error) {
+      lastError = error
+    }
   }
+  throw new Error(lastError?.message || 'Gagal mengambil gambar dari server.')
 }
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
+    text = text || (m.quoted && (m.quoted.text || m.quoted.caption))
     if (!text) {
         return m.reply(
             `*BRAT STICKER MAKER*\n` +
             `━━━━━━━━━━━━━━━━━━━━━━\n` +
             `Buat stiker WhatsApp bergaya teks brat.\n\n` +
             `*Cara Pakai:*\n` +
-            `› \`${usedPrefix + command} <teks>\`\n\n` +
+            `› \`${usedPrefix + command} <teks>\`\n` +
+            `› Atau balas pesan teks dengan \`${usedPrefix + command}\`\n\n` +
             `*Contoh:*\n` +
             `› \`${usedPrefix + command} capek banget\`\n` +
             `› \`${usedPrefix + command} overthinking lagi\`\n` +
@@ -35,8 +48,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         const imageBuffer = await getBratImage(text)
 
         await conn.sendStickerImage(m.chat, imageBuffer, m, {
-            packname: global.info.namabot  || 'Joy Bot',
-            author  : global.info.namaowner || 'Rafli'
+            packname: global.info?.namabot  || 'Joy Bot',
+            author  : global.info?.namaowner || 'Rafli'
         })
 
         await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
