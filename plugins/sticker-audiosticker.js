@@ -10,6 +10,7 @@ import { writeFile, unlink, readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import sharp from 'sharp'
 import { writeExifImg, writeExifVid, writeExif } from '../function/media/exif.js'
 
 const HKDF_INFO = {
@@ -246,7 +247,10 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             ? await writeExif(buf, exifMeta)
             : type === 'video'
                 ? await writeExifVid(buf, exifMeta)
-                : await writeExifImg(buf, exifMeta)
+                : await writeExifImg(await sharp(buf)
+                    .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+                    .png()
+                    .toBuffer(), exifMeta)
 
         const webp = parseWebp(stickerBuf)
         const [a, s] = await Promise.all([
