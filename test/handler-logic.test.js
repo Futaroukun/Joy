@@ -1,4 +1,4 @@
-import test, { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
@@ -31,8 +31,6 @@ import {
 
 import {
     GRACE_MS,
-    MAX_DURATION_MS,
-    DURATIONS,
     parseDuration,
     applySewaExtension,
     transitionExpiredSewa,

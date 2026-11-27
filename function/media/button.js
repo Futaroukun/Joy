@@ -555,12 +555,6 @@ export async function sendInteractiveMessage(sock, jid, content, options = {}) {
     if (isPrivate && options.useAI === true) {
       additionalNodes.push({ tag: 'bot', attrs: { biz_bot: '1' } });
     }
-    // console.log('Interactive send: ', {
-    //   type: buttonType,
-    //   nodes: additionalNodes.map(n => ({ tag: n.tag, attrs: n.attrs })),
-    //   private: !isJidGroup(jid),
-    //   useAI: options.useAI === true
-    // });
   }
 
   await relayMessage(jid, fullMsg.message, {
