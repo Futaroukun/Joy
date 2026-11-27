@@ -89,7 +89,7 @@ describe('Group welcome and leave templates', () => {
             user: { jid: 'bot@s.whatsapp.net' },
             chats: {},
             groupMetadata: async id => ({ subject: id === firstGroup ? 'First Group' : 'Second Group', desc: '' }),
-            getName: async id => id === firstGroup ? 'First Group' : 'Second Group',
+            getName: id => id === firstGroup ? 'First Group' : id === secondGroup ? 'Second Group' : id.split('@')[0],
             profilePictureUrl: async () => { throw new Error('no profile picture'); },
             sendMessage: async (id, content) => sent.push([id, content])
         };
@@ -99,6 +99,31 @@ describe('Group welcome and leave templates', () => {
 
         assert.equal(sent[0][1].text, 'Welcome @123456 to First Group');
         assert.equal(sent[1][1].text, 'Goodbye @123456 from Second Group');
+    });
+
+    it('uses the saved contact name in welcome and leave mentions', async () => {
+        global.db.data.chats[firstGroup].sWelcome = 'Welcome @user';
+        global.db.data.chats[firstGroup].sBye = 'Goodbye @user';
+        const sent = [];
+        const conn = {
+            user: { jid: 'bot@s.whatsapp.net' },
+            chats: { [member]: { name: 'Pin' } },
+            groupMetadata: async () => ({ subject: 'First Group', desc: '' }),
+            getName(id) {
+                if (id === firstGroup) return 'First Group';
+                return this.chats[id]?.name || id.split('@')[0];
+            },
+            profilePictureUrl: async () => { throw new Error('no profile picture'); },
+            sendMessage: async (id, content) => sent.push([id, content])
+        };
+
+        await participantsUpdate.call(conn, { id: firstGroup, participants: [member], action: 'add' });
+        await participantsUpdate.call(conn, { id: firstGroup, participants: [member], action: 'remove' });
+
+        assert.equal(sent[0][1].text, 'Welcome @Pin');
+        assert.equal(sent[1][1].text, 'Goodbye @Pin');
+        assert.deepEqual(sent[0][1].contextInfo.mentionedJid, [member]);
+        assert.deepEqual(sent[1][1].contextInfo.mentionedJid, [member]);
     });
 
     it('uses the shared welcome switch to suppress both add and remove messages', async () => {

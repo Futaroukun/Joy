@@ -59,6 +59,42 @@ export function resolveDisplayPhone(conn, targetJid) {
     return targetJid.split('@')[0].split(':')[0];
 }
 
+export function resolveDisplayName(conn, participant, ...jids) {
+    const candidates = [
+        participant?.name,
+        participant?.notify,
+        participant?.pushName,
+        participant?.verifiedName,
+        participant?.vname
+    ];
+
+    for (const jid of jids.filter(Boolean)) {
+        const contact = conn?.contacts?.[jid] || {};
+        const chat = conn?.chats?.[jid] || {};
+        candidates.push(
+            contact.name,
+            contact.notify,
+            contact.vname,
+            contact.verifiedName,
+            chat.name,
+            chat.notify,
+            chat.vname,
+            chat.verifiedName
+        );
+        try {
+            candidates.push(conn?.getName?.(jid));
+        } catch (_) {}
+    }
+
+    const name = candidates.find(value => {
+        if (typeof value !== 'string') return false;
+        const candidate = value.trim();
+        return candidate && !candidate.includes('@') && !/^[+\d\s().:-]+$/.test(candidate);
+    });
+
+    return name?.trim() || jids.map(jid => resolveDisplayPhone(conn, jid)).find(Boolean) || 'unknown';
+}
+
 export function formatDuration(seconds) {
     if (isNaN(seconds) || seconds === 0) return 'Nonaktif';
     const d = Math.floor(seconds / (3600 * 24));
@@ -137,7 +173,7 @@ export async function participantsUpdate({ id, participants, action }) {
                         
                         const jid = participantId.toString().decodeJid();
                         const lid = await ensureLID(this, jid);
-                        const displayPhone = resolveDisplayPhone(this, jid) || resolveDisplayPhone(this, lid);
+                        const displayName = resolveDisplayName(this, user, jid, lid);
 
                         let pp;
                         try {
@@ -161,7 +197,7 @@ export async function participantsUpdate({ id, participants, action }) {
                         )
                             .replaceAll("@subject", () => subject)
                             .replaceAll("@desc", () => description)
-                            .replaceAll("@user", () => "@" + displayPhone);
+                            .replaceAll("@user", () => "@" + displayName);
 
                         const userMentions = [...new Set([jid, lid].filter(Boolean))];
 
