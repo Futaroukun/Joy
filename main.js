@@ -7,7 +7,6 @@ import platform from "process";
 import lodash from "lodash";
 global.lodash = lodash;
 import yargs from "yargs";
-import syntaxerror from "syntax-error";
 import { format } from "util";
 import { fileURLToPath, pathToFileURL } from "url";
 import { readdirSync, statSync, unlinkSync, existsSync, readFileSync, writeFileSync, mkdirSync, watch, copyFileSync } from "fs";
@@ -416,61 +415,80 @@ if (global.rebuildPluginIndex) global.rebuildPluginIndex();
 
 global.conn.isHandlerInit = true;
 const debounceMap = new Map();
-
-global.reloadPlugins = async (_ev, filename) => {
-    if (!pluginFilter(filename)) return;
-    if (debounceMap.has(filename)) clearTimeout(debounceMap.get(filename));
-    debounceMap.set(filename, setTimeout(async () => {
-        debounceMap.delete(filename);
-        const dir = global.__filename(join(pluginFolder, filename), true);
-
-        if (filename in global.plugins) {
-            if (existsSync(dir)) {
-                console.log(`${chalk.white.bold(" [INFO]")} ${chalk.green.bold(`UPDATE "${filename}"`)}`);
-            } else {
-                console.log(`${chalk.white.bold(" [INFO]")} ${chalk.red.bold(`DELETE "${filename}"`)}`);
-                delete global.plugins[filename];
-                if (global.rebuildPluginIndex) global.rebuildPluginIndex();
-                return;
+const reloadQueues = new Map();
+const pluginSnapshots = new Map();
+const signature = filename => {
+    const stat = statSync(join(pluginFolder, filename));
+    return `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}:${stat.ino}`;
+};
+for (const filename of readdirSync(pluginFolder).filter(pluginFilter)) {
+    pluginSnapshots.set(filename, signature(filename));
+}
+function scanPlugins() {
+    try {
+        const files = new Set(readdirSync(pluginFolder).filter(pluginFilter));
+        for (const filename of files) {
+            let next;
+            try { next = signature(filename); } catch { continue; }
+            if (pluginSnapshots.get(filename) !== next) {
+                pluginSnapshots.set(filename, next);
+                global.reloadPlugins('change', filename);
             }
+        }
+        for (const filename of pluginSnapshots.keys()) {
+            if (!files.has(filename)) {
+                pluginSnapshots.delete(filename);
+                global.reloadPlugins('rename', filename);
+            }
+        }
+    } catch (error) { console.error('[PLUGIN WATCH]', error.message); }
+}
+let pluginRevision = 0;
+async function reloadPlugin(filename) {
+    const dir = join(pluginFolder, filename);
+    try {
+        if (!existsSync(dir)) {
+            delete global.plugins[filename];
+            console.log(`[PLUGIN] DELETE ${filename}`);
         } else {
-            console.log(`${chalk.white.bold(" [INFO]")} ${chalk.blue.bold(`ADD "${filename}"`)}`);
-        }
-
-        if (!existsSync(dir)) return;
-
-        const error = syntaxerror(readFileSync(dir), filename, {
-            sourceType: "module",
-            allowAwaitOutsideFunction: true
-        });
-        if (error) {
-            console.log(`${chalk.white.bold(" [INFO]")} ${chalk.yellow.bold(`SYNTAX ERROR "${filename}"`)}`);
-            console.error(error)
-            return;
-        }
-
-        try {
-            const module = await import(`${global.__filename(dir)}?update=${Date.now()}`);
-            global.plugins[filename] = module.default || module;
+            const url = pathToFileURL(dir);
+            url.searchParams.set('update', `${Date.now()}-${++pluginRevision}`);
+            const module = await import(url.href);
+            const plugin = module.default || module;
             const settings = global.db.data?.pluginSettings?.[filename];
-            if (typeof settings?.disabled === 'boolean') {
-                global.plugins[filename].disable = settings.disabled;
-            }
-        } catch (e) {
-            console.log(`${chalk.white.bold(" [INFO]")} ${chalk.green.bold(`ERROR "${filename}"`)}`);
-            console.error(e)
-            global.plugins[filename] = null;
-        } finally {
-            global.plugins = Object.fromEntries(
-                Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b))
-            );
-            if (global.rebuildPluginIndex) global.rebuildPluginIndex();
+            if (typeof settings?.disabled === 'boolean') plugin.disable = settings.disabled;
+            global.plugins[filename] = plugin;
+            console.log(`[PLUGIN] LOAD ${filename}`);
         }
+        global.plugins = Object.fromEntries(
+            Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b))
+        );
+        if (global.rebuildPluginIndex) global.rebuildPluginIndex();
+    } catch (error) {
+        console.error(`[PLUGIN] Gagal memuat ${filename}; versi sebelumnya dipertahankan.`, error);
+    }
+}
+global.reloadPlugins = (_ev, filename) => {
+    if (filename == null) return scanPlugins();
+    filename = filename.toString();
+    if (!pluginFilter(filename) || path.basename(filename) !== filename) return;
+    clearTimeout(debounceMap.get(filename));
+    debounceMap.set(filename, setTimeout(() => {
+        debounceMap.delete(filename);
+        const task = (reloadQueues.get(filename) || Promise.resolve()).then(() => reloadPlugin(filename));
+        reloadQueues.set(filename, task);
+        task.finally(() => {
+            if (reloadQueues.get(filename) === task) reloadQueues.delete(filename);
+        });
     }, 300));
 };
-
-Object.freeze(global.reloadPlugins);
-await watch(pluginFolder, global.reloadPlugins);
+try {
+    const watcher = watch(pluginFolder, global.reloadPlugins);
+    watcher.on('error', error => console.error('[PLUGIN WATCH] Polling tetap aktif:', error.message));
+} catch (error) {
+    console.error('[PLUGIN WATCH] Menggunakan polling:', error.message);
+}
+setInterval(scanPlugins, 2000).unref();
 
 const handlerFolder = join(__dirname, "./function/core/handler");
 let handlerDebounce = null;
