@@ -103,6 +103,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         global.plugins[targetPlugin].disable = !isEnable;
     }
 
+    if (global.rebuildPluginIndex) global.rebuildPluginIndex();
+
     if (global.saveData) {
         global.saveData('pluginSettings', 'GLOBAL_CONFIG');
     }

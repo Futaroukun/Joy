@@ -10,10 +10,8 @@ import { writeFile, unlink, readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { writeExifImg, writeExif } from '../function/media/exif.js'
+import { writeExifImg, writeExifVid, writeExif } from '../function/media/exif.js'
 
-const DEFAULT_STICKER = fileURLToPath(new URL('../src/thumbnail.jpg', import.meta.url))
 const HKDF_INFO = {
     audio: 'WhatsApp Audio Keys',
     sticker: 'WhatsApp Image Keys'
@@ -164,17 +162,13 @@ const uploadEncrypted = async (conn, plain, kind) => {
     }
 }
 
-const mediaDomainInfo = (key) =>
-    ld(74, Buffer.concat([
-        Buffer.from([0x08, 0x01]),
-        ld(2, key)
-    ]))
-
 const relayRawPayload = (conn, jid, payload) => {
     const task = relayQueue.then(async () => {
         const originalEncode = proto.Message.encode
         proto.Message.encode = function (msg, w) {
-            const out = originalEncode.call(this, msg, w)
+            const out = originalEncode.call(this, msg?.[RAW]
+                ? { ...msg, stickerMessage: undefined }
+                : msg, w)
             if (msg && msg[RAW]) {
                 for (const [f, body] of msg[RAW]) {
                     out.uint32(f * 8 + 2).bytes(body)
@@ -192,31 +186,52 @@ const relayRawPayload = (conn, jid, payload) => {
     return task
 }
 
-let handler = async (m, { conn, text, usedPrefix, command }) => {
-    const q = m.quoted
-    const qMime = (q?.msg || q)?.mimetype || ''
-    const isAudio = q && (q.mtype === 'audioMessage' || /^audio\//i.test(qMime))
+const mediaType = (m) => {
+    const mime = (m?.msg || m)?.mimetype || ''
+    if (m?.mtype === 'audioMessage' || /^audio\//i.test(mime)) return 'audio'
+    if (m?.mtype === 'stickerMessage' || /webp/i.test(mime)) return 'sticker'
+    if (m?.mtype === 'imageMessage' || /^image\//i.test(mime)) return 'image'
+    if (m?.mtype === 'videoMessage' || /^video\//i.test(mime)) return 'video'
+}
 
-    if (!isAudio) {
-        return m.reply(
-            `*AUDIO STICKER*\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━\n` +
-            `Buat stiker WhatsApp yang memutar audio.\n\n` +
-            `*Cara Pakai:*\n` +
-            `› Reply pesan audio/VN lalu ketik \`${usedPrefix + command}\`\n` +
-            `› Opsional: sertakan URL gambar \`${usedPrefix + command} <url_gambar>\`\n` +
-            `› Atau kirim gambar/stiker dengan caption \`${usedPrefix + command}\` sambil reply audio\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━`
-        )
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+    const sessions = conn.audioStickerSessions ||= new Map()
+    const key = `${m.chat}:${m.sender}`
+    const now = Date.now()
+    for (const [id, session] of sessions) {
+        if (session.expires <= now) sessions.delete(id)
     }
+    const session = sessions.get(key) || { expires: now + 180000 }
+    try {
+        for (const media of [m.quoted, m]) {
+            const type = mediaType(media)
+            if (!type) continue
+            const buf = await media.download()
+            if (!buf?.length) throw new Error('Media kosong atau gagal diunduh.')
+            if (type === 'audio') session.audio = Buffer.from(buf)
+            else session.visual = { type, buf: Buffer.from(buf) }
+        }
+        if (!session.visual && /^https?:\/\/\S+$/i.test(text?.trim() || '')) {
+            session.visual = { type: 'image', buf: await toBuf(text.trim()) }
+        }
+    } catch (error) {
+        return m.reply(`Gagal mengambil media: ${error.message}`)
+    }
+    if (!session.audio || !session.visual) {
+        if (session.audio || session.visual) {
+            sessions.set(key, session)
+            return m.reply(session.visual
+                ? 'Foto/video disimpan. Kirim audio/VN dalam 3 menit. Ketik batal untuk membatalkan.'
+                : 'Audio disimpan. Kirim foto/video/stiker dalam 3 menit. Ketik batal untuk membatalkan.')
+        }
+        return m.reply(`Reply foto/video/stiker atau audio dengan ${usedPrefix + command}, lalu kirim media pasangannya.`)
+    }
+    sessions.delete(key)
 
     await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
 
     try {
-        const rawAudio = await q.download()
-        if (!rawAudio) throw new Error('Gagal mengunduh audio yang di-reply.')
-
-        const audioInput = Buffer.from(rawAudio)
+        const audioInput = session.audio
         const opus = audioInput.subarray(0, 4).toString('ascii') === 'OggS'
             ? { buf: audioInput, mimetype: 'audio/ogg; codecs=opus' }
             : await toOpus(audioInput)
@@ -226,19 +241,12 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             author: global.info?.namaowner || 'Rafli'
         }
 
-        let stickerBuf
-        const msgMime = (m.msg || m)?.mimetype || ''
-        if (m.mtype === 'stickerMessage' || /webp/.test(msgMime)) {
-            const rawSticker = await m.download()
-            stickerBuf = await writeExif(rawSticker, exifMeta)
-        } else if (m.mtype === 'imageMessage' || /^image\//i.test(msgMime)) {
-            const rawImg = await m.download()
-            stickerBuf = await writeExifImg(rawImg, exifMeta)
-        } else {
-            const imgUrl = /^https?:\/\/\S+/i.test(text?.trim() || '') ? text.trim() : null
-            const srcBuf = await toBuf(imgUrl || DEFAULT_STICKER)
-            stickerBuf = await writeExifImg(srcBuf, exifMeta)
-        }
+        const { type, buf } = session.visual
+        const stickerBuf = type === 'sticker'
+            ? await writeExif(buf, exifMeta)
+            : type === 'video'
+                ? await writeExifVid(buf, exifMeta)
+                : await writeExifImg(buf, exifMeta)
 
         const webp = parseWebp(stickerBuf)
         const [a, s] = await Promise.all([
@@ -258,8 +266,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                     directPath: a.directPath,
                     mediaKeyTimestamp: a.mediaKeyTimestamp
                 })
-            ).finish()),
-            ld(17, mediaDomainInfo(a.mediaKey))
+            ).finish())
         ])
 
         const stickerBase = Buffer.concat([
@@ -278,27 +285,18 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
                     isAnimated: webp.isAnimated,
                     stickerSentTs: Date.now()
                 })
-            ).finish()),
-            ld(17, Buffer.concat([
-                mediaDomainInfo(s.mediaKey),
-                ld(82, varint(13001))
-            ]))
+            ).finish())
         ])
 
-        const futureProofBody = ld(
-            1,
-            ld(26, Buffer.concat([
-                stickerBase,
-                ld(26, audioBytes)
-            ]))
-        )
-
+        const stickerBytes = Buffer.concat([stickerBase, ld(26, audioBytes)])
         const payload = proto.Message.create({
+            stickerMessage: proto.Message.StickerMessage.decode(stickerBase),
             messageContextInfo: {
                 messageSecret: randomBytes(32)
             }
         })
-        payload[RAW] = [[134, futureProofBody]]
+        // Keep the sticker visible to relayMessage; append audio unsupported by older schemas.
+        payload[RAW] = [[26, stickerBytes]]
 
         await relayRawPayload(conn, m.chat, payload)
         await conn.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
@@ -307,6 +305,25 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         await conn.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
         m.reply(`*Gagal membuat audio stiker.*\n\n${error.message}`)
     }
+}
+
+handler.before = async (m, { conn, usedPrefix, command }) => {
+    const key = `${m.chat}:${m.sender}`
+    const sessions = conn.audioStickerSessions
+    const session = sessions?.get(key)
+    if (!session) return
+    if (session.expires <= Date.now()) {
+        sessions.delete(key)
+        return
+    }
+    if (/^(?:[.!/#]\s*)?batal$/i.test(m.text?.trim() || '')) {
+        sessions.delete(key)
+        await m.reply('Sesi audio stiker dibatalkan.')
+        return
+    }
+    if (/^(audiosticker|saudio|stikeraudio|stickeraudio)$/i.test(command || '')) return
+    if (!mediaType(m) || m.fromMe) return
+    await handler(m, { conn, text: '', usedPrefix: usedPrefix || '.', command: 'saudio' })
 }
 
 handler.help = ['audiosticker *(reply audio)*']

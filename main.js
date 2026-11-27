@@ -429,7 +429,9 @@ global.reloadPlugins = async (_ev, filename) => {
                 console.log(`${chalk.white.bold(" [INFO]")} ${chalk.green.bold(`UPDATE "${filename}"`)}`);
             } else {
                 console.log(`${chalk.white.bold(" [INFO]")} ${chalk.red.bold(`DELETE "${filename}"`)}`);
-                return delete global.plugins[filename];
+                delete global.plugins[filename];
+                if (global.rebuildPluginIndex) global.rebuildPluginIndex();
+                return;
             }
         } else {
             console.log(`${chalk.white.bold(" [INFO]")} ${chalk.blue.bold(`ADD "${filename}"`)}`);
@@ -450,6 +452,10 @@ global.reloadPlugins = async (_ev, filename) => {
         try {
             const module = await import(`${global.__filename(dir)}?update=${Date.now()}`);
             global.plugins[filename] = module.default || module;
+            const settings = global.db.data?.pluginSettings?.[filename];
+            if (typeof settings?.disabled === 'boolean') {
+                global.plugins[filename].disable = settings.disabled;
+            }
         } catch (e) {
             console.log(`${chalk.white.bold(" [INFO]")} ${chalk.green.bold(`ERROR "${filename}"`)}`);
             console.error(e)
