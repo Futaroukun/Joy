@@ -42,6 +42,7 @@ applyBaileysPatches();
 import { headerLog } from "./function/core/console.js";
 import { Browsers,
         fetchLatestBaileysVersion,
+        fetchLatestWaWebVersion,
         makeCacheableSignalKeyStore,
         DisconnectReason } from '@whiskeysockets/baileys';
 
@@ -132,13 +133,28 @@ export async function getWaVersion() {
     try {
         if (existsSync(cacheFile)) {
             const diskCache = JSON.parse(readFileSync(cacheFile, 'utf8'));
-            if (Array.isArray(diskCache?.version) && diskCache.version.length === 3 && (Date.now() - (diskCache.timestamp || 0) < 24 * 60 * 60 * 1000)) {
+            if (diskCache.source === 'whatsapp-web' && Array.isArray(diskCache?.version) && diskCache.version.length === 3 && (Date.now() - (diskCache.timestamp || 0) < 24 * 60 * 60 * 1000)) {
                 cachedWaVersion = diskCache.version;
                 return cachedWaVersion;
             }
         }
     } catch (err) {
         console.warn('[WA-VERSION] Gagal parse wa-version.json:', err?.message);
+    }
+
+    try {
+        const { version: v, isLatest } = await fetchLatestWaWebVersion({ signal: AbortSignal.timeout(5000) });
+        if (isLatest && Array.isArray(v) && v.length === 3) {
+            cachedWaVersion = v;
+            try {
+                writeFileSync(cacheFile, JSON.stringify({ version: v, timestamp: Date.now(), source: 'whatsapp-web' }));
+            } catch (writeErr) {
+                console.warn('[WA-VERSION] Gagal menyimpan cache versi:', writeErr?.message);
+            }
+            return cachedWaVersion;
+        }
+    } catch (err) {
+        console.warn('[WA-VERSION] Gagal fetch versi WhatsApp Web:', err?.message);
     }
 
     try {
