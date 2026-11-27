@@ -1037,53 +1037,23 @@ export function makeWASocket(connectionOptions, options = {}) {
       
       sendButton: {
          async value(jid, content = {}, options = {}) {
-            let header = {};
+            const text = content.body || content.text || content.caption || '';
+            const payload = {
+               footer: content.footer || '',
+               nativeFlow: content.buttons || []
+            };
 
-            if (content.header) header.title = content.header;
-
-            let mime = null;
-            if (content.image) mime = 'image';
-            else if (content.video) mime = 'video';
-            else if (content.document) mime = 'document';
-            else if (content.audio) mime = 'audio';
-
+            const mime = ['image', 'video', 'document'].find(type => content[type]);
             if (mime) {
-               const media = await prepareWAMessageMedia(
-                  { [mime]: content[mime] }, 
-                  { upload: conn.waUploadToServer }
-               );
-
-               header = {
-                  hasMediaAttachment: true,
-                  [`${mime}Message`]: media[`${mime}Message`]
-               };
+               payload[mime] = content[mime];
+               payload.caption = text;
+               if (content.header) payload.title = content.header;
+            } else {
+               payload.text = text;
             }
+            if (content.audio) payload.audioFooter = content.audio;
 
-            const msg = generateWAMessageFromContent(jid, {
-               interactiveMessage: {
-                  header,
-                  body: { text: content.body || content.text || content.caption },
-                  footer: { text: content.footer },
-                  nativeFlowMessage: {
-                     buttons: content.buttons || []
-                  }
-               }
-            }, options);
-
-            await conn.relayMessage(jid, msg.message, {
-               messageId: msg.key.id,
-               additionalNodes: [{
-                  tag: 'biz',
-                  attrs: {},
-                  content: [{
-                     tag: 'interactive',
-                     attrs: { type: 'native_flow', v: '1' },
-                     content: [{ tag: 'native_flow', attrs: { v: '9', name: 'mixed' } }]
-                  }]
-               }]
-            });
-
-            return msg;
+            return conn.sendMessage(jid, payload, options);
          }
       },
 

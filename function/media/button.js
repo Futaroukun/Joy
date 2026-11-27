@@ -551,9 +551,7 @@ export async function sendInteractiveMessage(sock, jid, content, options = {}) {
   const buttonType = getButtonType(normalizedContent);
   let additionalNodes = [...(options.additionalNodes || [])];
   if (buttonType) {
-    const buttonsNode = getButtonArgs(normalizedContent);
     const isPrivate = !isJidGroup(jid);
-    additionalNodes.push(buttonsNode);
     if (isPrivate && options.useAI === true) {
       additionalNodes.push({ tag: 'bot', attrs: { biz_bot: '1' } });
     }
