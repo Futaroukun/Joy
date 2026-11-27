@@ -150,13 +150,18 @@ export async function participantsUpdate({ id, participants, action }) {
                             }
                         }
 
+                        const subject = await this.getName(id);
+                        const description = groupMetadata?.desc
+                            ? String.fromCharCode(8206).repeat(4001) + groupMetadata.desc
+                            : "";
                         message = (
                             action === "add"
                                 ? (chat.sWelcome || this.sWelcome || "Selamat Datang @user di @subject")
-                                      .replace("@subject", await this.getName(id))
-                                      .replace("@desc", groupMetadata?.desc ? String.fromCharCode(8206).repeat(4001) + groupMetadata.desc : "")
                                 : chat.sBye || this.sBye || "Selamat Tinggal @user"
-                        ).replace("@user", "@" + displayPhone);
+                        )
+                            .replaceAll("@subject", () => subject)
+                            .replaceAll("@desc", () => description)
+                            .replaceAll("@user", () => "@" + displayPhone);
 
                         const userMentions = [...new Set([jid, lid].filter(Boolean))];
 

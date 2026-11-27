@@ -24,7 +24,7 @@ function getGreeting() {
 const featureConfig = {
     welcome: {
         name: 'Welcome Message',
-        description: 'Mengirim pesan sambutan otomatis kepada member baru yang bergabung.',
+        description: 'Mengatur notifikasi otomatis untuk member yang bergabung dan keluar.',
         dbProperty: 'sambutan',
         access: 'admin',
         scope: 'group',
