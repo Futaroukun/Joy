@@ -176,13 +176,15 @@ export async function participantsUpdate({ id, participants, action }) {
                         const displayName = resolveDisplayName(this, user, jid, lid);
 
                         let pp;
-                        try {
-                            pp = { url: await this.profilePictureUrl(lid, "image") };
-                        } catch (_) {
+                        if (action !== "add" || chat.welcomeWithPhoto) {
                             try {
-                                pp = { url: await this.profilePictureUrl(jid, "image") };
+                                pp = { url: await this.profilePictureUrl(lid, "image") };
                             } catch (_) {
-                                pp = null;
+                                try {
+                                    pp = { url: await this.profilePictureUrl(jid, "image") };
+                                } catch (_) {
+                                    pp = null;
+                                }
                             }
                         }
 

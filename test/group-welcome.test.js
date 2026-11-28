@@ -41,6 +41,26 @@ describe('Group welcome and leave templates', () => {
         assert.match(replies[0], /welcome/);
     });
 
+    it('stores the welcome photo mode only for the current group', async () => {
+        await groupWelcomeHandler({ chat: firstGroup, isGroup: true, reply: async () => {} }, {
+            text: 'mode foto',
+            args: ['mode', 'foto'],
+            command: 'setwelcome',
+            usedPrefix: '.'
+        });
+
+        await groupWelcomeHandler({ chat: secondGroup, isGroup: true, reply: async () => {} }, {
+            text: 'mode teks',
+            args: ['mode', 'teks'],
+            command: 'setwelcome',
+            usedPrefix: '.'
+        });
+
+        assert.equal(global.db.data.chats[firstGroup].welcomeWithPhoto, true);
+        assert.equal(global.db.data.chats[secondGroup].welcomeWithPhoto, false);
+        assert.deepEqual(savedChats, [['chats', firstGroup], ['chats', secondGroup]]);
+    });
+
     it('resets the leave message to its default for the current group', async () => {
         global.db.data.chats[firstGroup].sBye = 'Custom @user';
         global.db.data.chats[secondGroup].sBye = 'Keep @user';
@@ -99,6 +119,35 @@ describe('Group welcome and leave templates', () => {
 
         assert.equal(sent[0][1].text, 'Welcome @123456 to First Group');
         assert.equal(sent[1][1].text, 'Goodbye @123456 from Second Group');
+    });
+
+    it('sends text by default and includes the profile photo only when enabled for that group', async () => {
+        const sent = [];
+        let pictureRequests = 0;
+        const conn = {
+            user: { jid: 'bot@s.whatsapp.net' },
+            chats: {},
+            groupMetadata: async () => ({ subject: 'First Group', desc: '' }),
+            getName: id => id === firstGroup ? 'First Group' : id.split('@')[0],
+            profilePictureUrl: async () => {
+                pictureRequests++;
+                return 'https://example.test/avatar.jpg';
+            },
+            sendMessage: async (id, content) => sent.push([id, content])
+        };
+
+        await participantsUpdate.call(conn, { id: firstGroup, participants: [member], action: 'add' });
+
+        assert.equal(pictureRequests, 0);
+        assert.equal(typeof sent[0][1].text, 'string');
+        assert.equal(sent[0][1].image, undefined);
+
+        global.db.data.chats[firstGroup].welcomeWithPhoto = true;
+        await participantsUpdate.call(conn, { id: firstGroup, participants: [member], action: 'add' });
+
+        assert.equal(pictureRequests, 1);
+        assert.deepEqual(sent[1][1].image, { url: 'https://example.test/avatar.jpg' });
+        assert.equal(typeof sent[1][1].caption, 'string');
     });
 
     it('uses the saved contact name in welcome and leave mentions', async () => {
